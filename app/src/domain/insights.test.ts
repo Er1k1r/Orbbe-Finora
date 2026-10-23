@@ -166,6 +166,34 @@ describe('mes_de_risco', () => {
   })
 })
 
+describe('pagamento de parcela (financiamentoId) fora das regras de despesa', () => {
+  // SAC 3.600.000 / 24 = 150.000 + 1% de 3.600.000 = 36.000 => parcela 186.000
+  const fin: Financiamento = {
+    id: 'X', nome: 'Casa', saldoDevedor: 3600000, taxaMensal: 0.01, prazoRestante: 24, sistema: 'SAC', diaVencimento: 5,
+  }
+  const pg = (data: string, valor = 186000): Lancamento => ({ ...sai('alu', data, valor, 'fixo'), id: 'pg' + data + valor, financiamentoId: 'X' })
+  const fonteVar: FonteDeRenda[] = [{ id: 'v', nome: 'Brownie', tipo: 'variavel', valorEsperado: 500000 }]
+  it('regras 7 e 3: parcela paga não dobra os fixos nem vira despesa fixa alta', () => {
+    // fixos = 0 + parcela 186.000 < recebido 200.000 => sem alerta; renda 500.000 (sem histórico)
+    const c = base({ fontes: fonteVar, financiamentos: [fin], lancamentos: [ent('2026-10-02', 200000, 'v'), pg('2026-10-05')] })
+    expect(tipos(c)).not.toContain('mes_de_risco')
+    expect(tipos(c)).not.toContain('despesa_fixa_alta')
+  })
+  it('regras 1 e 2: pagamentos de parcela não geram gasto_crescendo nem pico_atipico', () => {
+    const hist = ['2026-07-03', '2026-08-03', '2026-09-03'].map((d) => pg(d, 100000))
+    const c = base({ financiamentos: [fin], lancamentos: [...hist, pg('2026-10-03', 130000)] })
+    expect(tipos(c)).not.toContain('gasto_crescendo')
+    const picos = ['01', '02', '03', '04'].map((d) => pg(`2026-09-${d}`, 10000))
+    const c2 = base({ financiamentos: [fin], lancamentos: [...picos, pg('2026-10-05', 40000)] })
+    expect(tipos(c2)).not.toContain('pico_atipico')
+  })
+  it('financiamentoId sem financiamento correspondente é saída comum (R4)', () => {
+    const hist = ['2026-07-03', '2026-08-03', '2026-09-03'].map((d) => pg(d, 100000))
+    const c = base({ financiamentos: [], lancamentos: [...hist, pg('2026-10-03', 130000)] })
+    expect(tipos(c)).toContain('gasto_crescendo')
+  })
+})
+
 describe('config', () => {
   it('limite pode ser sobrescrito', () => {
     const hist = [sai('mer', '2026-07-03', 100000), sai('mer', '2026-08-03', 100000), sai('mer', '2026-09-03', 100000)]

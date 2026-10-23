@@ -5,6 +5,13 @@ import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
 const sinal = (l: Lancamento) => (l.tipo === 'entrada' ? l.valor : -l.valor)
 const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
 
+/**
+ * `financiamentoId` só vale como vínculo quando aponta para um financiamento existente;
+ * com o financiamento apagado o lançamento volta a ser uma saída comum.
+ */
+export const ehPagamentoParcela = (l: Lancamento, ids: ReadonlySet<string>): boolean =>
+  l.tipo === 'saida' && l.financiamentoId !== undefined && ids.has(l.financiamentoId)
+
 /** Saldo das contas; com `ate` ('YYYY-MM-DD') só conta pagos com data <= ate. */
 export function saldoContas(contas: Conta[], lancs: Lancamento[], ate?: string): Centavos {
   const inicial = contas.reduce((s, c) => s + c.saldoInicial, 0)

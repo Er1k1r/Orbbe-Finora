@@ -1,5 +1,5 @@
 import { simularAporte } from './amortizacao'
-import { parcelaDoMes, resumoMes, saldoContas } from './fluxo'
+import { ehPagamentoParcela, parcelaDoMes, resumoMes, saldoContas } from './fluxo'
 import { formatarBRL, formatarNumero, formatarPct } from './dinheiro'
 import { mesDe, mesesAnteriores } from './meses'
 import { custoEssencial, rendaEsperada, reservaAlvoMeses } from './renda'
@@ -49,7 +49,9 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   const cfg = { ...CONFIG_INSIGHTS, ...ctx.config }
   const out: Insight[] = []
   const nomeCat = (id: string) => ctx.categorias.find((c) => c.id === id)?.nome ?? id
-  const saidas = ctx.lancamentos.filter((l) => l.tipo === 'saida')
+  const idsFin = new Set(ctx.financiamentos.map((f) => f.id))
+  // Pagamentos de parcela já entram em `parcelas`; as regras de despesa (1, 2, 3, 7) os ignoram.
+  const saidas = ctx.lancamentos.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, idsFin))
   const doMes = saidas.filter((l) => mesDe(l.data) === ctx.mes)
   const anteriores = mesesAnteriores(ctx.mes, 3)
   const renda = rendaEsperada(ctx.fontes, ctx.lancamentos, ctx.mes)
