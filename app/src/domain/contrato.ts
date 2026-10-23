@@ -39,7 +39,7 @@ export interface EstadoContrato {
   /**
    * Pagamentos ligados aplicados. Pagamento sem parcela para consumir ('parcela' com contrato quitado/além do total)
    * ou antecipação com saldo já zerado entra com `numero: 0`, `valorParcela: 0` e `excesso = valor`,
-   * para o dinheiro continuar aparecendo como despesa no mês (nunca some do fluxo).
+   * (a parte de uma antecipação acima do saldo restante também entra assim) para o dinheiro continuar aparecendo como despesa no mês (nunca some do fluxo).
    */
   aplicados: { data: string; valor: Centavos; numero: number; valorParcela: Centavos; excesso: Centavos; tipo: PagamentoFinanciamento }[]
   jurosAPagar: Centavos
@@ -91,6 +91,7 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
       const v = Math.min(p.valor, saldo)
       saldo -= v
       antecipado += v
+      if (p.valor > v) aplicados.push({ data: p.data, valor: p.valor, numero: 0, valorParcela: 0, excesso: p.valor - v, tipo: 'antecipacao' })
     } else {
       const passo = passoRegular()
       aplicados.push(passo

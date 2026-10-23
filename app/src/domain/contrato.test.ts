@@ -168,6 +168,14 @@ describe('pagas e aplicados', () => {
 })
 
 describe('pagamento sem parcela para consumir', () => {
+  it('antecipação acima do saldo: abate o saldo e o restante vira excesso', () => {
+    const s: Contrato = { valorFinanciado: 200000, valorParcela: 102000, totalParcelas: 2, sistema: 'SAC', taxaMensal: 0.01, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0 }
+    // após #1 o saldo é 100.000; antecipação de 130.000 => abate 100.000, excesso 30.000
+    const e = estadoContrato(s, [pg({ data: '2026-10-05', valor: 102000 }), pg({ data: '2026-10-10', valor: 130000, tipo: 'antecipacao' })])
+    expect(e.saldoDevedor).toBe(0)
+    expect(e.antecipado).toBe(100000)
+    expect(e.aplicados[1]).toEqual({ data: '2026-10-10', valor: 130000, numero: 0, valorParcela: 0, excesso: 30000, tipo: 'antecipacao' })
+  })
   // SAC 200000/1%/2: #1 = 100000 + 2000, #2 = 100000 + 1000
   const s: Contrato = { valorFinanciado: 200000, valorParcela: 102000, totalParcelas: 2, sistema: 'SAC', taxaMensal: 0.01, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0 }
   it('terceira parcela paga num contrato de 2 vira excesso integral (numero 0)', () => {

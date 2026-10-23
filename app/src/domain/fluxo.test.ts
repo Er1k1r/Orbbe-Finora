@@ -258,6 +258,17 @@ describe('pagamento ligado sem parcela para consumir', () => {
     expect(r.sobraNormal).toBe(-50000)
     expect(r.saldo).toBe(1000000 - 102000 - 101000 - 50000)
   })
+  it('antecipação acima do saldo: antecipacoes 100.000 e despesas 30.000', () => {
+    const rr = resumoMes({
+      mes: '2026-10', contas: [conta2], financiamentos: [dois], aporteExtra: 0,
+      lancamentos: [pgs[0], l({ valor: 130000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-10-10' })],
+    })
+    // após #1 (102.000) o saldo é 100.000; 130.000 abate 100.000 e 30.000 viram despesa
+    expect(rr.antecipacoes).toBe(100000)
+    expect(rr.despesas).toBe(30000)
+    expect(rr.sobraNormal).toBe(-30000 - 102000) // despesas 30.000 + parcela #1 de outubro 102.000
+    expect(rr.saldo).toBe(1000000 - 102000 - 130000)
+  })
   it('antecipação com saldo zerado entra como despesa (30.000), não em antecipacoes', () => {
     const r = ver([...pgs, l({ valor: 30000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-12-10' })])
     expect(r.despesas).toBe(30000)
