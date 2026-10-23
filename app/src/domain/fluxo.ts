@@ -61,19 +61,24 @@ export function resumoMes(e: EntradaResumo) {
   const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
   const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !l.financiamentoId))
   const antes = e.lancamentos.filter((l) => mesDe(l.data) < e.mes)
+  // Parcela pendente de mês anterior continua devida (a do mês visto já está em parcelasPendentes).
+  const parcelasAtrasadas = soma(
+    antes.filter((l) => l.tipo === 'saida' && l.financiamentoId && l.status === 'pendente'),
+  )
 
   return {
     receitas,
     despesas,
     parcelas,
     parcelasPendentes,
+    parcelasAtrasadas,
     receitasPendentes,
     despesasPendentes,
     sobraNormal,
     sobraOtimizada: sobraNormal - e.aporteExtra,
     saldo,
     inicial: saldoContas(e.contas, antes),
-    previsto: saldo + receitasPendentes - despesasPendentes - parcelasPendentes,
-    saldoSeguro: saldo - despesasPendentes - parcelasPendentes,
+    previsto: saldo + receitasPendentes - despesasPendentes - parcelasPendentes - parcelasAtrasadas,
+    saldoSeguro: saldo - despesasPendentes - parcelasPendentes - parcelasAtrasadas,
   }
 }

@@ -88,6 +88,25 @@ describe('parcelas de financiamento no saldo (financiamentoId)', () => {
     expect(r.parcelasPendentes).toBe(186000)
     expect(r.previsto).toBe(1314000)
   })
+  it('(d) parcela pendente de mês anterior continua devida em previsto e saldoSeguro', () => {
+    const atrasada = l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-09-10' })
+    const r = resumo([entrada, atrasada])
+    expect(r.saldo).toBe(1500000)
+    expect(r.despesasPendentes).toBe(0)
+    expect(r.parcelasPendentes).toBe(186000) // só a parcela do mês visto
+    expect(r.parcelasAtrasadas).toBe(186000)
+    expect(r.previsto).toBe(1500000 - 186000 - 186000) // 1.128.000
+    expect(r.saldoSeguro).toBe(1128000)
+  })
+  it('(e) parcela pendente do mês visto ou de mês posterior não entra como atrasada', () => {
+    const r = resumo([
+      entrada,
+      l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-10-20' }),
+      l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-11-10' }),
+    ])
+    expect(r.parcelasAtrasadas).toBe(0)
+    expect(r.previsto).toBe(1314000)
+  })
 })
 
 describe('saldo até o fim do mês visualizado', () => {
