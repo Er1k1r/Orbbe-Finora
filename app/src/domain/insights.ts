@@ -1,0 +1,178 @@
+import { simularAporte } from './amortizacao'
+import { parcelaDoMes, resumoMes, saldoContas } from './fluxo'
+import { formatarBRL } from './dinheiro'
+import { mesDe, mesesAnteriores } from './meses'
+import { custoEssencial, rendaEsperada, reservaAlvoMeses } from './renda'
+import type {
+  Categoria, Conta, Financiamento, FonteDeRenda, Lancamento, Mes, PlanoAmortizacao,
+} from './tipos'
+
+export const CONFIG_INSIGHTS = {
+  crescimentoMinimo: 0.2,
+  pisoCrescimento: 5000,
+  picoFator: 3,
+  picoMinimoAmostras: 4,
+  fixoPctRenda: 0.05,
+  comprometimentoMax: 0.3,
+}
+
+export interface Insight {
+  id: string
+  tipo:
+    | 'gasto_crescendo' | 'pico_atipico' | 'despesa_fixa_alta' | 'reserva_baixa'
+    | 'sobra_para_divida' | 'divida_mais_cara' | 'mes_de_risco' | 'comprometimento_renda'
+  severidade: 'info' | 'alerta'
+  titulo: string
+  detalhe: string
+  dados: Record<string, number | string>
+}
+
+export interface ContextoInsights {
+  mes: Mes
+  lancamentos: Lancamento[]
+  categorias: Categoria[]
+  fontes: FonteDeRenda[]
+  financiamentos: Financiamento[]
+  planos: PlanoAmortizacao[]
+  contas: Conta[]
+  config?: Partial<typeof CONFIG_INSIGHTS>
+}
+
+const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
+const mediana = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b)
+  const m = Math.floor(s.length / 2)
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+}
+
+export function gerarInsights(ctx: ContextoInsights): Insight[] {
+  const cfg = { ...CONFIG_INSIGHTS, ...ctx.config }
+  const out: Insight[] = []
+  const nomeCat = (id: string) => ctx.categorias.find((c) => c.id === id)?.nome ?? id
+  const saidas = ctx.lancamentos.filter((l) => l.tipo === 'saida')
+  const doMes = saidas.filter((l) => mesDe(l.data) === ctx.mes)
+  const anteriores = mesesAnteriores(ctx.mes, 3)
+  const renda = rendaEsperada(ctx.fontes, ctx.lancamentos, ctx.mes)
+  const parcelas = ctx.financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0)
+
+  // 1. gasto crescendo
+  for (const catId of new Set(doMes.map((l) => l.categoriaId))) {
+    const atual = soma(doMes.filter((l) => l.categoriaId === catId))
+    const hist = anteriores
+      .map((m) => soma(saidas.filter((l) => l.categoriaId === catId && mesDe(l.data) === m)))
+      .filter((v) => v > 0)
+    if (hist.length === 0) continue
+    const media = hist.reduce((s, v) => s + v, 0) / hist.length
+    if (atual > media * (1 + cfg.crescimentoMinimo) && atual - media >= cfg.pisoCrescimento) {
+      const pct = Math.round(((atual - media) / media) * 100)
+      out.push({
+        id: `crescendo-${catId}`, tipo: 'gasto_crescendo', severidade: 'alerta',
+        titulo: `${nomeCat(catId)} subiu ${pct}%`,
+        detalhe: `Este mês: ${formatarBRL(atual)}. Média dos meses anteriores: ${formatarBRL(Math.round(media))}.`,
+        dados: { categoria: catId, atual, media: Math.round(media) },
+      })
+    }
+  }
+
+  // 2. pico atípico
+  for (const l of doMes) {
+    const amostra = saidas.filter((x) => x.categoriaId === l.categoriaId && x.id !== l.id).map((x) => x.valor)
+    if (amostra.length < cfg.picoMinimoAmostras) continue
+    const med = mediana(amostra)
+    if (l.valor > med * cfg.picoFator) {
+      out.push({
+        id: `pico-${l.id}`, tipo: 'pico_atipico', severidade: 'info',
+        titulo: `Gasto fora do padrão em ${nomeCat(l.categoriaId)}`,
+        detalhe: `${formatarBRL(l.valor)} em ${l.data}; o comum nessa categoria é ${formatarBRL(Math.round(med))}.`,
+        dados: { lancamento: l.id, valor: l.valor, mediana: Math.round(med) },
+      })
+    }
+  }
+
+  // 3. despesa fixa alta
+  if (renda > 0) {
+    const fixas = doMes.filter((l) => l.natureza === 'fixo')
+    for (const catId of new Set(fixas.map((l) => l.categoriaId))) {
+      const total = soma(fixas.filter((l) => l.categoriaId === catId))
+      if (total > renda * cfg.fixoPctRenda) {
+        out.push({
+          id: `fixa-${catId}`, tipo: 'despesa_fixa_alta', severidade: 'info',
+          titulo: `${nomeCat(catId)} pesa ${Math.round((total / renda) * 100)}% da renda`,
+          detalhe: `${formatarBRL(total)} por mês. Vale renegociar ou comparar preços.`,
+          dados: { categoria: catId, total, renda },
+        })
+      }
+    }
+  }
+
+  // 4. reserva baixa
+  const saldo = saldoContas(ctx.contas, ctx.lancamentos)
+  const essencial = custoEssencial(ctx.lancamentos, ctx.categorias, parcelas, ctx.mes)
+  const meses = reservaAlvoMeses(ctx.fontes)
+  const meta = essencial * meses
+  const reservaOk = essencial > 0 && saldo >= meta
+  if (essencial > 0 && saldo < meta) {
+    const cobertos = Math.max(0, saldo / essencial)
+    out.push({
+      id: 'reserva-baixa', tipo: 'reserva_baixa', severidade: 'alerta',
+      titulo: 'Reserva abaixo da meta',
+      detalhe: `Você cobre ${cobertos.toFixed(1)} de ${meses} meses de custo essencial. Faltam ${formatarBRL(meta - saldo)}.`,
+      dados: { saldo, meta, meses },
+    })
+  }
+
+  // 5. sobra para a dívida / 6. dívida mais cara
+  const maisCara = [...ctx.financiamentos].sort((a, b) => b.taxaMensal - a.taxaMensal)[0]
+  const resumo = resumoMes({
+    mes: ctx.mes, contas: ctx.contas, lancamentos: ctx.lancamentos,
+    financiamentos: ctx.financiamentos, aporteExtra: 0,
+  })
+  if (maisCara && resumo.sobraNormal > 0) {
+    const aporte = reservaOk ? resumo.sobraNormal : Math.round(resumo.sobraNormal / 2)
+    const sim = simularAporte({
+      saldo: maisCara.saldoDevedor, taxa: maisCara.taxaMensal, prazo: maisCara.prazoRestante,
+      sistema: maisCara.sistema, aporte, efeito: 'reduzir_prazo',
+    })
+    out.push({
+      id: 'sobra-divida', tipo: 'sobra_para_divida', severidade: 'info',
+      titulo: reservaOk ? 'Use a sobra para quitar mais rápido' : 'Divida a sobra entre reserva e dívida',
+      detalhe: `Um aporte de ${formatarBRL(aporte)}/mês em ${maisCara.nome} economiza ${formatarBRL(sim.economiaJuros)} em juros e ${sim.mesesEconomizados} meses.`,
+      dados: { financiamento: maisCara.id, aporte, economia: sim.economiaJuros },
+    })
+  }
+  if (ctx.financiamentos.length > 1 && maisCara) {
+    out.push({
+      id: 'divida-cara', tipo: 'divida_mais_cara', severidade: 'info',
+      titulo: `Priorize ${maisCara.nome}`,
+      detalhe: `Maior taxa entre as dívidas: ${(maisCara.taxaMensal * 100).toFixed(2)}% ao mês.`,
+      dados: { financiamento: maisCara.id, taxa: maisCara.taxaMensal },
+    })
+  }
+
+  // 7. mês de risco (renda variável/eventual)
+  const temVariavel = ctx.fontes.some((f) => f.tipo !== 'fixa')
+  const recebido = soma(
+    ctx.lancamentos.filter((l) => l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) === ctx.mes),
+  )
+  const fixosMes = soma(doMes.filter((l) => l.natureza === 'fixo')) + parcelas
+  if (temVariavel && renda > 0 && recebido < renda && fixosMes > recebido) {
+    out.push({
+      id: 'mes-risco', tipo: 'mes_de_risco', severidade: 'alerta',
+      titulo: 'Mês de risco: fixos ainda não cobertos',
+      detalhe: `Recebido ${formatarBRL(recebido)} de ${formatarBRL(renda)} esperados; custos fixos somam ${formatarBRL(fixosMes)}.`,
+      dados: { recebido, renda, fixos: fixosMes },
+    })
+  }
+
+  // 8. comprometimento de renda
+  if (renda > 0 && parcelas / renda > cfg.comprometimentoMax) {
+    out.push({
+      id: 'comprometimento', tipo: 'comprometimento_renda', severidade: 'alerta',
+      titulo: `Parcelas consomem ${Math.round((parcelas / renda) * 100)}% da renda`,
+      detalhe: `${formatarBRL(parcelas)} de ${formatarBRL(renda)} esperados. O limite saudável é ${Math.round(cfg.comprometimentoMax * 100)}%.`,
+      dados: { parcelas, renda },
+    })
+  }
+
+  return out.sort((a, b) => Number(b.severidade === 'alerta') - Number(a.severidade === 'alerta'))
+}
