@@ -94,7 +94,8 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
 
 /** Valor presente (à taxa do contrato) das últimas `n` parcelas restantes e o desconto em relação ao nominal. */
 export function antecipacaoUltimas(e: EstadoContrato, taxa: number, n: number) {
-  const ult = e.restantes.slice(-Math.max(0, n))
+  if (!(n > 0)) return { valor: 0, nominal: 0, desconto: 0 }
+  const ult = e.restantes.slice(-Math.floor(n))
   const offset = e.restantes.length - ult.length
   const valor = Math.round(ult.reduce((s, p, k) => s + p.parcela / Math.pow(1 + taxa, offset + k + 1), 0))
   const nominal = ult.reduce((s, p) => s + p.parcela, 0)

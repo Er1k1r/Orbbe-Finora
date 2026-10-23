@@ -85,3 +85,44 @@ describe('parcelaNoMes / parcelasAtrasadas', () => {
     expect(parcelaNoMes(c, ea, '2026-10')).toBe(0)
   })
 })
+
+describe('estadoContrato SAC', () => {
+  const sac: Contrato = {
+    valorFinanciado: 1200000, valorParcela: 112000, totalParcelas: 12, sistema: 'SAC',
+    taxaMensal: 0.01, primeiraParcela: '2026-01-10', parcelasPagasAntes: 3,
+  }
+  const antec = pg({ data: '2026-05-01', valor: 200000, tipo: 'antecipacao' })
+  it('antecipação mantém a amortização fixa e encurta o prazo', () => {
+    const e = estadoContrato(sac, [antec])
+    expect(e.saldoDevedor).toBe(700000)
+    expect(e.restantes.map((p) => p.numero)).toEqual([4, 5, 6, 7, 8, 9, 10])
+    expect(e.restantes.every((p) => p.amortizacao === 100000)).toBe(true)
+    expect(e.restantes[6].parcela).toBe(101000)
+  })
+  it('parcela regular seguinte', () => {
+    const e = estadoContrato(sac, [antec, pg({ data: '2026-06-10', valor: 107000 })])
+    expect(e.parcelasPagas).toBe(4)
+    expect(e.saldoDevedor).toBe(600000)
+    expect(e.restantes[0].numero).toBe(5)
+    expect(e.restantes[0].parcela).toBe(106000)
+  })
+})
+
+describe('regras de pagamento', () => {
+  // Um pagamento 'parcela' avança exatamente uma parcela do contrato, qualquer que seja o valor.
+  // A UI deve mostrar a parcela do contrato e avisar quando o valor pago diferir.
+  it('parcela de 1 centavo equivale à parcela exata', () => {
+    const a = estadoContrato(c, [pg({ valor: 1 })])
+    const b = estadoContrato(c, [pg({ valor: 34002 })])
+    expect(a.saldoDevedor).toBe(b.saldoDevedor)
+    expect(a.parcelasPagas).toBe(b.parcelasPagas)
+  })
+  it('antecipacaoUltimas com N inválido ou grande', () => {
+    const e = estadoContrato(c, [])
+    const zero = { valor: 0, nominal: 0, desconto: 0 }
+    expect(antecipacaoUltimas(e, 0.01, 0)).toEqual(zero)
+    expect(antecipacaoUltimas(e, 0.01, -1)).toEqual(zero)
+    expect(antecipacaoUltimas(e, 0.01, NaN)).toEqual(zero)
+    expect(antecipacaoUltimas(e, 0.01, 99)).toEqual(antecipacaoUltimas(e, 0.01, 2))
+  })
+})
