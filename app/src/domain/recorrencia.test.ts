@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gerarRecorrentes } from './recorrencia'
+import { gerarRecorrentes, cancelarRecorrencia } from './recorrencia'
 import type { Lancamento } from './tipos'
 
 const modelo: Lancamento = {
@@ -71,5 +71,21 @@ describe('gerarRecorrentes', () => {
     const b = gerarRecorrentes([modelo], '2026-10-19')
     expect(a).toEqual(b)
     expect(a.copias.map((c) => c.id)).toEqual(b.copias.map((c) => c.id))
+  })
+  it('não gera meses após recorrenciaAte', () => {
+    const m = { ...modelo, data: '2026-07-05', recorrenciaAte: '2026-08' }
+    const { copias } = gerarRecorrentes([m], '2026-10-19')
+    expect(copias.map((c) => c.data)).toEqual(['2026-08-05'])
+  })
+  it('as cópias não herdam recorrenciaAte', () => {
+    const m = { ...modelo, data: '2026-07-05', recorrenciaAte: '2026-09' }
+    const { copias } = gerarRecorrentes([m], '2026-10-19')
+    expect(copias.length).toBe(2)
+    expect(copias.every((c) => !('recorrenciaAte' in c))).toBe(true)
+  })
+  it('cancelarRecorrencia define recorrenciaAte sem mutar o modelo', () => {
+    const r = cancelarRecorrencia(modelo, '2026-10')
+    expect(r).toEqual({ ...modelo, recorrenciaAte: '2026-10' })
+    expect(modelo.recorrenciaAte).toBeUndefined()
   })
 })

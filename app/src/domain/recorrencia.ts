@@ -38,13 +38,14 @@ export function gerarRecorrentes(existentes: Lancamento[], hoje: string): Result
     const marca = modelo.geradoAte
     let mes = proximoMes(mesModelo)
     while (mes <= mesHoje) {
+      if (modelo.recorrenciaAte !== undefined && mes > modelo.recorrenciaAte) break
       const coberto = marca !== undefined && mes <= marca
       const id = `${modelo.id}:${mes}`
       const jaExiste = existentes.some((l) => l.origemId === modelo.id && mesDe(l.data) === mes)
       if (!coberto && !jaExiste && !idsExistentes.has(id)) {
         const ultimo = Number(fimDoMes(mes).slice(8, 10))
         const data = `${mes}-${String(Math.min(dia, ultimo)).padStart(2, '0')}`
-        const { recorrencia: _r, geradoAte: _g, ...resto } = modelo
+        const { recorrencia: _r, geradoAte: _g, recorrenciaAte: _a, ...resto } = modelo
         copias.push({ ...resto, id, data, status: 'pendente', origemId: modelo.id })
       }
       mes = proximoMes(mes)
@@ -52,4 +53,9 @@ export function gerarRecorrentes(existentes: Lancamento[], hoje: string): Result
     if (marca === undefined || marca < mesHoje) modelos.push({ ...modelo, geradoAte: mesHoje })
   }
   return { copias, modelos }
+}
+
+/** Encerra a recorrência: o modelo deixa de gerar cópias após `mes` ('YYYY-MM', inclusive). */
+export function cancelarRecorrencia(modelo: Lancamento, mes: Mes): Lancamento {
+  return { ...modelo, recorrenciaAte: mes }
 }
