@@ -89,3 +89,45 @@ describe('parcelas de financiamento no saldo (financiamentoId)', () => {
     expect(r.previsto).toBe(1314000)
   })
 })
+
+describe('saldo até o fim do mês visualizado', () => {
+  const c = { ...conta, saldoInicial: 100000 }
+  const ls = [
+    l({ tipo: 'entrada', valor: 50000, data: '2026-08-10' }),
+    l({ valor: 30000, data: '2026-10-10' }),
+  ]
+  const ver = (mes: string, lancamentos: Lancamento[] = ls) =>
+    resumoMes({ mes, contas: [c], lancamentos, financiamentos: [], aporteExtra: 0 })
+  it('mês passado mostra o saldo do fim daquele mês', () => {
+    const r = ver('2026-08')
+    expect(r.inicial).toBe(100000)
+    expect(r.saldo).toBe(150000)
+  })
+  it('mês seguinte parte do saldo anterior', () => {
+    const r = ver('2026-10')
+    expect(r.inicial).toBe(150000)
+    expect(r.saldo).toBe(120000)
+  })
+  it('saldoContas com ate ignora datas posteriores', () => {
+    expect(saldoContas([c], ls, '2026-09-30')).toBe(150000)
+    expect(saldoContas([c], ls)).toBe(120000)
+  })
+  it('pendente de mês anterior conta em previsto e saldoSeguro', () => {
+    const r = ver('2026-10', [l({ valor: 20000, data: '2026-09-15', status: 'pendente' })])
+    expect(r.despesasPendentes).toBe(20000)
+    expect(r.previsto).toBe(80000)
+    expect(r.saldoSeguro).toBe(80000)
+  })
+  it('pendente de mês posterior não conta', () => {
+    const r = ver('2026-10', [l({ valor: 20000, data: '2026-11-15', status: 'pendente' })])
+    expect(r.despesasPendentes).toBe(0)
+    expect(r.previsto).toBe(100000)
+    expect(r.saldoSeguro).toBe(100000)
+  })
+  it('entradas vazias', () => {
+    const r = resumoMes({ mes: '2026-10', contas: [], lancamentos: [], financiamentos: [], aporteExtra: 0 })
+    expect(r).toMatchObject({ receitas: 0, despesas: 0, parcelas: 0, parcelasPendentes: 0, sobraNormal: 0, saldo: 0, inicial: 0, previsto: 0, saldoSeguro: 0 })
+    expect(saldoContas([], [])).toBe(0)
+    expect(saldoContas([c, { ...c, id: 'c2', saldoInicial: 5000 }], [])).toBe(105000)
+  })
+})

@@ -1,13 +1,19 @@
 import { gerarCronograma } from './amortizacao'
-import { mesDe } from './meses'
+import { fimDoMes, mesDe } from './meses'
 import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
 
 const sinal = (l: Lancamento) => (l.tipo === 'entrada' ? l.valor : -l.valor)
 const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
 
-export function saldoContas(contas: Conta[], lancs: Lancamento[]): Centavos {
+/** Saldo das contas; com `ate` ('YYYY-MM-DD') só conta pagos com data <= ate. */
+export function saldoContas(contas: Conta[], lancs: Lancamento[], ate?: string): Centavos {
   const inicial = contas.reduce((s, c) => s + c.saldoInicial, 0)
-  return inicial + lancs.filter((l) => l.status === 'pago').reduce((s, l) => s + sinal(l), 0)
+  return (
+    inicial +
+    lancs
+      .filter((l) => l.status === 'pago' && (ate === undefined || l.data <= ate))
+      .reduce((s, l) => s + sinal(l), 0)
+  )
 }
 
 export function parcelaDoMes(f: Financiamento): Centavos {
@@ -43,7 +49,7 @@ export function resumoMes(e: EntradaResumo) {
   const despesas = soma(saidas)
   const sobraNormal = receitas - despesas - parcelas
 
-  const saldo = saldoContas(e.contas, e.lancamentos)
+  const saldo = saldoContas(e.contas, e.lancamentos, fimDoMes(e.mes))
   const ateMes = e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente')
   const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
   const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !l.financiamentoId))
