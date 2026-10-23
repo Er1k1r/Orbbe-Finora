@@ -168,17 +168,29 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
     ctx.lancamentos.filter((l) => l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) === ctx.mes),
   )
   const fixosMes = soma(doMes.filter((l) => l.natureza === 'fixo')) + parcelas
-  if (temVariavel && renda > 0 && recebido < renda && fixosMes > recebido) {
+  // A referência não pode cair a 0 só porque o histórico irregular zerou a estimativa.
+  const referencia = Math.max(
+    renda,
+    ctx.fontes.filter((f) => f.tipo === 'variavel').reduce((s, f) => s + f.valorEsperado, 0),
+  )
+  if (temVariavel && recebido < referencia && fixosMes > recebido) {
     out.push({
       id: 'mes-risco', tipo: 'mes_de_risco', severidade: 'alerta',
       titulo: 'Mês de risco: fixos ainda não cobertos',
-      detalhe: `Recebido ${formatarBRL(recebido)} de ${formatarBRL(renda)} esperados; custos fixos somam ${formatarBRL(fixosMes)}.`,
-      dados: { recebido, renda, fixos: fixosMes },
+      detalhe: `Recebido ${formatarBRL(recebido)} de ${formatarBRL(referencia)} esperados; custos fixos somam ${formatarBRL(fixosMes)}.`,
+      dados: { recebido, renda: referencia, fixos: fixosMes },
     })
   }
 
   // 8. comprometimento de renda
-  if (renda > 0 && parcelas / renda > cfg.comprometimentoMax) {
+  if (renda === 0 && parcelas > 0) {
+    out.push({
+      id: 'comprometimento', tipo: 'comprometimento_renda', severidade: 'alerta',
+      titulo: 'Parcelas sem renda esperada cadastrada',
+      detalhe: `${formatarBRL(parcelas)} de parcelas no mês e nenhuma renda esperada cadastrada.`,
+      dados: { parcelas, renda },
+    })
+  } else if (renda > 0 && parcelas / renda > cfg.comprometimentoMax) {
     out.push({
       id: 'comprometimento', tipo: 'comprometimento_renda', severidade: 'alerta',
       titulo: `Parcelas consomem ${Math.round((parcelas / renda) * 100)}% da renda`,

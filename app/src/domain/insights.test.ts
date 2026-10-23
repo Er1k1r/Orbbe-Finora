@@ -194,6 +194,34 @@ describe('pagamento de parcela (financiamentoId) fora das regras de despesa', ()
   })
 })
 
+describe('renda esperada zero (R2)', () => {
+  const v: FonteDeRenda[] = [{ id: 'v', nome: 'Brownie', tipo: 'variavel', valorEsperado: 500000 }]
+  // janela jul 300.000, ago 0, set 0 => mediana 0 => rendaEsperada 0
+  const hist = ent('2026-07-05', 300000, 'v')
+  const fixo = sai('alu', '2026-10-05', 150000, 'fixo')
+  it('regra 7 dispara com renda esperada 0 e fonte variável', () =>
+    expect(tipos(base({ fontes: v, lancamentos: [hist, fixo] }))).toContain('mes_de_risco'))
+  it('regra 7 não dispara quando recebido cobre o valor esperado da fonte variável', () => {
+    const c = base({ fontes: v, lancamentos: [hist, ent('2026-10-02', 500000, 'v'), sai('alu', '2026-10-05', 600000, 'fixo')] })
+    expect(tipos(c)).not.toContain('mes_de_risco')
+  })
+  it('regra 7 não dispara com renda esperada 0 se fixos <= recebido', () => {
+    const c = base({ fontes: v, lancamentos: [hist, ent('2026-10-02', 200000, 'v'), fixo] })
+    expect(tipos(c)).not.toContain('mes_de_risco')
+  })
+  it('regra 3 continua exigindo renda > 0', () =>
+    expect(tipos(base({ fontes: v, lancamentos: [hist, fixo] }))).not.toContain('despesa_fixa_alta'))
+  const f: Financiamento = { id: 'a', nome: 'Carro', saldoDevedor: 1200000, taxaMensal: 0.01, prazoRestante: 24, sistema: 'SAC', diaVencimento: 5 }
+  it('regra 8 com renda 0 e parcelas > 0 avisa que não há renda cadastrada', () => {
+    const i = gerarInsights(base({ fontes: [], financiamentos: [f] })).find((x) => x.tipo === 'comprometimento_renda')
+    expect(i?.severidade).toBe('alerta')
+    expect(i?.titulo).toBe('Parcelas sem renda esperada cadastrada')
+    expect(i?.dados).toEqual({ parcelas: 62000, renda: 0 })
+  })
+  it('regra 8 não dispara com renda 0 e sem parcelas', () =>
+    expect(tipos(base({ fontes: [] }))).not.toContain('comprometimento_renda'))
+})
+
 describe('config', () => {
   it('limite pode ser sobrescrito', () => {
     const hist = [sai('mer', '2026-07-03', 100000), sai('mer', '2026-08-03', 100000), sai('mer', '2026-09-03', 100000)]
