@@ -50,10 +50,49 @@ describe('backup: importação segura', () => {
     await expect(importar(JSON.stringify({ versao: 2, ...vazio }))).rejects.toThrow('Versão de backup não suportada')
     await preservou()
   })
+  describe('campos com tipo errado', () => {
+    const lanc = { id: 'l1', valor: 500, data: '2026-10-01', tipo: 'saida', categoriaId: 'k', natureza: 'variavel', contaId: 'c1', status: 'pago' }
+    const fin = { id: 'fi', nome: 'Casa', saldoDevedor: 1000, taxaMensal: 0.01, prazoRestante: 12, sistema: 'SAC', diaVencimento: 5 }
+    const rejeita = async (extra: object) => {
+      await expect(importar(JSON.stringify({ versao: 1, ...vazio, ...extra }))).rejects.toThrow('Arquivo de backup inválido')
+      await preservou()
+    }
+    it('saldoInicial string', () => rejeita({ contas: [{ ...conta, saldoInicial: '1000' }] }))
+    it('tipo de conta inválido', () => rejeita({ contas: [{ ...conta, tipo: 'poupanca' }] }))
+    it('valor string em lançamento', () => rejeita({ lancamentos: [{ ...lanc, valor: '500' }] }))
+    it('valor negativo ou fracionário', async () => {
+      await rejeita({ lancamentos: [{ ...lanc, valor: -1 }] })
+      await rejeita({ lancamentos: [{ ...lanc, valor: 1.5 }] })
+    })
+    it('lançamento sem data', () => {
+      const { data: _d, ...semData } = lanc
+      return rejeita({ lancamentos: [semData] })
+    })
+    it('data em formato errado e geradoAte errado', async () => {
+      await rejeita({ lancamentos: [{ ...lanc, data: '01/10/2026' }] })
+      await rejeita({ lancamentos: [{ ...lanc, geradoAte: '2026-10-01' }] })
+    })
+    it('enums inválidos', async () => {
+      await rejeita({ lancamentos: [{ ...lanc, status: 'quitado' }] })
+      await rejeita({ lancamentos: [{ ...lanc, recorrencia: 'anual' }] })
+      await rejeita({ fontes: [{ id: 'f', nome: 'x', tipo: 'outra', valorEsperado: 1 }] })
+      await rejeita({ categorias: [{ id: 'k', nome: 'x', icone: 'i', tipo: 'saida', natureza: 'fixo', essencial: 'sim' }] })
+      await rejeita({ planos: [{ id: 'p', financiamentoId: 'fi', aporteExtraMensal: 1, efeito: 'nada' }] })
+    })
+    it('taxa NaN (null no JSON), negativa ou sistema inválido', async () => {
+      await rejeita({ financiamentos: [{ ...fin, taxaMensal: null }] })
+      await rejeita({ financiamentos: [{ ...fin, taxaMensal: -0.01 }] })
+      await rejeita({ financiamentos: [{ ...fin, sistema: 'Price' }] })
+      await rejeita({ financiamentos: [{ ...fin, prazoRestante: 0 }] })
+      await rejeita({ financiamentos: [{ ...fin, diaVencimento: 32 }] })
+    })
+    it('fonte com diaPagamento fora de 1..31', () =>
+      rejeita({ fontes: [{ id: 'f', nome: 'x', tipo: 'fixa', valorEsperado: 1, diaPagamento: 0 }] }))
+  })
   it('round-trip com todas as tabelas', async () => {
     await repo.fontes.salvar({ id: 'f1', nome: 'Salário', tipo: 'fixa', valorEsperado: 500000, diaPagamento: 5 })
     await repo.categorias.salvar({ id: 'k1', nome: 'Mercado', icone: 'ShoppingCart', tipo: 'saida', natureza: 'variavel', essencial: true })
-    await repo.lancamentos.salvar({ id: 'l1', valor: 1234, data: '2026-10-01', tipo: 'saida', categoriaId: 'k1', natureza: 'variavel', contaId: 'c1', status: 'pago' })
+    await repo.lancamentos.salvar({ id: 'l1', valor: 1234, data: '2026-10-01', tipo: 'saida', categoriaId: 'k1', natureza: 'variavel', contaId: 'c1', status: 'pago', fonteId: 'f1', observacao: 'obs', origemId: 'm0', financiamentoId: 'fi1', recorrencia: 'mensal', geradoAte: '2026-10' })
     await repo.financiamentos.salvar({ id: 'fi1', nome: 'Casa', saldoDevedor: 10000000, taxaMensal: 0.01, prazoRestante: 120, sistema: 'SAC', diaVencimento: 10 })
     await repo.planos.salvar({ id: 'p1', financiamentoId: 'fi1', aporteExtraMensal: 50000, efeito: 'reduzir_prazo' })
     const antes = JSON.parse(await exportar())

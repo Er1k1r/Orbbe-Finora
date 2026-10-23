@@ -12,7 +12,70 @@ export async function exportar(): Promise<string> {
 
 const INVALIDO = 'Arquivo de backup inválido'
 
-function validar(json: string): Record<(typeof TABELAS)[number], object[]> {
+type Tabela = (typeof TABELAS)[number]
+type Linha = Record<string, unknown>
+
+const ehInt = (v: unknown): v is number => typeof v === 'number' && Number.isSafeInteger(v)
+const ehIntMin = (min: number) => (v: unknown) => ehInt(v) && v >= min
+const ehIntEntre = (min: number, max: number) => (v: unknown) => ehInt(v) && v >= min && v <= max
+const ehTexto = (v: unknown) => typeof v === 'string'
+const ehBool = (v: unknown) => typeof v === 'boolean'
+const ehEnum = (...vals: string[]) => (v: unknown) => typeof v === 'string' && vals.includes(v)
+const ehFinitoMin0 = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0
+const ehRegex = (re: RegExp) => (v: unknown) => typeof v === 'string' && re.test(v)
+
+type Regra = (v: unknown) => boolean
+// Campos obrigatórios e opcionais (opcionais só são checados quando presentes e != undefined).
+const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string, Regra> }> = {
+  contas: {
+    obrig: { nome: ehTexto, tipo: ehEnum('banco', 'caixa', 'carteira'), saldoInicial: ehInt },
+    opc: {},
+  },
+  fontes: {
+    obrig: { nome: ehTexto, tipo: ehEnum('fixa', 'variavel', 'eventual'), valorEsperado: ehIntMin(0) },
+    opc: { diaPagamento: ehIntEntre(1, 31) },
+  },
+  categorias: {
+    obrig: {
+      nome: ehTexto, icone: ehTexto, tipo: ehEnum('entrada', 'saida'),
+      natureza: ehEnum('fixo', 'variavel'), essencial: ehBool,
+    },
+    opc: {},
+  },
+  lancamentos: {
+    obrig: {
+      valor: ehIntMin(0), data: ehRegex(/^\d{4}-\d{2}-\d{2}$/), tipo: ehEnum('entrada', 'saida'),
+      categoriaId: ehTexto, natureza: ehEnum('fixo', 'variavel'), contaId: ehTexto,
+      status: ehEnum('pago', 'pendente'),
+    },
+    opc: {
+      fonteId: ehTexto, observacao: ehTexto, origemId: ehTexto, financiamentoId: ehTexto,
+      recorrencia: ehEnum('mensal'), geradoAte: ehRegex(/^\d{4}-\d{2}$/),
+    },
+  },
+  financiamentos: {
+    obrig: {
+      nome: ehTexto, saldoDevedor: ehIntMin(0), taxaMensal: ehFinitoMin0, prazoRestante: ehIntMin(1),
+      sistema: ehEnum('SAC', 'PRICE'), diaVencimento: ehIntEntre(1, 31),
+    },
+    opc: {},
+  },
+  planos: {
+    obrig: {
+      financiamentoId: ehTexto, aporteExtraMensal: ehIntMin(0), efeito: ehEnum('reduzir_prazo', 'reduzir_parcela'),
+    },
+    opc: {},
+  },
+}
+
+function linhaValida(t: Tabela, l: Linha): boolean {
+  const { obrig, opc } = REGRAS[t]
+  for (const [k, ok] of Object.entries(obrig)) if (!ok(l[k])) return false
+  for (const [k, ok] of Object.entries(opc)) if (l[k] !== undefined && !ok(l[k])) return false
+  return true
+}
+
+function validar(json: string): Record<Tabela, object[]> {
   let dados: unknown
   try { dados = JSON.parse(json) } catch { throw new Error(INVALIDO) }
   if (typeof dados !== 'object' || dados === null || Array.isArray(dados)) throw new Error(INVALIDO)
@@ -24,16 +87,18 @@ function validar(json: string): Record<(typeof TABELAS)[number], object[]> {
     for (const l of linhas) {
       if (typeof l !== 'object' || l === null || Array.isArray(l)) throw new Error(INVALIDO)
       if (typeof (l as { id?: unknown }).id !== 'string') throw new Error(INVALIDO)
+      if (!linhaValida(t, l as Linha)) throw new Error(INVALIDO)
     }
   }
-  return obj as Record<(typeof TABELAS)[number], object[]>
+  return obj as Record<Tabela, object[]>
 }
 
 export async function importar(json: string): Promise<void> {
   const dados = validar(json)
   await db.transaction('rw', TABELAS.map((t) => db[t]), async () => {
     for (const t of TABELAS) {
-      const tabela = db[t] as Table<object, string>
+      // Único cast: `db[t]` é uma união de Table<Tipo, string>; as linhas já foram validadas por tabela em `validar`.
+      const tabela = db[t] as unknown as Table<object, string>
       await tabela.clear()
       await tabela.bulkPut(dados[t])
     }
