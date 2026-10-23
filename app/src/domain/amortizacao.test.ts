@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gerarCronograma, resumirCronograma, simularAporte, validarFinanciamento } from './amortizacao'
+import { gerarCronograma, resumirCronograma, simularAporte } from './amortizacao'
 import { parcelaDoMes } from './fluxo'
 import type { Financiamento } from './tipos'
 
@@ -76,31 +76,6 @@ describe('entradas inválidas', () => {
       taxaMensal: NaN, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0,
     }
     expect(parcelaDoMes(f, '2026-10', [])).toBe(0)
-  })
-})
-
-describe('validarFinanciamento', () => {
-  const ok = { saldoDevedor: 120000, taxaMensal: 0.01, prazoRestante: 24, sistema: 'SAC', diaVencimento: 5 }
-  it('válido', () => expect(validarFinanciamento(ok)).toEqual([]))
-  it('diaVencimento é opcional', () => {
-    const { diaVencimento: _d, ...semDia } = ok
-    expect(validarFinanciamento(semDia)).toEqual([])
-  })
-  it.each([
-    ['saldo zero', { saldoDevedor: 0 }],
-    ['saldo fracionário', { saldoDevedor: 10.5 }],
-    ['taxa NaN', { taxaMensal: NaN }],
-    ['taxa negativa', { taxaMensal: -1 }],
-    ['prazo 0', { prazoRestante: 0 }],
-    ['prazo 1201', { prazoRestante: 1201 }],
-    ['sistema inválido', { sistema: 'Price' }],
-    ['dia 0', { diaVencimento: 0 }],
-    ['dia 32', { diaVencimento: 32 }],
-  ])('%s gera exatamente um problema', (_n, extra) => {
-    expect(validarFinanciamento({ ...ok, ...extra })).toHaveLength(1)
-  })
-  it('acumula vários problemas', () => {
-    expect(validarFinanciamento({ ...ok, saldoDevedor: -1, prazoRestante: 0 })).toHaveLength(2)
   })
 })
 

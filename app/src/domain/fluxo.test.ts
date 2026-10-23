@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { saldoContas, resumoMes, parcelaDoMes } from './fluxo'
+import { saldoContas, resumoMes, parcelaDoMes, estadoFinanciamento } from './fluxo'
+import { taxaImplicita } from './contrato'
 import { gerarCronograma } from './amortizacao'
 import type { Conta, Contrato, Lancamento, Financiamento } from './tipos'
 
@@ -107,9 +108,10 @@ describe('parcelas de financiamento no saldo (financiamentoId)', () => {
     expect(r.saldo).toBe(1300000)
     expect(r.previsto).toBe(1300000)
   })
-  it('(h) pagamento de outro mês não abate a parcela do mês visto', () => {
+  it('(h) pagamento feito antes do vencimento já cobre a parcela', () => {
+    // Pagamento feito em setembro cobre a parcela #1 (outubro): nada em aberto em outubro.
     const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1', data: '2026-09-10' })])
-    expect(r.parcelasPendentes).toBe(186000)
+    expect(r.parcelasPendentes).toBe(0)
     expect(r.despesas).toBe(0)
   })
   it('(d) parcela vencida e não paga (contrato iniciado em setembro) continua devida em previsto e saldoSeguro', () => {
@@ -174,6 +176,69 @@ describe('contrato visto em outros meses e antecipação', () => {
     expect(r.sobraNormal).toBe(base.sobraNormal)
     expect(r.sobraNormal).toBe(500000 - 186000)
     expect(r.saldo).toBe(base.saldo - 300000)
+  })
+})
+
+describe('pendente e excesso pelo estado do contrato', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  const grande: Financiamento = { ...fin, ...contratoDe(3600000, 0.01, 24) } // #1 = 186.000 em 2026-10-05
+  const price = (primeiraParcela: string, pagasAntes: number): Financiamento => {
+    const base = { valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE' as const }
+    return { id: 'f1', nome: 'P', ...base, taxaMensal: taxaImplicita(base)!, primeiraParcela, parcelasPagasAntes: pagasAntes }
+  }
+  const ver = (mes: string, ls: Lancamento[], f: Financiamento) =>
+    resumoMes({ mes, contas: [conta2], lancamentos: ls, financiamentos: [f], aporteExtra: 0 })
+  it('pagamento antecipado (28/09 para outubro): outubro sem pendente, setembro sem excesso', () => {
+    const pg = l({ valor: 186000, financiamentoId: 'f1', data: '2026-09-28' })
+    const out = ver('2026-10', [pg], grande)
+    expect(out.parcelasPendentes).toBe(0)
+    expect(out.despesas).toBe(0)
+    const set = ver('2026-09', [pg], grande)
+    expect(set.despesas).toBe(0) // excesso = 186.000 - 186.000 (passo #1) = 0; parcela do mês de setembro = 0
+    expect(set.parcelasPendentes).toBe(0)
+  })
+  it('mês coberto por parcelasPagasAntes não tem pendente (Price, março de 2026, 9 pagas antes)', () => {
+    const r = ver('2026-03', [], price('2026-01-10', 9))
+    expect(r.parcelas).toBe(95000) // #3 reproduzida = parcela fixa
+    expect(r.parcelasPendentes).toBe(0)
+  })
+  it('FIFO: setembro (#9) em aberto, pagamento em outubro quita #9; outubro segue pendente', () => {
+    const f = price('2026-01-10', 8)
+    const pg = l({ valor: 95000, financiamentoId: 'f1', data: '2026-10-10' })
+    const r = ver('2026-10', [pg], f)
+    expect(r.parcelas).toBe(95000) // #10 = parcela fixa
+    expect(r.parcelasPendentes).toBe(95000)
+    expect(r.despesas).toBe(0) // excesso do passo #9 = 95.000 - 95.000 = 0
+    expect(r.parcelasAtrasadas).toBe(0)
+    expect(r.saldo).toBe(1000000 - 95000)
+    expect(r.previsto).toBe(r.saldo - 95000)
+  })
+  it('SAC: antecipação antes da parcela reduz a parcela e o pagamento a quita (sem fantasma)', () => {
+    // antec 300.000 (02/10): saldo 3.300.000; passo #1 = 33.000 + 150.000 = 183.000; saldo final 3.150.000
+    const ls = [
+      l({ valor: 300000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-10-02' }),
+      l({ valor: 183000, financiamentoId: 'f1', data: '2026-10-05' }),
+    ]
+    const r = ver('2026-10', ls, grande)
+    expect(r.parcelas).toBe(183000)
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(0)
+    expect(r.antecipacoes).toBe(300000)
+    expect(estadoFinanciamento(grande, ls, '2026-10-31').saldoDevedor).toBe(3150000)
+  })
+  it('pagamento 97.000 de uma parcela de 95.000: excesso 2.000 é despesa', () => {
+    const r = ver('2026-10', [l({ valor: 97000, financiamentoId: 'f1', data: '2026-10-10' })], price('2026-10-10', 0))
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(2000)
+  })
+  it('pagamento datado depois do mês visto não conta para o mês', () => {
+    const pgNov = l({ valor: 186000, financiamentoId: 'f1', data: '2026-11-10' })
+    const r = ver('2026-10', [pgNov], grande)
+    expect(r.parcelasPendentes).toBe(186000)
+    // antecipação de novembro não altera a parcela de outubro (186.000, não 183.000)
+    const antNov = l({ valor: 300000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-11-03' })
+    expect(parcelaDoMes(grande, '2026-10', [antNov])).toBe(186000)
+    expect(estadoFinanciamento(grande, [antNov], '2026-10-31').saldoDevedor).toBe(3600000)
   })
 })
 

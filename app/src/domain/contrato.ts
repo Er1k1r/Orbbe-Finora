@@ -35,6 +35,8 @@ export interface EstadoContrato {
   jurosPagos: Centavos
   antecipado: Centavos
   restantes: ParcelaContrato[] // `numero` = posição no contrato
+  pagas: ParcelaContrato[] // passos regulares reproduzidos (pagas antes do app e pagamentos), com o numero do contrato
+  aplicados: { data: string; valor: Centavos; numero: number; valorParcela: Centavos; excesso: Centavos }[] // pagamentos 'parcela' ligados
   jurosAPagar: Centavos
   totalContrato: Centavos
   restanteNominal: Centavos
@@ -59,12 +61,17 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
   let pagas = 0
   let jurosPagos = 0
   let antecipado = 0
+  const pagasPassos: ParcelaContrato[] = []
+  const aplicados: EstadoContrato['aplicados'] = []
   const passoRegular = () => {
     const p = cronograma(c, saldo, c.totalParcelas - pagas)[0]
-    if (!p) return
+    if (!p) return undefined
     jurosPagos += p.juros
     saldo = p.saldo
     pagas += 1
+    const passo = { ...p, numero: pagas, vencimento: vencimentoDe(c, pagas) }
+    pagasPassos.push(passo)
+    return passo
   }
   for (let k = 0; k < Math.min(c.parcelasPagasAntes, c.totalParcelas); k++) passoRegular()
   const validos = pagamentos
@@ -76,7 +83,10 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
       const v = Math.min(p.valor, saldo)
       saldo -= v
       antecipado += v
-    } else passoRegular()
+    } else {
+      const passo = passoRegular()
+      if (passo) aplicados.push({ data: p.data, valor: p.valor, numero: passo.numero, valorParcela: passo.parcela, excesso: Math.max(0, p.valor - passo.parcela) })
+    }
   }
   const restantes = cronograma(c, saldo, c.totalParcelas - pagas).map((p, i) => ({
     ...p, numero: pagas + i + 1, vencimento: vencimentoDe(c, pagas + i + 1),
@@ -84,7 +94,7 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
   const soma = (xs: Parcela[], f: (p: Parcela) => number) => xs.reduce((s, p) => s + f(p), 0)
   const restanteNominal = soma(restantes, (p) => p.parcela)
   return {
-    cronogramaOriginal, parcelasPagas: pagas, saldoDevedor: saldo, jurosPagos, antecipado, restantes,
+    cronogramaOriginal, parcelasPagas: pagas, saldoDevedor: saldo, jurosPagos, antecipado, restantes, pagas: pagasPassos, aplicados,
     jurosAPagar: soma(restantes, (p) => p.juros),
     totalContrato: soma(cronogramaOriginal, (p) => p.parcela),
     restanteNominal,
@@ -102,15 +112,36 @@ export function antecipacaoUltimas(e: EstadoContrato, taxa: number, n: number) {
   return { valor, nominal, desconto: nominal - valor }
 }
 
-/** Parcela que vence em `mes`: já paga → valor do cronograma original; em aberto → restante; fora do contrato → 0. */
+/** Parcela que vence em `mes`: já paga → valor do passo reproduzido; em aberto → restante; fora do contrato → 0. */
 export function parcelaNoMes(c: Contrato, e: EstadoContrato, mes: Mes): Centavos {
   const k = diffMeses(mesDe(c.primeiraParcela), mes) + 1
   if (k < 1 || k > c.totalParcelas) return 0
-  if (k <= e.parcelasPagas) return e.cronogramaOriginal[k - 1]?.parcela ?? 0
+  if (k <= e.parcelasPagas) return e.pagas[k - 1]?.parcela ?? e.cronogramaOriginal[k - 1]?.parcela ?? 0
   return e.restantes.find((p) => p.numero === k)?.parcela ?? 0
 }
 
 /** Soma das parcelas em aberto que venceram antes de `mes`. */
 export function parcelasAtrasadas(e: EstadoContrato, mes: Mes): Centavos {
   return e.restantes.filter((p) => mesDe(p.vencimento) < mes).reduce((s, p) => s + p.parcela, 0)
+}
+
+const dataReal = (v: unknown) => {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false
+  const [a, m, d] = v.split('-').map(Number)
+  return m >= 1 && m <= 12 && d >= 1 && d <= new Date(Date.UTC(a, m, 0)).getUTCDate()
+}
+
+/** Problemas (pt-BR) de um contrato; lista vazia = válido. */
+export function validarContrato(c: Contrato): string[] {
+  const erros: string[] = []
+  if (!Number.isSafeInteger(c.valorFinanciado) || c.valorFinanciado <= 0) erros.push('O valor financiado deve ser um inteiro maior que zero.')
+  if (!Number.isSafeInteger(c.valorParcela) || c.valorParcela <= 0) erros.push('O valor da parcela deve ser um inteiro maior que zero.')
+  if (!Number.isInteger(c.totalParcelas) || c.totalParcelas < 1 || c.totalParcelas > 1200)
+    erros.push('O total de parcelas deve ser um número inteiro de 1 a 1200.')
+  if (c.sistema !== 'SAC' && c.sistema !== 'PRICE') erros.push('O sistema de amortização deve ser SAC ou Price.')
+  if (!dataReal(c.primeiraParcela)) erros.push('A data da primeira parcela é inválida.')
+  if (!Number.isInteger(c.parcelasPagasAntes) || c.parcelasPagasAntes < 0 || c.parcelasPagasAntes > c.totalParcelas)
+    erros.push('As parcelas pagas antes do app devem ser um inteiro de 0 até o total de parcelas.')
+  if (erros.length === 0 && taxaImplicita(c) === null) erros.push('O valor da parcela é pequeno demais para esse valor financiado.')
+  return erros
 }

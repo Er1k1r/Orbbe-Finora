@@ -1,5 +1,5 @@
 import { estadoContrato, parcelaNoMes, parcelasAtrasadas as atrasadasDe, type EstadoContrato, type PagamentoContrato } from './contrato'
-import { fimDoMes, mesDe } from './meses'
+import { diffMeses, fimDoMes, mesDe } from './meses'
 import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
 
 const sinal = (l: Lancamento) => (l.tipo === 'entrada' ? l.valor : -l.valor)
@@ -60,15 +60,12 @@ export function resumoMes(e: EntradaResumo) {
   let excessoParcelas = 0 // pago acima da parcela do mês: gasto comum, não some da sobra
   let parcelasAtrasadas = 0
   for (const f of e.financiamentos) {
-    const pago = soma(
-      doMes.filter(
-        (l) => l.financiamentoId === f.id && l.tipo === 'saida' && l.status === 'pago' && (l.pagamentoFinanciamento ?? 'parcela') === 'parcela',
-      ),
-    )
-    const parcela = parcelaDoMes(f, e.mes, e.lancamentos)
-    parcelasPendentes += Math.max(0, parcela - pago)
-    excessoParcelas += Math.max(0, pago - parcela)
-    parcelasAtrasadas += atrasadasDe(estadoFinanciamento(f, e.lancamentos, fimDoMes(e.mes)), e.mes)
+    const estado = estadoFinanciamento(f, e.lancamentos, fimDoMes(e.mes))
+    const k = diffMeses(mesDe(f.primeiraParcela), e.mes) + 1
+    // Em aberto = parcela do mês dentro do contrato e ainda não coberta pelo estado (pagamentos até o fim do mês).
+    if (k >= 1 && k <= f.totalParcelas && k > estado.parcelasPagas) parcelasPendentes += parcelaNoMes(f, estado, e.mes)
+    excessoParcelas += estado.aplicados.filter((a) => mesDe(a.data) === e.mes).reduce((s, a) => s + a.excesso, 0)
+    parcelasAtrasadas += atrasadasDe(estado, e.mes)
   }
   // Antecipações pagas no mês: reduzem o saldo (já são saídas pagas), mas não são despesa nem mexem na sobra.
   const antecipacoes = soma(

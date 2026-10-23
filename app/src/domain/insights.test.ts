@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { gerarInsights, type ContextoInsights } from './insights'
 import { gerarCronograma, simularAporte } from './amortizacao'
+import { estadoFinanciamento } from './fluxo'
+import { taxaImplicita } from './contrato'
 import type { Categoria, Conta, Contrato, Financiamento, FonteDeRenda, Lancamento } from './tipos'
 
 
@@ -60,6 +62,49 @@ describe('reserva_baixa', () => {
   it('não dispara com saldo acima da meta', () => {
     const c = base({ lancamentos: ls, contas: [{ ...conta, saldoInicial: 5000000 }] })
     expect(tipos(c)).not.toContain('reserva_baixa')
+  })
+})
+
+describe('regra 5 simula a partir do estado do contrato', () => {
+  const lancs = (sistema: 'SAC' | 'PRICE') => [
+    ent('2026-10-01', 500000),
+    ...(sistema === 'SAC'
+      ? [{ ...sai('alu', '2026-10-01', 200000, 'fixo'), id: 'ant', financiamentoId: 'a', pagamentoFinanciamento: 'antecipacao' as const }]
+      : []),
+    { ...sai('alu', '2026-10-05', 95000, 'fixo'), id: 'pg', financiamentoId: 'a' },
+  ]
+  const economia = (f: Financiamento, ls: Lancamento[]) => {
+    const i = gerarInsights(base({ financiamentos: [f], lancamentos: ls })).find((x) => x.tipo === 'sobra_para_divida')!
+    return { i, estado: estadoFinanciamento(f, ls, '2026-10-31') }
+  }
+  it('PRICE com 9 parcelas pagas antes: parte do saldo, dos restantes e da parcela fixa', () => {
+    const d = { valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE' as const }
+    const f: Financiamento = { id: 'a', nome: 'a', ...d, taxaMensal: taxaImplicita(d)!, primeiraParcela: '2026-01-10', parcelasPagasAntes: 9 }
+    const ls = lancs('PRICE')
+    const { i, estado } = economia(f, ls)
+    expect(estado.restantes).toHaveLength(38)
+    const aporte = i.dados.aporte as number
+    const esperado = simularAporte({
+      saldo: estado.saldoDevedor, taxa: f.taxaMensal, prazo: 38, sistema: 'PRICE', aporte, efeito: 'reduzir_prazo', parcelaFixa: 95000,
+    }).economiaJuros
+    expect(i.dados.economia).toBe(esperado)
+    const ingenuo = simularAporte({
+      saldo: f.valorFinanciado, taxa: f.taxaMensal, prazo: f.totalParcelas, sistema: 'PRICE', aporte, efeito: 'reduzir_prazo',
+    }).economiaJuros
+    expect(esperado).not.toBe(ingenuo)
+  })
+  it('SAC com antecipação: usa a amortização fixa do contrato', () => {
+    const f: Financiamento = { id: 'a', nome: 'a', ...contratoDe(3600000, 0.01, 24, 'SAC', '2026-01-05'), parcelasPagasAntes: 9 }
+    const ls = lancs('SAC')
+    const { i, estado } = economia(f, ls)
+    // saldo = 3.600.000 - 9 x 150.000 - 200.000 - 150.000 = 1.900.000; amortização fixa 150.000 => 13 restantes (a última é menor)
+    expect(estado.saldoDevedor).toBe(1900000)
+    expect(estado.restantes).toHaveLength(13)
+    const aporte = i.dados.aporte as number
+    const sim = (extra: object) => simularAporte({ saldo: 1900000, taxa: 0.01, prazo: 13, sistema: 'SAC', aporte, efeito: 'reduzir_prazo', ...extra }).economiaJuros
+    const esperado = sim({ amortizacaoFixa: 150000 })
+    expect(i.dados.economia).toBe(esperado)
+    expect(esperado).not.toBe(sim({})) // sem a amortização fixa (1.900.000 / 13) o resultado difere
   })
 })
 

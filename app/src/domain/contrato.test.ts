@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { antecipacaoUltimas, estadoContrato, parcelaNoMes, parcelasAtrasadas, taxaImplicita, type PagamentoContrato } from './contrato'
+import { antecipacaoUltimas, estadoContrato, parcelaNoMes, parcelasAtrasadas, taxaImplicita, validarContrato, type PagamentoContrato } from './contrato'
 import type { Contrato } from './tipos'
 
 describe('taxaImplicita', () => {
@@ -124,5 +124,45 @@ describe('regras de pagamento', () => {
     expect(antecipacaoUltimas(e, 0.01, -1)).toEqual(zero)
     expect(antecipacaoUltimas(e, 0.01, NaN)).toEqual(zero)
     expect(antecipacaoUltimas(e, 0.01, 99)).toEqual(antecipacaoUltimas(e, 0.01, 2))
+  })
+})
+
+describe('validarContrato', () => {
+  const ok: Contrato = {
+    valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE', taxaMensal: 0.0186,
+    primeiraParcela: '2026-01-10', parcelasPagasAntes: 9,
+  }
+  it('válido', () => expect(validarContrato(ok)).toEqual([]))
+  it.each([
+    ['valor financiado zero', { valorFinanciado: 0 }],
+    ['valor financiado fracionário', { valorFinanciado: 10.5 }],
+    ['parcela zero', { valorParcela: 0 }],
+    ['total 0', { totalParcelas: 0, parcelasPagasAntes: 0 }],
+    ['total 1201', { totalParcelas: 1201 }],
+    ['sistema inválido', { sistema: 'Price' as never }],
+    ['data inexistente', { primeiraParcela: '2026-02-30' }],
+    ['pagas antes negativas', { parcelasPagasAntes: -1 }],
+    ['pagas antes acima do total', { parcelasPagasAntes: 49 }],
+  ])('%s gera exatamente um problema', (_n, extra) => {
+    expect(validarContrato({ ...ok, ...extra })).toHaveLength(1)
+  })
+  it('parcela pequena demais para o valor financiado', () => {
+    expect(validarContrato({ ...ok, valorParcela: 1000 })).toEqual(['O valor da parcela é pequeno demais para esse valor financiado.'])
+  })
+  it('parcelasPagasAntes igual ao total é válido', () => expect(validarContrato({ ...ok, parcelasPagasAntes: 48 })).toEqual([]))
+  it('acumula vários problemas', () => expect(validarContrato({ ...ok, valorFinanciado: 0, totalParcelas: 0, parcelasPagasAntes: 0 }).length).toBe(2))
+})
+
+describe('pagas e aplicados', () => {
+  it('registram o passo real de cada pagamento, com excesso', () => {
+    // Price 100000/34002/3 a 1%: passo #1 = 34002; pagamento de 35000 => excesso 998
+    const e = estadoContrato({ ...c, parcelasPagasAntes: 0 }, [pg({ valor: 35000 })])
+    expect(e.pagas.map((p) => p.numero)).toEqual([1])
+    expect(e.aplicados).toEqual([{ data: '2026-09-12', valor: 35000, numero: 1, valorParcela: 34002, excesso: 998 }])
+  })
+  it('parcelasPagasAntes ficam em pagas mas não em aplicados', () => {
+    const e = estadoContrato({ ...c, parcelasPagasAntes: 1 }, [])
+    expect(e.pagas).toHaveLength(1)
+    expect(e.aplicados).toEqual([])
   })
 })
