@@ -10,16 +10,32 @@ export async function exportar(): Promise<string> {
   return JSON.stringify(dados)
 }
 
+const INVALIDO = 'Arquivo de backup inválido'
+
+function validar(json: string): Record<(typeof TABELAS)[number], object[]> {
+  let dados: unknown
+  try { dados = JSON.parse(json) } catch { throw new Error(INVALIDO) }
+  if (typeof dados !== 'object' || dados === null || Array.isArray(dados)) throw new Error(INVALIDO)
+  const obj = dados as Record<string, unknown>
+  if (obj.versao !== VERSAO) throw new Error('Versão de backup não suportada')
+  for (const t of TABELAS) {
+    const linhas = obj[t]
+    if (!Array.isArray(linhas)) throw new Error(INVALIDO)
+    for (const l of linhas) {
+      if (typeof l !== 'object' || l === null || Array.isArray(l)) throw new Error(INVALIDO)
+      if (typeof (l as { id?: unknown }).id !== 'string') throw new Error(INVALIDO)
+    }
+  }
+  return obj as Record<(typeof TABELAS)[number], object[]>
+}
+
 export async function importar(json: string): Promise<void> {
-  let dados: Record<string, unknown>
-  try { dados = JSON.parse(json) } catch { throw new Error('Arquivo de backup inválido') }
-  if (typeof dados !== 'object' || dados === null) throw new Error('Arquivo de backup inválido')
-  if (dados.versao !== VERSAO) throw new Error('Versão de backup não suportada')
+  const dados = validar(json)
   await db.transaction('rw', TABELAS.map((t) => db[t]), async () => {
     for (const t of TABELAS) {
       const tabela = db[t] as Table<object, string>
       await tabela.clear()
-      await tabela.bulkPut((dados[t] as object[] | undefined) ?? [])
+      await tabela.bulkPut(dados[t])
     }
   })
 }
