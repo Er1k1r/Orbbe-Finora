@@ -27,4 +27,30 @@ describe('interpretarNotificacao', () => {
     expect(interpretarNotificacao(n('com.nu.production', 'Nubank', 'Seu extrato está disponível'))).toBeNull())
   it('ignora valor sem direção (fatura)', () =>
     expect(interpretarNotificacao(n('com.nu.production', 'Nubank', 'Fatura fechada R$ 100,00'))).toBeNull())
+
+  const nu = (texto: string, titulo = 'Nubank') => interpretarNotificacao(n('com.nu.production', titulo, texto))
+  it('pagamento de fatura não vira entrada', () =>
+    expect(nu('Seu pagamento de R$ 500,00 da fatura foi recebido')).toBeNull())
+  it('promoção e pagamento agendado viram null', () => {
+    expect(nu('Oferta: parcele em 12x de R$ 99,90 e pague com Pix')).toBeNull()
+    expect(nu('Seu Pix de R$ 200,00 foi agendado')).toBeNull()
+  })
+  it('saldo no texto não bloqueia compra legítima', () =>
+    expect(nu('Compra de R$ 10,00 em LOJA. Saldo R$ 90,00')).toMatchObject({ valor: 1000, tipo: 'saida', estabelecimento: 'LOJA' }))
+  it('estabelecimento com filler após o valor', () =>
+    expect(nu('Compra de R$ 12,00 aprovada em UBER *TRIP')).toMatchObject({ estabelecimento: 'UBER *TRIP', categoriaId: 'transporte' }))
+  it('estabelecimento antes do valor', () => {
+    expect(nu('Compra aprovada em LOJA X: R$ 30,00')).toMatchObject({ valor: 3000, estabelecimento: 'LOJA X' })
+    expect(nu('Pix recebido de MARIA DA SILVA no valor de R$ 150,00')).toMatchObject({
+      valor: 15000, tipo: 'entrada', estabelecimento: 'MARIA DA SILVA', categoriaId: 'extras',
+    })
+  })
+  it('sufixo de cartão não entra no estabelecimento', () =>
+    expect(nu('Compra aprovada R$ 30,00 em PADARIA X no cartão final 1234')).toMatchObject({ estabelecimento: 'PADARIA X' }))
+  it('regressões de precedência', () => {
+    expect(nu('Estorno de R$ 25,00')).toMatchObject({ valor: 2500, tipo: 'entrada' })
+    expect(nu('Transferência recebida: R$ 3.200,00 – SALÁRIO')).toMatchObject({ tipo: 'entrada', categoriaId: 'salario', valor: 320000 })
+    expect(nu('Fatura fechada R$ 100,00 vence dia 10')).toBeNull()
+    expect(nu('Saldo disponível R$ 1.234,56')).toBeNull()
+  })
 })

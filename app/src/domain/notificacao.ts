@@ -24,8 +24,12 @@ const BANCOS: [prefixo: string, nome: string][] = [
 
 const VALOR = /R\$\s*(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/
 const ENTRADA = /recebeu|recebid|dep[óo]sito|estorno/i
-const SAIDA = /compra|pagamento|pagou|d[ée]bito|enviou|enviad|saque|pix/i
-const ESTABELECIMENTO = /^\s*(?:em|no|na|para|de)\s+(.+?)\s*(?:[.;]|\s+no cart[aã]o|\s+com final|$)/i
+const SAIDA = /compra|pagamento|pagou|d[ée]bito|enviou|enviad|saque/i
+// Texto que não é transação executada (fatura, promoção, agendamento): nunca sugerir.
+const IGNORAR = /fatura|oferta|parcele|ganhe|agendad|cashback|limite|promo[cç]/i
+const ESTABELECIMENTO = /^[^.;:,]{0,40}?\b(?:em|no|na|para|de)\s+(.+?)\s*(?:[.;]|\s+no cart[aã]o|\s+com final|$)/i
+
+const ESTAB_ANTES = /\b(?:em|no|na|para|de)\s+([^.;:,]+?)\s*(?:no valor de|[:\-–])?\s*$/i
 
 const CATEGORIAS: [RegExp, string][] = [
   [/padaria|restaurante|lanchonete|ifood|pizz|burger|caf[eé]/i, 'alimentacao'],
@@ -41,6 +45,7 @@ export function interpretarNotificacao(n: NotificacaoBruta): LancamentoSugerido 
   if (!banco) return null
 
   const corpo = `${n.titulo} ${n.texto}`.trim()
+  if (IGNORAR.test(corpo)) return null
   const m = VALOR.exec(corpo)
   if (!m) return null
 
@@ -48,7 +53,8 @@ export function interpretarNotificacao(n: NotificacaoBruta): LancamentoSugerido 
   if (!tipo) return null
 
   const valor = Number(m[1].replace(/\./g, '')) * 100 + Number(m[2])
-  const achado = ESTABELECIMENTO.exec(corpo.slice(m.index + m[0].length))
+  const achado =
+    ESTABELECIMENTO.exec(corpo.slice(m.index + m[0].length)) ?? ESTAB_ANTES.exec(corpo.slice(0, m.index))
   const estabelecimento = achado ? achado[1].trim() : n.titulo.trim() || banco
 
   const categoriaId =
