@@ -1,6 +1,6 @@
 import { simularAporte } from './amortizacao'
 import { parcelaDoMes, resumoMes, saldoContas } from './fluxo'
-import { formatarBRL } from './dinheiro'
+import { formatarBRL, formatarNumero, formatarPct } from './dinheiro'
 import { mesDe, mesesAnteriores } from './meses'
 import { custoEssencial, rendaEsperada, reservaAlvoMeses } from './renda'
 import type {
@@ -116,41 +116,52 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
     out.push({
       id: 'reserva-baixa', tipo: 'reserva_baixa', severidade: 'alerta',
       titulo: 'Reserva abaixo da meta',
-      detalhe: `Você cobre ${cobertos.toFixed(1)} de ${meses} meses de custo essencial. Faltam ${formatarBRL(meta - saldo)}.`,
+      detalhe: `Você cobre ${formatarNumero(cobertos)} de ${meses} meses de custo essencial. Faltam ${formatarBRL(meta - saldo)}.`,
       dados: { saldo, meta, meses },
     })
   }
 
   // 5. sobra para a dívida / 6. dívida mais cara
-  const maisCara = [...ctx.financiamentos].sort((a, b) => b.taxaMensal - a.taxaMensal)[0]
+  const candidatas = ctx.financiamentos.filter((f) => f.saldoDevedor > 0)
+  const maisCara = [...candidatas].sort((a, b) => b.taxaMensal - a.taxaMensal)[0]
+  const aporteExistente = ctx.planos.reduce((s, p) => s + p.aporteExtraMensal, 0)
   const resumo = resumoMes({
     mes: ctx.mes, contas: ctx.contas, lancamentos: ctx.lancamentos,
-    financiamentos: ctx.financiamentos, aporteExtra: 0,
+    financiamentos: ctx.financiamentos, aporteExtra: aporteExistente,
   })
-  if (maisCara && resumo.sobraNormal > 0) {
-    const aporte = reservaOk ? resumo.sobraNormal : Math.round(resumo.sobraNormal / 2)
-    const sim = simularAporte({
+  if (maisCara && resumo.sobraOtimizada > 0) {
+    const aporte = reservaOk ? resumo.sobraOtimizada : Math.round(resumo.sobraOtimizada / 2)
+    const planosDela = ctx.planos.filter((p) => p.financiamentoId === maisCara.id)
+    const existente = planosDela.reduce((s, p) => s + p.aporteExtraMensal, 0)
+    const efeito = planosDela[0]?.efeito ?? 'reduzir_prazo'
+    const sim = (x: number) => simularAporte({
       saldo: maisCara.saldoDevedor, taxa: maisCara.taxaMensal, prazo: maisCara.prazoRestante,
-      sistema: maisCara.sistema, aporte, efeito: 'reduzir_prazo',
+      sistema: maisCara.sistema, aporte: x, efeito,
     })
-    out.push({
-      id: 'sobra-divida', tipo: 'sobra_para_divida', severidade: 'info',
-      titulo: reservaOk ? 'Use a sobra para quitar mais rápido' : 'Divida a sobra entre reserva e dívida',
-      detalhe: `Um aporte de ${formatarBRL(aporte)}/mês em ${maisCara.nome} economiza ${formatarBRL(sim.economiaJuros)} em juros e ${sim.mesesEconomizados} meses.`,
-      dados: { financiamento: maisCara.id, aporte, economia: sim.economiaJuros },
-    })
+    const antes = sim(existente)
+    const depois = sim(existente + aporte)
+    const economiaJuros = depois.economiaJuros - antes.economiaJuros
+    const mesesEconomizados = depois.mesesEconomizados - antes.mesesEconomizados
+    if (economiaJuros > 0) {
+      out.push({
+        id: 'sobra-divida', tipo: 'sobra_para_divida', severidade: 'info',
+        titulo: reservaOk ? 'Use a sobra para quitar mais rápido' : 'Divida a sobra entre reserva e dívida',
+        detalhe: `Um aporte de ${formatarBRL(aporte)}/mês em ${maisCara.nome} economiza ${formatarBRL(economiaJuros)} em juros e ${mesesEconomizados} meses.`,
+        dados: { financiamento: maisCara.id, aporte, economia: economiaJuros },
+      })
+    }
   }
-  if (ctx.financiamentos.length > 1 && maisCara) {
+  if (candidatas.length > 1 && maisCara) {
     out.push({
       id: 'divida-cara', tipo: 'divida_mais_cara', severidade: 'info',
       titulo: `Priorize ${maisCara.nome}`,
-      detalhe: `Maior taxa entre as dívidas: ${(maisCara.taxaMensal * 100).toFixed(2)}% ao mês.`,
+      detalhe: `Maior taxa entre as dívidas: ${formatarPct(maisCara.taxaMensal)} ao mês.`,
       dados: { financiamento: maisCara.id, taxa: maisCara.taxaMensal },
     })
   }
 
   // 7. mês de risco (renda variável/eventual)
-  const temVariavel = ctx.fontes.some((f) => f.tipo !== 'fixa')
+  const temVariavel = ctx.fontes.some((f) => f.tipo === 'variavel')
   const recebido = soma(
     ctx.lancamentos.filter((l) => l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) === ctx.mes),
   )

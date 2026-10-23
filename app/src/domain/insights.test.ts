@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { gerarInsights, type ContextoInsights } from './insights'
+import { simularAporte } from './amortizacao'
 import type { Categoria, Conta, Financiamento, FonteDeRenda, Lancamento } from './tipos'
 
 const cat = (id: string, p: Partial<Categoria> = {}): Categoria => ({
@@ -34,6 +35,10 @@ describe('pico_atipico', () => {
     expect(tipos(base({ lancamentos: [...hist, sai('mer', '2026-10-05', 40000)] }))).toContain('pico_atipico'))
   it('não dispara em valor comum', () =>
     expect(tipos(base({ lancamentos: [...hist, sai('mer', '2026-10-05', 12000)] }))).not.toContain('pico_atipico'))
+  it('não dispara com menos de 4 amostras', () => {
+    const poucas = hist.slice(0, 3)
+    expect(tipos(base({ lancamentos: [...poucas, sai('mer', '2026-10-05', 400000)] }))).not.toContain('pico_atipico')
+  })
 })
 
 describe('despesa_fixa_alta', () => {
@@ -107,6 +112,38 @@ describe('financiamentos', () => {
   it('sobra_para_divida não dispara sem financiamento', () => {
     expect(tipos(base({ lancamentos: [ent('2026-10-01', 500000)] }))).not.toContain('sobra_para_divida')
   })
+  it('com plano salvo, a sugestão parte da sobra otimizada e a economia é incremental', () => {
+    // sobraNormal = 376.000 - 62.000 = 314.000; plano existente 300.000 => sobraOtimizada 14.000
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 300000, efeito: 'reduzir_prazo' as const }
+    const c = base({
+      financiamentos: [f('a', 0.01)], planos: [plano],
+      lancamentos: [ent('2026-10-01', 376000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    const i = achar(c, 'sobra_para_divida')
+    expect(i?.dados.aporte).toBe(14000)
+    const s = (x: number) => simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito: 'reduzir_prazo' })
+    expect(i?.dados.economia).toBe(s(314000).economiaJuros - s(300000).economiaJuros)
+  })
+  it('sobra_para_divida não dispara quando o plano já consome a sobra', () => {
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 314000, efeito: 'reduzir_prazo' as const }
+    const c = base({ financiamentos: [f('a', 0.01)], planos: [plano], lancamentos: [ent('2026-10-01', 376000)] })
+    expect(tipos(c)).not.toContain('sobra_para_divida')
+  })
+  it('financiamento quitado (saldo 0) não é candidato', () => {
+    const quitado = { ...f('a', 0.05), saldoDevedor: 0 }
+    const c = base({ financiamentos: [quitado, f('b', 0.01)], lancamentos: [ent('2026-10-01', 500000)] })
+    expect(tipos(c)).not.toContain('divida_mais_cara')
+    expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
+  })
+  it('sobra_para_divida não dispara quando a economia de juros é zero', () => {
+    const c = base({ financiamentos: [f('a', 0)], lancamentos: [ent('2026-10-01', 500000)] })
+    expect(tipos(c)).not.toContain('sobra_para_divida')
+  })
+  it('texto da taxa usa vírgula pt-BR', () => {
+    const c = base({ financiamentos: [f('a', 0.0199), f('b', 0.01)] })
+    expect(achar(c, 'divida_mais_cara')?.detalhe).toContain('1,99%')
+  })
 })
 
 describe('mes_de_risco', () => {
@@ -115,6 +152,18 @@ describe('mes_de_risco', () => {
     expect(tipos(base({ fontes, lancamentos: [ent('2026-10-02', 50000, 'v'), sai('alu', '2026-10-05', 150000, 'fixo')] }))).toContain('mes_de_risco'))
   it('não dispara sem renda variável', () =>
     expect(tipos(base({ lancamentos: [sai('alu', '2026-10-05', 150000, 'fixo')] }))).not.toContain('mes_de_risco'))
+  it('fonte apenas fixa + eventual não conta como variável', () => {
+    const fs: FonteDeRenda[] = [fonteFixa, { id: 'ev', nome: 'Bico', tipo: 'eventual', valorEsperado: 100000 }]
+    expect(tipos(base({ fontes: fs, lancamentos: [sai('alu', '2026-10-05', 150000, 'fixo')] }))).not.toContain('mes_de_risco')
+  })
+  it('não dispara quando recebido >= renda esperada', () => {
+    const ls = [ent('2026-10-02', 300000, 'v'), sai('alu', '2026-10-05', 400000, 'fixo')]
+    expect(tipos(base({ fontes, lancamentos: ls }))).not.toContain('mes_de_risco')
+  })
+  it('não dispara quando fixos <= recebido', () => {
+    const ls = [ent('2026-10-02', 50000, 'v'), sai('alu', '2026-10-05', 40000, 'fixo')]
+    expect(tipos(base({ fontes, lancamentos: ls }))).not.toContain('mes_de_risco')
+  })
 })
 
 describe('config', () => {
