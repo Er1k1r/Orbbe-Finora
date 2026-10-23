@@ -20,6 +20,14 @@ describe('seed', () => {
     await semearCategorias()
     expect(await repo.categorias.listar()).toHaveLength(CATEGORIAS_PADRAO.length)
   })
+  it('não sobrescreve categoria de sistema editada pelo usuário', async () => {
+    await repo.categorias.salvar({ id: 'transferencia', nome: 'Minha transferência', icone: 'x', tipo: 'saida', natureza: 'variavel', essencial: false, sistema: true })
+    await repo.categorias.salvar({ id: 'minha', nome: 'Minha', icone: 'x', tipo: 'saida', natureza: 'variavel', essencial: false })
+    await semearCategorias()
+    const todas = await repo.categorias.listar()
+    expect(todas.find((c) => c.id === 'transferencia')?.nome).toBe('Minha transferência')
+    expect(todas.some((c) => c.id === 'ajuste')).toBe(true)
+  })
   it('garante as categorias de sistema num banco já populado, sem duplicar', async () => {
     await repo.categorias.salvar({ id: 'minha', nome: 'Minha', icone: 'x', tipo: 'saida', natureza: 'variavel', essencial: false })
     await semearCategorias()

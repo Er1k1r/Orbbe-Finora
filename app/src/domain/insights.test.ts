@@ -285,4 +285,14 @@ describe('movimentos internos', () => {
     expect(t).not.toContain('gasto_crescendo')
     expect(t).not.toContain('pico_atipico')
   })
+  it('entrada de transferência não conta como recebido em mes_de_risco', () => {
+    const fonteVar: FonteDeRenda = { id: 'v', nome: 'Vendas', tipo: 'variavel', valorEsperado: 300000 }
+    const transf: Lancamento = { ...ent('2026-10-08', 500000, 'v'), id: 'tr', especie: 'transferencia' }
+    const r = gerarInsights(base({
+      fontes: [fonteVar],
+      lancamentos: [sai('alu', '2026-10-02', 150000, 'fixo'), ent('2026-10-05', 50000, 'v'), transf],
+    })).find((i) => i.tipo === 'mes_de_risco')
+    expect(r).toBeDefined()
+    expect(r?.dados.recebido).toBe(50000)
+  })
 })
