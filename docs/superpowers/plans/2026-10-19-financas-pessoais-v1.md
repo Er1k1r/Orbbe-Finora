@@ -21,7 +21,7 @@
 - Alvos de toque ≥ 44 px; `min-h-[100dvh]`, nunca `h-screen`.
 - Nada de padrão visual Tely.
 
-**User decisions (already made):** PWA local-first com caminho para APK via Capacitor · perfil por fonte de renda (`fixa`/`variavel`/`eventual`) · escopo v1 = núcleo + financiamentos + insights por regras (13º/férias e fatura de cartão ficam para v2) · visual próprio inspirado nas referências (drawer, seletor de mês, FAB, anel).
+**User decisions (already made):** PWA local-first com caminho para APK via Capacitor · perfil por fonte de renda (`fixa`/`variavel`/`eventual`) · escopo v1 = núcleo + financiamentos + insights por regras (13º/férias e fatura de cartão ficam para v2) · visual próprio inspirado nas referências (drawer, seletor de mês, FAB, anel) · ideias do Kontto aprovadas em 2026-10-23: onboarding em 3 perguntas com objetivos, checklist "Vamos começar", cartão de privacidade, restaurar backup na abertura, e interpretador de notificação bancária no motor (Task 14). A captura nativa de notificações fica na fase APK (fora deste plano).
 
 **Desvio do spec (registrado):** no drawer, **Orçamento** e **Gráficos** ficam para a v1.1; **Reserva** vira um cartão dentro da tela Insights. O restante do spec §7 está coberto.
 
@@ -1692,7 +1692,8 @@ git add -A && git commit -m "feat(ui): tema, componentes base, drawer e shell"
 **Goal:** Home com seletor de mês, anel da sobra (assinatura), trio Inicial/Saldo/Previsto, pendências com saldo seguro, visão geral, insights e últimos lançamentos.
 
 **Files:**
-- Create: `app/src/ui/componentes/SobraRing.tsx`, `app/src/ui/telas/Resumo.tsx`, `app/src/ui/hooks/useResumo.ts`
+- Create: `app/src/ui/componentes/SobraRing.tsx`, `app/src/ui/telas/Resumo.tsx`, `app/src/ui/hooks/useResumo.ts`, `app/src/ui/componentes/ChecklistInicial.tsx`, `app/src/ui/hooks/usePreferencias.ts`, `app/src/ui/telas/ordemCartoes.ts`, `app/src/domain/categorias.ts`, `app/src/domain/reserva.ts`
+- Test: `app/src/ui/telas/ordemCartoes.test.ts`, `app/src/domain/categorias.test.ts`, `app/src/domain/reserva.test.ts`
 - Modify: `app/src/App.tsx` (rota `/`, passa `mes`)
 
 **Acceptance Criteria:**
@@ -1700,6 +1701,9 @@ git add -A && git commit -m "feat(ui): tema, componentes base, drawer e shell"
 - [ ] Valores vêm de `resumoMes`; Saldo seguro e pendências refletem lançamentos `pendente`.
 - [ ] Até 3 insights aparecem com título e detalhe; vazio mostra "Sem alertas este mês".
 - [ ] Sem dados, mostra estado vazio com convite "Registre seu primeiro lançamento".
+- [ ] Cartão "Vamos começar" (checklist de 4 passos: conta, primeiro gasto, renda, financiamento) aparece enquanto houver passo pendente e não tiver sido fechado; "Não tenho financiamento" conclui o 4º passo.
+- [ ] Ordem e presença dos cartões seguem os objetivos do onboarding (`ordemCartoes`): `contas_em_dia` coloca Pendências primeiro; `destino` adiciona "Para onde foi o dinheiro" (top 3 categorias); `meta` adiciona o cartão de Reserva.
+- [ ] `topCategorias` e `statusReserva` têm testes e valores conferidos à mão.
 
 **Verify:** `cd app && npm run build` e conferência visual no navegador com dados de teste (criar 3–4 lançamentos pelo console: `indexedDB` ou pela Task 10)
 
@@ -1878,6 +1882,193 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
 
 Em `App.tsx`, trocar o `Routes` por `<Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />` mantendo o `*` de reserva.
 
+- [ ] **Step 3b: Funções puras (com teste), preferências, checklist e ordem dos cartões**
+
+`domain/categorias.ts`:
+
+```ts
+import { mesDe } from './meses'
+import type { Centavos, Lancamento, Mes } from './tipos'
+
+export function topCategorias(lancs: Lancamento[], mes: Mes, n: number) {
+  const saidas = lancs.filter((l) => l.tipo === 'saida' && mesDe(l.data) === mes)
+  const total = saidas.reduce((s, l) => s + l.valor, 0)
+  if (total === 0) return []
+  const por = new Map<string, Centavos>()
+  for (const l of saidas) por.set(l.categoriaId, (por.get(l.categoriaId) ?? 0) + l.valor)
+  return [...por]
+    .map(([categoriaId, t]) => ({ categoriaId, total: t, pct: Math.round((t / total) * 100) }))
+    .sort((a, b) => b.total - a.total)
+    .slice(0, n)
+}
+```
+
+`categorias.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { topCategorias } from './categorias'
+import type { Lancamento } from './tipos'
+
+const s = (categoriaId: string, valor: number, data = '2026-10-05'): Lancamento => ({
+  id: categoriaId + valor + data, valor, data, tipo: 'saida', categoriaId,
+  natureza: 'variavel', contaId: 'c', status: 'pago',
+})
+
+describe('topCategorias', () => {
+  const ls = [s('mer', 6000), s('alu', 3000), s('mer', 1000), s('mer', 9999, '2026-09-01')]
+  it('agrupa, ordena e calcula percentual do mês', () => {
+    expect(topCategorias(ls, '2026-10', 5)).toEqual([
+      { categoriaId: 'mer', total: 7000, pct: 70 },
+      { categoriaId: 'alu', total: 3000, pct: 30 },
+    ])
+  })
+  it('respeita o limite n', () => expect(topCategorias(ls, '2026-10', 1)).toHaveLength(1))
+  it('mês sem saídas devolve lista vazia', () => expect(topCategorias(ls, '2026-11', 3)).toEqual([]))
+})
+```
+
+`domain/reserva.ts`:
+
+```ts
+import type { Centavos } from './tipos'
+
+export function statusReserva(saldo: Centavos, custoEssencialMensal: Centavos, alvoMeses: number) {
+  const cobertos = custoEssencialMensal > 0 ? Math.max(0, saldo / custoEssencialMensal) : 0
+  return { cobertos, progresso: Math.min(100, (cobertos / alvoMeses) * 100) }
+}
+```
+
+`reserva.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { statusReserva } from './reserva'
+
+describe('statusReserva', () => {
+  it('3 de 6 meses = 50%', () => expect(statusReserva(300000, 100000, 6)).toEqual({ cobertos: 3, progresso: 50 }))
+  it('sem custo essencial = 0', () => expect(statusReserva(300000, 0, 6)).toEqual({ cobertos: 0, progresso: 0 }))
+  it('saldo negativo = 0', () => expect(statusReserva(-5000, 100000, 6).cobertos).toBe(0))
+  it('limita o progresso a 100', () => expect(statusReserva(9000000, 100000, 6).progresso).toBe(100))
+})
+```
+
+`ui/hooks/usePreferencias.ts` (preferências de interface por aparelho; dados financeiros continuam no Dexie):
+
+```ts
+import { useSyncExternalStore } from 'react'
+
+export type Objetivo = 'destino' | 'nao_estourar' | 'contas_em_dia' | 'meta'
+interface Prefs { objetivos: Objetivo[]; checklistFechado: boolean; semFinanciamento: boolean }
+
+const CHAVE = 'financas.prefs'
+const PADRAO: Prefs = { objetivos: [], checklistFechado: false, semFinanciamento: false }
+const ouvintes = new Set<() => void>()
+let cache: Prefs | null = null
+
+function ler(): Prefs {
+  if (cache) return cache
+  try { cache = { ...PADRAO, ...JSON.parse(localStorage.getItem(CHAVE) ?? '{}') } } catch { cache = PADRAO }
+  return cache!
+}
+export function salvarPrefs(p: Partial<Prefs>) {
+  cache = { ...ler(), ...p }
+  try { localStorage.setItem(CHAVE, JSON.stringify(cache)) } catch { /* modo privado: segue em memória */ }
+  ouvintes.forEach((f) => f())
+}
+export const usePrefs = () =>
+  useSyncExternalStore((f) => { ouvintes.add(f); return () => { ouvintes.delete(f) } }, ler)
+```
+
+`ui/telas/ordemCartoes.ts`:
+
+```ts
+import type { Objetivo } from '../hooks/usePreferencias'
+
+export type Cartao = 'sobra' | 'pendencias' | 'visaoGeral' | 'destino' | 'reserva' | 'insights' | 'ultimos'
+
+export function ordemCartoes(obj: Objetivo[]): Cartao[] {
+  const extras: Cartao[] = []
+  if (obj.includes('destino')) extras.push('destino')
+  if (obj.includes('meta')) extras.push('reserva')
+  const lista: Cartao[] = ['sobra', ...extras, 'pendencias', 'visaoGeral', 'insights', 'ultimos']
+  return obj.includes('contas_em_dia') ? ['pendencias', ...lista.filter((c) => c !== 'pendencias')] : lista
+}
+```
+
+`ordemCartoes.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { ordemCartoes } from './ordemCartoes'
+
+describe('ordemCartoes', () => {
+  it('padrão', () => expect(ordemCartoes([])).toEqual(['sobra', 'pendencias', 'visaoGeral', 'insights', 'ultimos']))
+  it('contas_em_dia põe pendências primeiro', () => expect(ordemCartoes(['contas_em_dia'])[0]).toBe('pendencias'))
+  it('destino e meta entram depois da sobra', () =>
+    expect(ordemCartoes(['destino', 'meta']).slice(0, 3)).toEqual(['sobra', 'destino', 'reserva']))
+  it('nao_estourar mantém o padrão', () => expect(ordemCartoes(['nao_estourar'])).toEqual(ordemCartoes([])))
+})
+```
+
+`ui/componentes/ChecklistInicial.tsx`:
+
+```tsx
+import { Link } from 'react-router-dom'
+import { CheckCircle, Circle } from '@phosphor-icons/react'
+import { Moldura } from './Moldura'
+import { useDados } from '../hooks/useDados'
+import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
+
+export function ChecklistInicial({ abrirLancamento }: { abrirLancamento: () => void }) {
+  const d = useDados()
+  const prefs = usePrefs()
+  const passos = [
+    { id: 'conta', rotulo: 'Criar conta bancária', feito: d.contas.length > 0, para: '/contas', acao: 'Adicionar conta' },
+    { id: 'gasto', rotulo: 'Registrar o primeiro gasto', feito: d.lancamentos.some((l) => l.tipo === 'saida'), acao: 'Registrar gasto' },
+    { id: 'renda', rotulo: 'Cadastrar sua renda', feito: d.fontes.length > 0, para: '/fontes', acao: 'Cadastrar renda' },
+    { id: 'divida', rotulo: 'Cadastrar um financiamento', feito: d.financiamentos.length > 0 || prefs.semFinanciamento, para: '/dividas', acao: 'Adicionar financiamento' },
+  ]
+  const feitos = passos.filter((p) => p.feito).length
+  if (prefs.checklistFechado || feitos === passos.length) return null
+  const proximo = passos.find((p) => !p.feito)!
+
+  return (
+    <Moldura>
+      <h3 className="text-lg font-semibold">Vamos começar</h3>
+      <div className="mt-3 grid grid-cols-4 gap-1.5" role="progressbar" aria-valuenow={feitos} aria-valuemin={0} aria-valuemax={4}>
+        {passos.map((p) => <div key={p.id} className={`h-1.5 rounded-full ${p.feito ? 'bg-marca' : 'bg-[var(--linha)]'}`} />)}
+      </div>
+      <p className="mt-1 text-sm text-suave">{feitos} de 4 concluídos</p>
+      <ul className="mt-3">
+        {passos.map((p) => (
+          <li key={p.id} className="flex min-h-11 items-center gap-3">
+            {p.feito ? <CheckCircle size={22} weight="fill" className="text-marca" /> : <Circle size={22} weight="light" />}
+            <span className={p.feito ? 'text-suave line-through' : 'font-semibold'}>{p.rotulo}</span>
+          </li>
+        ))}
+      </ul>
+      {proximo.para ? (
+        <Link to={proximo.para} className="mt-3 grid min-h-12 place-items-center rounded-full bg-marca font-semibold text-[var(--papel)]">{proximo.acao}</Link>
+      ) : (
+        <button onClick={abrirLancamento} className="mt-3 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">{proximo.acao}</button>
+      )}
+      {proximo.id === 'divida' && (
+        <button onClick={() => salvarPrefs({ semFinanciamento: true })} className="mt-1 min-h-11 w-full text-sm text-suave">Não tenho financiamento</button>
+      )}
+      <button onClick={() => salvarPrefs({ checklistFechado: true })} className="min-h-11 w-full text-sm text-suave">Dispensar</button>
+    </Moldura>
+  )
+}
+```
+
+Em `Resumo.tsx`: montar um `Record<Cartao, ReactNode>` com os cartões já escritos no Step 3, mais:
+- `destino`: `<Moldura>` "Para onde foi o dinheiro" listando `topCategorias(lancamentos, mes, 3)` com nome da categoria, `%` e `formatarBRL(total)` (saída em coral com sinal −).
+- `reserva`: `<Moldura>` com `statusReserva(saldoContas(...), custoEssencial(...), reservaAlvoMeses(fontes))`, texto "X de N meses" e `<Link to="/insights">`.
+Renderizar `ordemCartoes(usePrefs().objetivos).map((c) => <Fragment key={c}>{cartoes[c]}</Fragment>)` e colocar `<ChecklistInicial abrirLancamento={abrirLancamento} />` no topo. O estado vazio (sem lançamentos) passa a mostrar o checklist em vez do cartão simples.
+
+Rodar: `npx vitest run src/domain/categorias.test.ts src/domain/reserva.test.ts src/ui/telas/ordemCartoes.test.ts` → PASS. Commit: `feat(ui): checklist inicial, cartoes por objetivo e funcoes de apoio`.
+
 - [ ] **Step 4: Verificar**
 
 Run: `npm run build` → sucesso. No navegador: estado vazio aparece; após criar lançamentos (Task 10), anel e trio refletem os números.
@@ -1895,7 +2086,7 @@ git add -A && git commit -m "feat(ui): tela Resumo com anel da sobra"
 **Goal:** Fluxo de registrar em < 10 s, lista editável do mês, e primeiro uso que cria fonte(s) de renda e conta.
 
 **Files:**
-- Create: `app/src/ui/telas/LancamentoRapido.tsx`, `app/src/ui/telas/Lancamentos.tsx`, `app/src/ui/telas/Onboarding.tsx`, `app/src/ui/componentes/Icone.tsx`
+- Create: `app/src/ui/telas/LancamentoRapido.tsx`, `app/src/ui/telas/Lancamentos.tsx`, `app/src/ui/telas/Onboarding.tsx`, `app/src/ui/telas/EtapaRenda.tsx`, `app/src/ui/componentes/Privacidade.tsx`, `app/src/ui/componentes/Icone.tsx`
 - Modify: `app/src/App.tsx`
 
 **Acceptance Criteria:**
@@ -1904,6 +2095,7 @@ git add -A && git commit -m "feat(ui): tela Resumo com anel da sobra"
 - [ ] "Mais opções": conta, data, natureza, fonte (entrada), observação, pendente, repete todo mês.
 - [ ] Lista de lançamentos do mês com filtro por tipo e exclusão (botão de lixeira com confirmação).
 - [ ] Sem fontes cadastradas, o app mostra o Onboarding e, ao concluir, cria fontes e uma conta.
+- [ ] Onboarding em 3 perguntas: (1) o que resolver primeiro (seleção múltipla, grava `objetivos` via `salvarPrefs`), (2) fontes de renda, (3) saldo atual; tela inicial "Controle seus gastos. Fácil assim." com cartão de privacidade e botão "Já uso, restaurar backup" que importa um JSON.
 
 **Verify:** `cd app && npm run build`; no navegador: criar saída de R$ 12,50 em Mercado em 3 toques e vê-la no Resumo e em Lançamentos
 
@@ -2090,7 +2282,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
 }
 ```
 
-- [ ] **Step 4: `Onboarding.tsx`** — escolhe fontes por exemplo e cria conta
+- [ ] **Step 4: `EtapaRenda.tsx`** — perguntas 2 e 3 do onboarding: escolhe fontes por exemplo e cria conta (o `Onboarding.tsx` que orquestra as etapas está no Step 4b)
 
 ```tsx
 import { useState } from 'react'
@@ -2105,7 +2297,7 @@ const OPCOES: { tipo: TipoFonte; nome: string; exemplo: string }[] = [
   { tipo: 'eventual', nome: 'Bicos e extras', exemplo: 'Aparece de vez em quando' },
 ]
 
-export default function Onboarding() {
+export function EtapaRenda() {
   const [sel, setSel] = useState<Record<string, string>>({})
   const [saldo, setSaldo] = useState('')
 
@@ -2154,6 +2346,91 @@ export default function Onboarding() {
   )
 }
 ```
+
+- [ ] **Step 4b: `Privacidade.tsx` e `Onboarding.tsx` (boas-vindas, objetivos, restaurar)**
+
+`componentes/Privacidade.tsx`:
+
+```tsx
+import { CheckCircle, Lock } from '@phosphor-icons/react'
+
+export function Privacidade() {
+  return (
+    <ul className="grid gap-3 rounded-2xl bg-[var(--casca)] p-4 text-sm">
+      <li className="flex gap-3"><Lock size={22} weight="light" className="shrink-0 text-marca" />Nada sai do seu celular: o app não envia seus dados para lugar nenhum.</li>
+      <li className="flex gap-3"><CheckCircle size={22} weight="light" className="shrink-0 text-marca" />Faça um backup de vez em quando para não perder nada ao trocar de aparelho.</li>
+    </ul>
+  )
+}
+```
+
+`telas/Onboarding.tsx`:
+
+```tsx
+import { useRef, useState } from 'react'
+import { Moldura } from '../componentes/Moldura'
+import { Privacidade } from '../componentes/Privacidade'
+import { EtapaRenda } from './EtapaRenda'
+import { salvarPrefs, type Objetivo } from '../hooks/usePreferencias'
+import { importar } from '../../data/backup'
+
+const OBJETIVOS: { id: Objetivo; rotulo: string }[] = [
+  { id: 'destino', rotulo: 'Pra onde vai meu dinheiro' },
+  { id: 'nao_estourar', rotulo: 'Não estourar o mês' },
+  { id: 'contas_em_dia', rotulo: 'Contas e parcelas em dia' },
+  { id: 'meta', rotulo: 'Juntar pra uma meta ou reserva' },
+]
+
+export default function Onboarding() {
+  const [etapa, setEtapa] = useState<'inicio' | 'objetivos' | 'renda'>('inicio')
+  const [sel, setSel] = useState<Objetivo[]>([])
+  const arquivo = useRef<HTMLInputElement>(null)
+
+  async function restaurar(f: File) {
+    if (!confirm('Isso substitui todos os dados atuais. Continuar?')) return
+    try { await importar(await f.text()) } catch (e) { alert((e as Error).message) }
+  }
+
+  if (etapa === 'renda') return <EtapaRenda />
+
+  if (etapa === 'objetivos')
+    return (
+      <div className="grid gap-5 pt-4">
+        <h1 className="text-2xl font-extrabold">O que você quer resolver primeiro?</h1>
+        <p className="text-suave">Escolha quantos quiser. O app se organiza em volta disso.</p>
+        {OBJETIVOS.map((o) => {
+          const ativo = sel.includes(o.id)
+          return (
+            <button key={o.id} role="checkbox" aria-checked={ativo}
+              onClick={() => setSel(ativo ? sel.filter((x) => x !== o.id) : [...sel, o.id])}
+              className={`min-h-14 rounded-2xl px-4 text-left font-semibold ring-1 transition-colors duration-300 ease-[var(--ease)] ${ativo ? 'bg-[var(--casca)] ring-marca' : 'ring-[var(--linha)]'}`}>
+              {o.rotulo}
+            </button>
+          )
+        })}
+        <button disabled={sel.length === 0}
+          onClick={() => { salvarPrefs({ objetivos: sel }); setEtapa('renda') }}
+          className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)] disabled:opacity-40">
+          Continuar
+        </button>
+      </div>
+    )
+
+  return (
+    <div className="grid gap-5 pt-8">
+      <h1 className="text-3xl font-extrabold leading-tight">Controle seus gastos.<br />Fácil assim.</h1>
+      <p className="text-suave">Responda 3 perguntas e o app se monta do seu jeito.</p>
+      <Moldura><Privacidade /></Moldura>
+      <button onClick={() => setEtapa('objetivos')} className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)]">Montar meu controle</button>
+      <p className="text-center text-xs text-suave">Leva menos de 1 minuto · sem cadastro</p>
+      <button onClick={() => arquivo.current?.click()} className="min-h-11 text-sm font-semibold text-marca">Já uso · Restaurar backup</button>
+      <input ref={arquivo} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && restaurar(e.target.files[0])} />
+    </div>
+  )
+}
+```
+
+Commit junto com o Step 6 (o FAB e as rotas ainda não existem no onboarding: manter o FAB oculto enquanto `fontes.length === 0 || contas.length === 0`).
 
 - [ ] **Step 5: Conectar no `App.tsx`**
 
@@ -2453,6 +2730,7 @@ git add -A && git commit -m "feat(ui): dividas e simulador de amortizacao"
 - [ ] Insights lista todos os insights do mês com título e detalhe (alertas primeiro) e um cartão "Reserva" com meses cobertos × meta do perfil (6 ou 12) e barra de progresso.
 - [ ] Backup: "Exportar" baixa `financas-AAAA-MM-DD.json`; "Importar" lê arquivo, pede confirmação ("Isso substitui todos os dados atuais") e mostra erro legível se o arquivo for inválido.
 - [ ] `npm run build` gera PWA (service worker + manifest); app abre offline após o primeiro carregamento (verificar em DevTools → Application).
+- [ ] A tela Backup mostra o cartão de privacidade ("Nada sai do seu celular"); o cartão de Reserva usa `statusReserva` (mesma função do Resumo).
 - [ ] `npx vitest run` passa inteiro.
 - [ ] Revisão visual em 390×844 e 1280×800, claro e escuro: sem rolagem horizontal, alvos ≥ 44 px, anel legível, nenhum texto cortado.
 
@@ -2467,6 +2745,7 @@ import { Moldura } from '../componentes/Moldura'
 import { useResumo } from '../hooks/useResumo'
 import { parcelaDoMes, saldoContas } from '../../domain/fluxo'
 import { custoEssencial, reservaAlvoMeses } from '../../domain/renda'
+import { statusReserva } from '../../domain/reserva'
 import { formatarBRL } from '../../domain/dinheiro'
 
 export default function Insights({ mes }: { mes: string }) {
@@ -2474,8 +2753,7 @@ export default function Insights({ mes }: { mes: string }) {
   const saldo = saldoContas(contas, lancamentos)
   const essencial = custoEssencial(lancamentos, categorias, financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0), mes)
   const alvo = reservaAlvoMeses(fontes)
-  const cobertos = essencial > 0 ? Math.max(0, saldo / essencial) : 0
-  const progresso = Math.min(100, (cobertos / alvo) * 100)
+  const { cobertos, progresso } = statusReserva(saldo, essencial, alvo)
 
   return (
     <div className="grid gap-5">
@@ -2509,6 +2787,7 @@ export default function Insights({ mes }: { mes: string }) {
 import { useRef, useState } from 'react'
 import { Moldura } from '../componentes/Moldura'
 import { exportar, importar } from '../../data/backup'
+import { Privacidade } from '../componentes/Privacidade'
 
 export default function Backup() {
   const [msg, setMsg] = useState('')
@@ -2532,7 +2811,7 @@ export default function Backup() {
   return (
     <div className="grid gap-4">
       <Moldura>
-        <p className="text-suave">Seus dados ficam só neste aparelho. Exporte um backup de tempos em tempos e antes de trocar de celular.</p>
+        <Privacidade />
         <button onClick={baixar} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">Exportar backup</button>
         <button onClick={() => arquivo.current?.click()} className="mt-2 min-h-12 w-full rounded-full bg-[var(--casca)] font-semibold">Importar backup</button>
         <input ref={arquivo} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && ler(e.target.files[0])} />
@@ -2560,7 +2839,140 @@ git add -A && git commit -m "feat: insights, backup e acabamento PWA"
 
 ---
 
+### Task 14: Interpretador de notificação bancária (motor, sem UI)
+
+**Goal:** Transformar o texto de uma notificação de app de banco em um lançamento sugerido (valor, tipo, estabelecimento, categoria, banco), para a captura automática da fase APK. Independente das Tasks 8-13; pode rodar logo após a Task 7.
+
+**Files:**
+- Create: `app/src/domain/notificacao.ts`
+- Test: `app/src/domain/notificacao.test.ts`
+
+**Acceptance Criteria:**
+- [ ] "Compra aprovada de R$ 32,90 em PADARIA DOCE PÃO" do pacote `com.nu.production` → `{ valor: 3290, tipo: 'saida', estabelecimento: 'PADARIA DOCE PÃO', categoriaId: 'alimentacao', banco: 'Nubank' }`.
+- [ ] "Você recebeu uma transferência de R$ 1.250,00 de João Silva" do pacote `com.itau.app` → valor 125000, tipo `entrada`, estabelecimento `João Silva`, categoria `extras`.
+- [ ] "Você enviou um Pix de R$ 80,00 para Maria" → saída de 8000, estabelecimento `Maria`, categoria `outros`.
+- [ ] Pacote que não é de banco conhecido (ex.: `com.whatsapp`), texto sem valor e texto com valor sem direção (ex.: "Fatura fechada R$ 100,00") devolvem `null`.
+- [ ] O módulo não importa nada de `ui/` nem de `data/`.
+
+**Verify:** `cd app && npx vitest run src/domain/notificacao.test.ts` → PASS
+
+**Steps:**
+
+- [ ] **Step 1: Escrever os testes**
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { interpretarNotificacao } from './notificacao'
+
+const n = (pacote: string, titulo: string, texto: string) => ({ pacote, titulo, texto })
+
+describe('interpretarNotificacao', () => {
+  it('compra no Nubank', () => {
+    expect(interpretarNotificacao(n('com.nu.production', 'Nubank', 'Compra aprovada de R$ 32,90 em PADARIA DOCE PÃO'))).toEqual({
+      valor: 3290, tipo: 'saida', estabelecimento: 'PADARIA DOCE PÃO', categoriaId: 'alimentacao', banco: 'Nubank',
+    })
+  })
+  it('transferência recebida com milhar', () => {
+    expect(interpretarNotificacao(n('com.itau.app', 'Itaú', 'Você recebeu uma transferência de R$ 1.250,00 de João Silva'))).toEqual({
+      valor: 125000, tipo: 'entrada', estabelecimento: 'João Silva', categoriaId: 'extras', banco: 'Itaú',
+    })
+  })
+  it('pix enviado', () => {
+    const r = interpretarNotificacao(n('br.com.intermedium', 'Inter', 'Você enviou um Pix de R$ 80,00 para Maria'))
+    expect(r).toMatchObject({ valor: 8000, tipo: 'saida', estabelecimento: 'Maria', categoriaId: 'outros' })
+  })
+  it('categoria por estabelecimento', () => {
+    expect(interpretarNotificacao(n('com.nu.production', 'Nubank', 'Compra aprovada de R$ 200,00 em POSTO IPIRANGA'))?.categoriaId).toBe('veiculo')
+  })
+  it('ignora app que não é banco', () =>
+    expect(interpretarNotificacao(n('com.whatsapp', 'Ana', 'Paguei R$ 10,00 pra você'))).toBeNull())
+  it('ignora texto sem valor', () =>
+    expect(interpretarNotificacao(n('com.nu.production', 'Nubank', 'Seu extrato está disponível'))).toBeNull())
+  it('ignora valor sem direção (fatura)', () =>
+    expect(interpretarNotificacao(n('com.nu.production', 'Nubank', 'Fatura fechada R$ 100,00'))).toBeNull())
+})
+```
+
+- [ ] **Step 2: Rodar e ver falhar** — `npx vitest run src/domain/notificacao.test.ts` → FAIL (módulo inexistente)
+
+- [ ] **Step 3: Implementar**
+
+```ts
+import type { Centavos, TipoLancamento } from './tipos'
+
+export interface NotificacaoBruta { pacote: string; titulo: string; texto: string }
+export interface LancamentoSugerido {
+  valor: Centavos
+  tipo: TipoLancamento
+  estabelecimento: string
+  categoriaId: string
+  banco: string
+}
+
+// Lista inicial: validar os nomes de pacote em aparelho real na fase APK.
+const BANCOS: [prefixo: string, nome: string][] = [
+  ['com.nu.production', 'Nubank'],
+  ['com.itau', 'Itaú'],
+  ['br.com.intermedium', 'Inter'],
+  ['com.bradesco', 'Bradesco'],
+  ['br.com.bb.android', 'Banco do Brasil'],
+  ['com.c6bank.app', 'C6 Bank'],
+  ['com.mercadopago', 'Mercado Pago'],
+  ['com.santander', 'Santander'],
+  ['br.com.gabba.Caixa', 'Caixa'],
+]
+
+const VALOR = /R\$\s*(\d{1,3}(?:\.\d{3})*|\d+),(\d{2})/
+const ENTRADA = /recebeu|recebid|dep[óo]sito|estorno/i
+const SAIDA = /compra|pagamento|pagou|d[ée]bito|enviou|enviad|saque|pix/i
+const ESTABELECIMENTO = /^\s*(?:em|no|na|para|de)\s+(.+?)\s*(?:[.;]|\s+no cart[aã]o|\s+com final|$)/i
+
+const CATEGORIAS: [RegExp, string][] = [
+  [/padaria|restaurante|lanchonete|ifood|pizz|burger|caf[eé]/i, 'alimentacao'],
+  [/mercado|atacad|hortifruti/i, 'mercado'],
+  [/posto|shell|ipiranga|combust/i, 'veiculo'],
+  [/farm[aá]cia|drogaria|droga/i, 'saude'],
+  [/uber|\b99\b|metr[oô]|[oô]nibus/i, 'transporte'],
+  [/netflix|spotify|cinema|steam/i, 'lazer'],
+]
+
+export function interpretarNotificacao(n: NotificacaoBruta): LancamentoSugerido | null {
+  const banco = BANCOS.find(([prefixo]) => n.pacote.startsWith(prefixo))?.[1]
+  if (!banco) return null
+
+  const corpo = `${n.titulo} ${n.texto}`.trim()
+  const m = VALOR.exec(corpo)
+  if (!m) return null
+
+  const tipo: TipoLancamento | null = ENTRADA.test(corpo) ? 'entrada' : SAIDA.test(corpo) ? 'saida' : null
+  if (!tipo) return null
+
+  const valor = Number(m[1].replace(/\./g, '')) * 100 + Number(m[2])
+  const achado = ESTABELECIMENTO.exec(corpo.slice(m.index + m[0].length))
+  const estabelecimento = achado ? achado[1].trim() : n.titulo.trim() || banco
+
+  const categoriaId =
+    tipo === 'entrada'
+      ? /sal[aá]rio|folha/i.test(corpo) ? 'salario' : 'extras'
+      : CATEGORIAS.find(([re]) => re.test(estabelecimento))?.[1] ?? 'outros'
+
+  return { valor, tipo, estabelecimento, categoriaId, banco }
+}
+```
+
+- [ ] **Step 4: Rodar e ver passar** — `npx vitest run src/domain/notificacao.test.ts` → PASS
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add app/src/domain && git commit -m "feat(domain): interpretador de notificacao bancaria"
+```
+
+---
+
 ## Self-Review (spec × plano)
+
+- §11 do spec (ideias do Kontto): onboarding e checklist → Tasks 9-10; privacidade e restaurar → Tasks 10 e 13; parser de notificação → Task 14; captura nativa → fase APK, sem tarefa neste plano.
 
 - §4 modelo de dados → Task 1 (tipos), 7 (Dexie). `essencial`, `status`, `origemId` incluídos.
 - §5 regras (sobras, saldo, previsto, saldo seguro, renda esperada, custo essencial, reserva, amortização) → Tasks 2–4, testadas.

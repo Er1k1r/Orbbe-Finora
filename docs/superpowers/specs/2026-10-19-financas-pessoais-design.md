@@ -101,9 +101,15 @@ Meta: menos de 10 s e 3 toques.
 
 **Dívidas**: lista com saldo, parcela e prazo; detalhe com simulador lado a lado (atual × com aporte).
 
-**Primeiro uso**: pergunta as fontes de renda por exemplos ("Salário fixo", "Vendas / negócio próprio",
-"Bicos e extras") e cria a primeira conta. Renda variável/eventual mostra orçamento conservador e meta
-de reserva maior.
+**Primeiro uso** (3 perguntas, sem cadastro): tela inicial "Controle seus gastos. Fácil assim." com aviso de
+privacidade e opção "Já uso · Restaurar backup". Pergunta 1: "O que você quer resolver primeiro?" (seleção
+múltipla: pra onde vai o dinheiro, não estourar o mês, contas e parcelas em dia, juntar pra uma meta); as
+respostas definem a ordem e os cartões do Resumo. Pergunta 2: fontes de renda por exemplo ("Salário fixo",
+"Vendas / negócio próprio", "Bicos e extras"). Pergunta 3: saldo atual (cria a primeira conta). Renda
+variável/eventual mostra orçamento conservador e meta de reserva maior.
+
+**Checklist "Vamos começar"** no Resumo enquanto houver passo pendente: criar conta, registrar o primeiro
+gasto, cadastrar a renda, cadastrar um financiamento (ou "Não tenho financiamento"). Pode ser dispensado.
 
 **Backup**: exportar/importar JSON.
 
@@ -141,3 +147,18 @@ difusas, sem bordas cinza duras. Tema claro e escuro, ambos de primeira classe.
 - Dado local se perde ao trocar de celular sem backup → lembrete periódico de exportar.
 - Limites dos insights podem não servir a todos os perfis → configuráveis desde a v1.
 - Arredondamento de centavos nas parcelas: armazenar valores em centavos (inteiros) em todo o motor.
+
+## 11. Ideias incorporadas do Kontto (2026-10-23)
+
+- **v1:** onboarding em 3 perguntas com objetivos, checklist inicial, cartão de privacidade ("nada sai do
+  celular") e restaurar backup na abertura. Objetivos e estado do checklist ficam em `localStorage`
+  (preferências por aparelho); dados financeiros continuam no Dexie e no backup.
+- **v1, motor:** interpretador de notificação bancária (`interpretarNotificacao`): texto de notificação →
+  valor, tipo, estabelecimento, categoria sugerida e banco; devolve `null` para apps que não são de banco
+  conhecido e para textos sem valor ou sem direção (ex.: fatura fechada). Testado com textos reais.
+- **Fase APK (fora da v1):** captura automática exige app nativo Android (Capacitor + serviço de acesso a
+  notificações; um PWA não lê notificações de outros apps). Requisitos já definidos: o lançamento capturado
+  entra como sugestão e só é salvo após confirmação do usuário; tela de "Acesso bloqueado" com passo a passo
+  para reativar a permissão e aviso de que a captura fica pausada enquanto bloqueada; desligável a qualquer
+  momento; nenhum dado sai do aparelho; evitar lançamento duplicado quando a mesma compra for registrada
+  à mão; validar os nomes de pacote dos bancos em aparelho real.
