@@ -55,6 +55,17 @@ describe('gerarRecorrentes', () => {
     const { copias } = gerarRecorrentes(semSetembro, '2026-11-02')
     expect(copias.map((c) => c.data)).toEqual(['2026-11-05'])
   })
+  it('nunca emite cópia cujo id determinístico já existe (modelo sem geradoAte, cópia movida)', () => {
+    // usuário moveu a cópia de setembro para outubro e mudou o valor; o modelo perdeu o geradoAte
+    const movida: Lancamento = {
+      ...modelo, id: 'm1:2026-09', origemId: 'm1', recorrencia: undefined,
+      data: '2026-10-20', valor: 99000, status: 'pago',
+    }
+    const { copias, modelos } = gerarRecorrentes([modelo, movida], '2026-10-19')
+    expect(copias.map((c) => c.id)).not.toContain('m1:2026-09')
+    expect(copias).toEqual([])
+    expect(modelos).toEqual([{ ...modelo, geradoAte: '2026-10' }])
+  })
   it('chamar duas vezes com as mesmas entradas dá ids idênticos (StrictMode)', () => {
     const a = gerarRecorrentes([modelo], '2026-10-19')
     const b = gerarRecorrentes([modelo], '2026-10-19')
