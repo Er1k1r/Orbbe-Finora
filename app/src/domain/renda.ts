@@ -38,7 +38,7 @@ export function custoEssencial(
   const meses = [...mesesAnteriores(mes, 3), mes]
   const totais = meses
     .map((m) =>
-      lancs.filter((l) => l.tipo === 'saida' && essenciais.has(l.categoriaId) && mesDe(l.data) === m),
+      lancs.filter((l) => l.tipo === 'saida' && !l.financiamentoId && essenciais.has(l.categoriaId) && mesDe(l.data) === m),
     )
     .filter((ls) => ls.length > 0)
     .map((ls) => ls.reduce((s, l) => s + l.valor, 0))

@@ -49,8 +49,43 @@ describe('resumoMes', () => {
   it('saldo, previsto e saldo seguro', () => {
     // saldo = 100000 + 300000 - 80000 - 5000 = 315000
     expect(r.saldo).toBe(315000)
-    expect(r.previsto).toBe(315000 + 10000 - 20000)
-    expect(r.saldoSeguro).toBe(315000 - 20000)
+    // parcela do mês (31200) ainda não paga entra em previsto e saldoSeguro
+    expect(r.parcelasPendentes).toBe(31200)
+    expect(r.previsto).toBe(315000 + 10000 - 20000 - 31200)
+    expect(r.saldoSeguro).toBe(315000 - 20000 - 31200)
     expect(r.inicial).toBe(100000 - 5000)
+  })
+})
+
+describe('parcelas de financiamento no saldo (financiamentoId)', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  // SAC 3.600.000 / 24 = 150.000 amortização + 1% de 3.600.000 = 36.000 juros => parcela 186.000
+  const grande: Financiamento = { ...fin, saldoDevedor: 3600000, prazoRestante: 24 }
+  const entrada = l({ tipo: 'entrada', valor: 500000 })
+  const resumo = (ls: Lancamento[]) =>
+    resumoMes({ mes: '2026-10', contas: [conta2], lancamentos: ls, financiamentos: [grande], aporteExtra: 0 })
+  it('parcela do mês', () => expect(parcelaDoMes(grande)).toBe(186000))
+  it('(a) nada registrado: parcela pendente reduz previsto e saldoSeguro', () => {
+    const r = resumo([entrada])
+    expect(r.sobraNormal).toBe(500000 - 186000) // 314.000
+    expect(r.saldo).toBe(1500000)
+    expect(r.parcelasPendentes).toBe(186000)
+    expect(r.previsto).toBe(1500000 - 186000) // 1.314.000
+    expect(r.saldoSeguro).toBe(1314000)
+  })
+  it('(b) saída paga com financiamentoId não conta em dobro', () => {
+    const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1' })])
+    expect(r.despesas).toBe(0)
+    expect(r.sobraNormal).toBe(314000)
+    expect(r.saldo).toBe(1314000)
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.previsto).toBe(1314000)
+    expect(r.saldoSeguro).toBe(1314000)
+  })
+  it('(c) saída pendente com financiamentoId é excluída das despesas pendentes', () => {
+    const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1', status: 'pendente' })])
+    expect(r.despesasPendentes).toBe(0)
+    expect(r.parcelasPendentes).toBe(186000)
+    expect(r.previsto).toBe(1314000)
   })
 })

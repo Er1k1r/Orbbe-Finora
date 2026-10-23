@@ -50,4 +50,11 @@ describe('custoEssencial', () => {
     const ls = [s('mor', '2026-09-01', 100000), s('mor', '2026-10-01', 120000), s('laz', '2026-10-02', 50000)]
     expect(custoEssencial(ls, cats, 30000, '2026-10')).toBe(110000 + 30000)
   })
+  it('ignora saída com financiamentoId (parcela já somada à parte)', () => {
+    const base = [s('mor', '2026-10-01', 120000)]
+    const pagamento = { ...s('mor', '2026-10-05', 62000), id: 'pg', financiamentoId: 'f1' }
+    expect(custoEssencial([...base, pagamento], cats, 30000, '2026-10'))
+      .toBe(custoEssencial(base, cats, 30000, '2026-10'))
+    expect(custoEssencial([...base, pagamento], cats, 30000, '2026-10')).toBe(120000 + 30000)
+  })
 })

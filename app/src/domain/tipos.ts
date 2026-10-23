@@ -41,6 +41,8 @@ export interface Lancamento {
   status: StatusLancamento
   recorrencia?: 'mensal'
   origemId?: string // lançamento-modelo de uma recorrência
+  financiamentoId?: string // marca o lançamento como pagamento da parcela deste financiamento
+  geradoAte?: Mes // marca d'água: recorrência já gerada até este mês (inclusive)
 }
 export interface Financiamento {
   id: string
