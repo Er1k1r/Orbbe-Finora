@@ -41,6 +41,8 @@ describe('criarParcelamento', () => {
   })
   it('erros em pt-BR', () => {
     expect(() => criarParcelamento({ ...entrada, total: 1 })).toThrow('Uma compra parcelada precisa de pelo menos 2 parcelas.')
+    expect(() => criarParcelamento({ ...entrada, total: 2.5, parcelaAtual: 1 })).toThrow('Uma compra parcelada precisa de pelo menos 2 parcelas.')
+    expect(() => criarParcelamento({ ...entrada, parcelaAtual: 4.5 })).toThrow('A parcela atual deve estar entre 1 e o total de parcelas.')
     expect(() => criarParcelamento({ ...entrada, parcelaAtual: 0 })).toThrow('A parcela atual deve estar entre 1 e o total de parcelas.')
     expect(() => criarParcelamento({ ...entrada, parcelaAtual: 13 })).toThrow('A parcela atual deve estar entre 1 e o total de parcelas.')
     expect(() => criarParcelamento({ ...entrada, valorParcela: 0 })).toThrow('O valor da parcela deve ser maior que zero.')
@@ -57,5 +59,8 @@ describe('resumoParcelamento', () => {
   it('ordena por número mesmo desordenado', () => {
     const r = resumoParcelamento([...criarParcelamento(entrada)].reverse())
     expect(r.ultimaData).toBe('2027-06-19')
+  })
+  it('grupo vazio', () => {
+    expect(resumoParcelamento([])).toEqual({ pagas: 0, restantes: 0, valorRestante: 0, ultimaData: undefined, total: 0 })
   })
 })
