@@ -100,3 +100,16 @@ describe('validarFinanciamento', () => {
     expect(validarFinanciamento({ ...ok, saldoDevedor: -1, prazoRestante: 0 })).toHaveLength(2)
   })
 })
+
+describe('overrides de parcela e amortização fixas', () => {
+  it('Price com parcelaFixa igual à calculada dá o mesmo cronograma', () => {
+    const base = gerarCronograma({ saldo: 100000, taxa: 0.01, prazo: 3, sistema: 'PRICE' })
+    const fixa = gerarCronograma({ saldo: 100000, taxa: 0.01, prazo: 3, sistema: 'PRICE', parcelaFixa: 34002 })
+    expect(fixa).toEqual(base)
+  })
+  it('SAC com amortizacaoFixa 30000 e prazo 10 termina em 4 parcelas', () => {
+    const c = gerarCronograma({ saldo: 120000, taxa: 0.01, prazo: 10, sistema: 'SAC', amortizacaoFixa: 30000 })
+    expect(c).toHaveLength(4)
+    expect(c[3].saldo).toBe(0)
+  })
+})

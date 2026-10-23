@@ -73,3 +73,13 @@ export interface PlanoAmortizacao {
   aporteExtraMensal: Centavos
   efeito: EfeitoAporte
 }
+
+export interface Contrato {
+  valorFinanciado: Centavos
+  valorParcela: Centavos // Price: parcela fixa; SAC: 1ª parcela
+  totalParcelas: number
+  sistema: SistemaAmortizacao
+  taxaMensal: number // calculada do carnê (taxaImplicita)
+  primeiraParcela: string // 'YYYY-MM-DD'
+  parcelasPagasAntes: number // pagas antes de usar o app (não geram lançamento)
+}

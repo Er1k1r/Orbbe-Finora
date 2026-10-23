@@ -16,6 +16,8 @@ export interface EntradaCronograma {
   sistema: SistemaAmortizacao
   aporte?: Centavos
   efeito?: EfeitoAporte
+  parcelaFixa?: Centavos // só PRICE
+  amortizacaoFixa?: Centavos // só SAC
 }
 
 function calcPmt(saldo: Centavos, taxa: number, n: number): Centavos {
@@ -55,8 +57,10 @@ export function gerarCronograma(e: EntradaCronograma): Parcela[] {
   const aporte = Number.isFinite(e.aporte) && (e.aporte as number) > 0 ? (e.aporte as number) : 0
   let saldo = e.saldo
   let restante = e.prazo
-  let pmt = sistema === 'PRICE' ? calcPmt(saldo, taxa, restante) : 0
-  let amortFixa = sistema === 'SAC' ? Math.round(saldo / restante) : 0
+  const fixaOk = (v?: number) => v !== undefined && Number.isSafeInteger(v) && v > 0
+  let pmt = sistema === 'PRICE' ? (fixaOk(e.parcelaFixa) ? (e.parcelaFixa as number) : calcPmt(saldo, taxa, restante)) : 0
+  let amortFixa =
+    sistema === 'SAC' ? (fixaOk(e.amortizacaoFixa) ? (e.amortizacaoFixa as number) : Math.round(saldo / restante)) : 0
   const out: Parcela[] = []
 
   while (saldo > 0 && out.length < 1200) {
