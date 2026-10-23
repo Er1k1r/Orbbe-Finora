@@ -125,6 +125,42 @@ describe('financiamentos', () => {
     const s = (x: number) => simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito: 'reduzir_prazo' })
     expect(i?.dados.economia).toBe(s(314000).economiaJuros - s(300000).economiaJuros)
   })
+  it('sobra_para_divida limita o aporte ao saldo devedor', () => {
+    // sobra = 10.000.000 - 62.000 = 9.938.000 > saldo devedor 1.200.000
+    const c = base({
+      financiamentos: [f('a', 0.01)],
+      lancamentos: [ent('2026-10-01', 10000000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    expect(achar(c, 'sobra_para_divida')?.dados.aporte).toBe(1200000)
+  })
+  it('meses economizados no texto são incrementais ao plano salvo', () => {
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 300000, efeito: 'reduzir_prazo' as const }
+    const c = base({
+      financiamentos: [f('a', 0.01)], planos: [plano],
+      lancamentos: [ent('2026-10-01', 376000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    const s = (x: number) => simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito: 'reduzir_prazo' })
+    const incremental = s(314000).mesesEconomizados - s(300000).mesesEconomizados
+    expect(incremental).not.toBe(s(314000).mesesEconomizados)
+    expect(achar(c, 'sobra_para_divida')?.detalhe).toContain(`e ${incremental} meses.`)
+  })
+  it('efeito segue o plano existente; sem plano usa reduzir_prazo', () => {
+    const s = (x: number, efeito: 'reduzir_prazo' | 'reduzir_parcela') =>
+      simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito })
+    const lancamentos = [ent('2026-10-01', 500000)]
+    const contas = [{ ...conta, saldoInicial: 50000000 }]
+    const comPlano = base({
+      financiamentos: [f('a', 0.01)], lancamentos, contas,
+      planos: [{ id: 'p1', financiamentoId: 'a', aporteExtraMensal: 0, efeito: 'reduzir_parcela' }],
+    })
+    const semPlano = base({ financiamentos: [f('a', 0.01)], lancamentos, contas })
+    // sobra = 500.000 - 62.000 = 438.000
+    expect(achar(comPlano, 'sobra_para_divida')?.dados.economia).toBe(s(438000, 'reduzir_parcela').economiaJuros)
+    expect(achar(semPlano, 'sobra_para_divida')?.dados.economia).toBe(s(438000, 'reduzir_prazo').economiaJuros)
+    expect(s(438000, 'reduzir_parcela').economiaJuros).not.toBe(s(438000, 'reduzir_prazo').economiaJuros)
+  })
   it('sobra_para_divida não dispara quando o plano já consome a sobra', () => {
     const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 314000, efeito: 'reduzir_prazo' as const }
     const c = base({ financiamentos: [f('a', 0.01)], planos: [plano], lancamentos: [ent('2026-10-01', 376000)] })
@@ -143,6 +179,17 @@ describe('financiamentos', () => {
   it('texto da taxa usa vírgula pt-BR', () => {
     const c = base({ financiamentos: [f('a', 0.0199), f('b', 0.01)] })
     expect(achar(c, 'divida_mais_cara')?.detalhe).toContain('1,99%')
+  })
+})
+
+describe('reserva_baixa: texto', () => {
+  it('usa vírgula decimal pt-BR nos meses cobertos', () => {
+    // essencial = 100.000 (alu paga em outubro); saldo = 670.000 - 100.000 = 570.000; meta 6 * 100.000
+    const c = base({
+      lancamentos: [sai('alu', '2026-10-05', 100000, 'fixo')],
+      contas: [{ ...conta, saldoInicial: 670000 }],
+    })
+    expect(gerarInsights(c).find((i) => i.tipo === 'reserva_baixa')?.detalhe).toContain('5,7 de 6 meses')
   })
 })
 

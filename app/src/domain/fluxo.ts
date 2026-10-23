@@ -46,15 +46,18 @@ export function resumoMes(e: EntradaResumo) {
   // Pagamentos de parcela (financiamentoId de financiamento existente) já estão em `parcelas`.
   const saidas = doMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids))
   const parcelas = e.financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0)
-  const parcelasPendentes = e.financiamentos.reduce((s, f) => {
+  let parcelasPendentes = 0
+  let excessoParcelas = 0 // pago acima da parcela do mês: gasto comum, não some da sobra
+  for (const f of e.financiamentos) {
     const pago = soma(
       doMes.filter((l) => l.financiamentoId === f.id && l.tipo === 'saida' && l.status === 'pago'),
     )
-    return s + Math.max(0, parcelaDoMes(f) - pago)
-  }, 0)
+    parcelasPendentes += Math.max(0, parcelaDoMes(f) - pago)
+    excessoParcelas += Math.max(0, pago - parcelaDoMes(f))
+  }
 
   const receitas = soma(entradas)
-  const despesas = soma(saidas)
+  const despesas = soma(saidas) + excessoParcelas
   const sobraNormal = receitas - despesas - parcelas
 
   const saldo = saldoContas(e.contas, e.lancamentos, fimDoMes(e.mes))

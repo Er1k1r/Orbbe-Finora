@@ -72,6 +72,17 @@ describe('backup: importação segura', () => {
       await rejeita({ lancamentos: [{ ...lanc, data: '01/10/2026' }] })
       await rejeita({ lancamentos: [{ ...lanc, geradoAte: '2026-10-01' }] })
     })
+    it('data impossível ou geradoAte com mês inválido', async () => {
+      await rejeita({ lancamentos: [{ ...lanc, data: '2026-13-45' }] })
+      await rejeita({ lancamentos: [{ ...lanc, data: '2026-00-10' }] })
+      await rejeita({ lancamentos: [{ ...lanc, data: '2026-02-30' }] })
+      await rejeita({ lancamentos: [{ ...lanc, data: '2026-04-31' }] })
+      await rejeita({ lancamentos: [{ ...lanc, geradoAte: '2026-13' }] })
+    })
+    it('aceita datas reais, inclusive 29/02 de ano bissexto', async () => {
+      await importar(JSON.stringify({ versao: 1, ...vazio, lancamentos: [{ ...lanc, data: '2028-02-29', geradoAte: '2028-12' }] }))
+      expect(await repo.lancamentos.listar()).toHaveLength(1)
+    })
     it('enums inválidos', async () => {
       await rejeita({ lancamentos: [{ ...lanc, status: 'quitado' }] })
       await rejeita({ lancamentos: [{ ...lanc, recorrencia: 'anual' }] })

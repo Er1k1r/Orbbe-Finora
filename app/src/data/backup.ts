@@ -22,7 +22,13 @@ const ehTexto = (v: unknown) => typeof v === 'string'
 const ehBool = (v: unknown) => typeof v === 'boolean'
 const ehEnum = (...vals: string[]) => (v: unknown) => typeof v === 'string' && vals.includes(v)
 const ehFinitoMin0 = (v: unknown) => typeof v === 'number' && Number.isFinite(v) && v >= 0
-const ehRegex = (re: RegExp) => (v: unknown) => typeof v === 'string' && re.test(v)
+const ehDataReal = (v: unknown) => {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return false
+  const [a, m, d] = v.split('-').map(Number)
+  if (m < 1 || m > 12 || d < 1) return false
+  return d <= new Date(Date.UTC(a, m, 0)).getUTCDate()
+}
+const ehMesReal = (v: unknown) => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v)
 
 type Regra = (v: unknown) => boolean
 // Campos obrigatórios e opcionais (opcionais só são checados quando presentes e != undefined).
@@ -44,13 +50,13 @@ const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string,
   },
   lancamentos: {
     obrig: {
-      valor: ehIntMin(0), data: ehRegex(/^\d{4}-\d{2}-\d{2}$/), tipo: ehEnum('entrada', 'saida'),
+      valor: ehIntMin(0), data: ehDataReal, tipo: ehEnum('entrada', 'saida'),
       categoriaId: ehTexto, natureza: ehEnum('fixo', 'variavel'), contaId: ehTexto,
       status: ehEnum('pago', 'pendente'),
     },
     opc: {
       fonteId: ehTexto, observacao: ehTexto, origemId: ehTexto, financiamentoId: ehTexto,
-      recorrencia: ehEnum('mensal'), geradoAte: ehRegex(/^\d{4}-\d{2}$/),
+      recorrencia: ehEnum('mensal'), geradoAte: ehMesReal,
     },
   },
   financiamentos: {

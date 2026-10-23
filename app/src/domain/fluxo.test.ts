@@ -88,6 +88,27 @@ describe('parcelas de financiamento no saldo (financiamentoId)', () => {
     expect(r.parcelasPendentes).toBe(186000)
     expect(r.previsto).toBe(1314000)
   })
+  const f2: Financiamento = { ...grande, id: 'f2' }
+  const resumo2 = (ls: Lancamento[], mes = '2026-10') =>
+    resumoMes({ mes, contas: [conta2], lancamentos: ls, financiamentos: [grande, f2], aporteExtra: 0 })
+  it('(f) pagamento vinculado a um financiamento não abate a parcela de outro', () => {
+    const r = resumo2([entrada, l({ valor: 186000, financiamentoId: 'f1' })])
+    expect(r.parcelas).toBe(372000)
+    expect(r.parcelasPendentes).toBe(186000) // só f2 segue pendente
+  })
+  it('(g) pagamento acima da parcela zera as pendentes (sem negativo) e o excesso vira despesa', () => {
+    const r = resumo([entrada, l({ valor: 200000, financiamentoId: 'f1' })])
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(14000)
+    expect(r.sobraNormal).toBe(500000 - 14000 - 186000) // 300.000
+    expect(r.saldo).toBe(1300000)
+    expect(r.previsto).toBe(1300000)
+  })
+  it('(h) pagamento de outro mês não abate a parcela do mês visto', () => {
+    const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1', data: '2026-09-10' })])
+    expect(r.parcelasPendentes).toBe(186000)
+    expect(r.despesas).toBe(0)
+  })
   it('(d) parcela pendente de mês anterior continua devida em previsto e saldoSeguro', () => {
     const atrasada = l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-09-10' })
     const r = resumo([entrada, atrasada])

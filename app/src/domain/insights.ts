@@ -132,7 +132,8 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
     financiamentos: ctx.financiamentos, aporteExtra: aporteExistente,
   })
   if (maisCara && resumo.sobraOtimizada > 0) {
-    const aporte = reservaOk ? resumo.sobraOtimizada : Math.round(resumo.sobraOtimizada / 2)
+    const sugerido = reservaOk ? resumo.sobraOtimizada : Math.round(resumo.sobraOtimizada / 2)
+    const aporte = Math.min(sugerido, maisCara.saldoDevedor) // nunca além do saldo da dívida
     const planosDela = ctx.planos.filter((p) => p.financiamentoId === maisCara.id)
     const existente = planosDela.reduce((s, p) => s + p.aporteExtraMensal, 0)
     const efeito = planosDela[0]?.efeito ?? 'reduzir_prazo'
