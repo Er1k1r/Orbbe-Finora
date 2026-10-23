@@ -109,6 +109,31 @@ describe('parcelas de financiamento no saldo (financiamentoId)', () => {
   })
 })
 
+describe('financiamentoId órfão (financiamento apagado)', () => {
+  const r = (ls: Lancamento[], fs: Financiamento[] = []) =>
+    resumoMes({ mes: '2026-10', contas: [conta], lancamentos: ls, financiamentos: fs, aporteExtra: 0 })
+  it('saída paga órfã é despesa comum e reduz a sobra', () => {
+    const x = r([l({ valor: 50000, financiamentoId: 'apagado' })])
+    expect(x.despesas).toBe(50000)
+    expect(x.sobraNormal).toBe(-50000)
+    expect(x.saldo).toBe(50000)
+  })
+  it('saída pendente órfã entra nas despesas pendentes e em previsto', () => {
+    const x = r([l({ valor: 50000, financiamentoId: 'apagado', status: 'pendente' })])
+    expect(x.despesasPendentes).toBe(50000)
+    expect(x.previsto).toBe(50000)
+  })
+  it('órfã de mês anterior pendente não vira parcela atrasada, só despesa pendente', () => {
+    const x = r([l({ valor: 50000, financiamentoId: 'apagado', status: 'pendente', data: '2026-09-10' })])
+    expect(x.parcelasAtrasadas).toBe(0)
+    expect(x.despesasPendentes).toBe(50000)
+  })
+  it('com o financiamento existente continua sendo vínculo', () => {
+    const x = r([l({ valor: 31200, financiamentoId: 'f1' })], [fin])
+    expect(x.despesas).toBe(0)
+  })
+})
+
 describe('saldo até o fim do mês visualizado', () => {
   const c = { ...conta, saldoInicial: 100000 }
   const ls = [

@@ -40,10 +40,11 @@ export interface EntradaResumo {
 }
 
 export function resumoMes(e: EntradaResumo) {
+  const ids = new Set(e.financiamentos.map((f) => f.id))
   const doMes = e.lancamentos.filter((l) => mesDe(l.data) === e.mes)
   const entradas = doMes.filter((l) => l.tipo === 'entrada')
-  // Pagamentos de parcela (financiamentoId) já estão representados em `parcelas`.
-  const saidas = doMes.filter((l) => l.tipo === 'saida' && !l.financiamentoId)
+  // Pagamentos de parcela (financiamentoId de financiamento existente) já estão em `parcelas`.
+  const saidas = doMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids))
   const parcelas = e.financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0)
   const parcelasPendentes = e.financiamentos.reduce((s, f) => {
     const pago = soma(
@@ -59,11 +60,11 @@ export function resumoMes(e: EntradaResumo) {
   const saldo = saldoContas(e.contas, e.lancamentos, fimDoMes(e.mes))
   const ateMes = e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente')
   const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
-  const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !l.financiamentoId))
+  const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids)))
   const antes = e.lancamentos.filter((l) => mesDe(l.data) < e.mes)
   // Parcela pendente de mês anterior continua devida (a do mês visto já está em parcelasPendentes).
   const parcelasAtrasadas = soma(
-    antes.filter((l) => l.tipo === 'saida' && l.financiamentoId && l.status === 'pendente'),
+    antes.filter((l) => ehPagamentoParcela(l, ids) && l.status === 'pendente'),
   )
 
   return {

@@ -1,3 +1,4 @@
+import { ehPagamentoParcela } from './fluxo'
 import { mesDe, mesesAnteriores } from './meses'
 import type { Categoria, Centavos, FonteDeRenda, Lancamento, Mes } from './tipos'
 
@@ -42,12 +43,14 @@ export function reservaAlvoMeses(fontes: FonteDeRenda[]): 6 | 12 {
 
 export function custoEssencial(
   lancs: Lancamento[], categorias: Categoria[], parcelas: Centavos, mes: Mes,
+  financiamentoIds: Iterable<string>,
 ): Centavos {
+  const ids = new Set(financiamentoIds)
   const essenciais = new Set(categorias.filter((c) => c.essencial).map((c) => c.id))
   const meses = [...mesesAnteriores(mes, 3), mes]
   const totais = meses
     .map((m) =>
-      lancs.filter((l) => l.tipo === 'saida' && !l.financiamentoId && essenciais.has(l.categoriaId) && mesDe(l.data) === m),
+      lancs.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids) && essenciais.has(l.categoriaId) && mesDe(l.data) === m),
     )
     .filter((ls) => ls.length > 0)
     .map((ls) => ls.reduce((s, l) => s + l.valor, 0))

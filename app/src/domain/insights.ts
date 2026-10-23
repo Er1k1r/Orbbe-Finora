@@ -109,7 +109,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
 
   // 4. reserva baixa
   const saldo = saldoContas(ctx.contas, ctx.lancamentos)
-  const essencial = custoEssencial(ctx.lancamentos, ctx.categorias, parcelas, ctx.mes)
+  const essencial = custoEssencial(ctx.lancamentos, ctx.categorias, parcelas, ctx.mes, idsFin)
   const meses = reservaAlvoMeses(ctx.fontes)
   const meta = essencial * meses
   const reservaOk = essencial > 0 && saldo >= meta
