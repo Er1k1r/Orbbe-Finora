@@ -162,3 +162,51 @@ difusas, sem bordas cinza duras. Tema claro e escuro, ambos de primeira classe.
   para reativar a permissão e aviso de que a captura fica pausada enquanto bloqueada; desligável a qualquer
   momento; nenhum dado sai do aparelho; evitar lançamento duplicado quando a mesma compra for registrada
   à mão; validar os nomes de pacote dos bancos em aparelho real.
+
+## 12. Motor v1.1 — decisões do dono (2026-10-23)
+
+Substitui o que conflitar nas seções 4 a 7. Tudo continua em centavos, local, sem migração de dados (o app
+ainda não foi publicado: banco e backup sobem para a versão 2).
+
+### 12.1 Financiamento como contrato
+- Cadastro pelo carnê: nome, valor financiado, valor da parcela (Price: fixa; SAC: a 1ª), total de parcelas,
+  data da 1ª parcela, sistema, parcelas pagas antes de usar o app. A **taxa mensal é calculada** (taxa implícita;
+  Price por cálculo numérico, SAC = (1ª parcela − valor ÷ n) ÷ valor). Se o usuário informar uma taxa que não bate
+  com o carnê, o app avisa e usa a do carnê.
+- Estado derivado do contrato + pagamentos ligados (lançamento com `financiamentoId` e tipo `parcela` ou
+  `antecipacao`): cronograma original, parcelas pagas, saldo devedor, juros pagos, juros a pagar, total do
+  contrato, valor para quitar hoje (= saldo devedor) e **desconto por quitar** (parcelas restantes − valor
+  presente à taxa do contrato), e valor/desconto para **antecipar as últimas N parcelas**. Exibido como estimativa
+  (CDC art. 52 §2; o banco pode somar IOF, seguro, tarifas).
+- Pagar parcela reduz o saldo devedor; antecipação abate o saldo e encurta o prazo.
+- A parcela de cada mês segue o calendário do contrato (mês passado mostra a parcela daquele mês; depois da última,
+  zero); parcelas vencidas e não pagas contam como atrasadas no previsto e no saldo seguro.
+
+### 12.2 Compra parcelada
+Valor da parcela, total de parcelas e qual é a parcela deste mês (ex.: óculos R$ 50 × 12, esta é a 4/12): o app cria
+da parcela atual até a última, uma por mês (atual com o status escolhido, futuras pendentes). Parcelas anteriores à
+adoção do app não são criadas. Mostra quantas faltam, o valor restante e o mês da última.
+
+### 12.3 Contas: cheque especial, reserva, transferência, ajuste
+- Saldo pode ser negativo (inclusive o inicial). Campos opcionais: limite e taxa do cheque especial; marca "reserva".
+- Insight "conta negativa": "Conta X negativa em R$ Y. Se no banco ela não está negativa, falta lançar alguma
+  entrada." (com juro estimado se houver taxa) e aviso de "vai ficar negativa até o fim do mês" pelo previsto da conta.
+- **Conferir saldo**: o usuário informa o saldo real; o app mostra a diferença e pode lançar um **ajuste**.
+- **Transferência** entre contas: par saída/entrada ligado. Ajuste e transferência mexem no saldo, mas nunca em
+  receita, despesa, sobra, renda, custo essencial ou insights.
+- Reserva de emergência = saldo das contas marcadas como reserva; sem nenhuma marcada, todas (com dica para marcar).
+
+### 12.4 Custo essencial com lançados e futuros
+Custo essencial do mês = essenciais lançados (pagos e pendentes, sem movimentos internos nem pagamentos de
+financiamento) + recorrências essenciais que ainda vão cair no mês + parcelas de financiamento do mês + para cada
+categoria essencial variável, o que falta para chegar à média dos 3 meses anteriores. A reserva alvo usa a média
+projetada do mês atual e dos 2 seguintes (6 ou 12 meses por perfil, como antes).
+
+### 12.5 Comprometido nos próximos meses
+Projeção de 6 meses dos compromissos já programados (financiamentos pelo contrato, compras parceladas, recorrências,
+outros pendentes), total por mês e lista de términos ("óculos termina em jun/27").
+
+### 12.6 Ajustes menores
+Recorrência com fim (`recorrenciaAte`; cancelar = encerrar no mês atual); campo `descricao` no lançamento;
+pedido de armazenamento persistente ao navegador com status na tela de Backup; categorias de sistema
+(transferência, ajuste) fora da grade de lançamento.
