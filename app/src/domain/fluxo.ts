@@ -1,0 +1,58 @@
+import { gerarCronograma } from './amortizacao'
+import { mesDe } from './meses'
+import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
+
+const sinal = (l: Lancamento) => (l.tipo === 'entrada' ? l.valor : -l.valor)
+const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
+
+export function saldoContas(contas: Conta[], lancs: Lancamento[]): Centavos {
+  const inicial = contas.reduce((s, c) => s + c.saldoInicial, 0)
+  return inicial + lancs.filter((l) => l.status === 'pago').reduce((s, l) => s + sinal(l), 0)
+}
+
+export function parcelaDoMes(f: Financiamento): Centavos {
+  return (
+    gerarCronograma({
+      saldo: f.saldoDevedor, taxa: f.taxaMensal, prazo: f.prazoRestante, sistema: f.sistema,
+    })[0]?.parcela ?? 0
+  )
+}
+
+export interface EntradaResumo {
+  mes: Mes
+  contas: Conta[]
+  lancamentos: Lancamento[]
+  financiamentos: Financiamento[]
+  aporteExtra: Centavos
+}
+
+export function resumoMes(e: EntradaResumo) {
+  const doMes = e.lancamentos.filter((l) => mesDe(l.data) === e.mes)
+  const entradas = doMes.filter((l) => l.tipo === 'entrada')
+  const saidas = doMes.filter((l) => l.tipo === 'saida')
+  const parcelas = e.financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0)
+
+  const receitas = soma(entradas)
+  const despesas = soma(saidas)
+  const sobraNormal = receitas - despesas - parcelas
+
+  const saldo = saldoContas(e.contas, e.lancamentos)
+  const ateMes = e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente')
+  const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
+  const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida'))
+  const antes = e.lancamentos.filter((l) => mesDe(l.data) < e.mes)
+
+  return {
+    receitas,
+    despesas,
+    parcelas,
+    receitasPendentes,
+    despesasPendentes,
+    sobraNormal,
+    sobraOtimizada: sobraNormal - e.aporteExtra,
+    saldo,
+    inicial: saldoContas(e.contas, antes),
+    previsto: saldo + receitasPendentes - despesasPendentes,
+    saldoSeguro: saldo - despesasPendentes,
+  }
+}
