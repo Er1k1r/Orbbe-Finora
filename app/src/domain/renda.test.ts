@@ -27,12 +27,38 @@ describe('rendaEsperada', () => {
   })
 })
 
+describe('rendaEsperada: histórico da renda variável', () => {
+  const v = [fonte({ id: 'v', tipo: 'variavel', valorEsperado: 300000 })]
+  it('meses vazios depois do primeiro recebimento contam como zero', () => {
+    // janela [jul 300000, ago 0, set 0]: média 100000, mediana 0 → 0
+    expect(rendaEsperada(v, [ent('v', '2026-07-05', 300000)], '2026-10')).toBe(0)
+  })
+  it('meses antes do primeiro recebimento ficam fora da janela', () => {
+    // janela [set 90000] → 90000
+    expect(rendaEsperada(v, [ent('v', '2026-09-05', 90000)], '2026-10')).toBe(90000)
+  })
+  it('entrada pendente (não recebida) é ignorada', () => {
+    const pendente = { ...ent('v', '2026-09-05', 90000), status: 'pendente' as const }
+    expect(rendaEsperada(v, [pendente], '2026-10')).toBe(300000)
+  })
+  it('entradas de outra fonte não vazam', () => {
+    const ls = [ent('outra', '2026-07-05', 999999), ent('v', '2026-09-05', 90000)]
+    expect(rendaEsperada(v, ls, '2026-10')).toBe(90000)
+  })
+  it('recebimentos do próprio mês ou posteriores não entram no histórico', () => {
+    expect(rendaEsperada(v, [ent('v', '2026-10-05', 90000)], '2026-10')).toBe(300000)
+  })
+})
+
 describe('reservaAlvoMeses', () => {
   it('fixa dominante → 6', () => {
     expect(reservaAlvoMeses([fonte({ valorEsperado: 600000 }), fonte({ id: 'v', tipo: 'variavel', valorEsperado: 200000 })])).toBe(6)
   })
   it('variável dominante → 12', () => {
     expect(reservaAlvoMeses([fonte({ valorEsperado: 100000 }), fonte({ id: 'v', tipo: 'variavel', valorEsperado: 400000 })])).toBe(12)
+  })
+  it('exatamente 50% fixa → 6', () => {
+    expect(reservaAlvoMeses([fonte({ valorEsperado: 500000 }), fonte({ id: 'v', tipo: 'variavel', valorEsperado: 500000 })])).toBe(6)
   })
   it('sem fontes → 12', () => expect(reservaAlvoMeses([])).toBe(12))
 })

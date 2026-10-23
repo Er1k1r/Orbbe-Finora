@@ -14,11 +14,20 @@ export function rendaEsperada(fontes: FonteDeRenda[], lancs: Lancamento[], mes: 
   for (const f of fontes) {
     if (f.tipo === 'fixa') total += f.valorEsperado
     else if (f.tipo === 'variavel') {
+      // Só entradas efetivamente recebidas da fonte, antes do mês consultado.
+      const pagas = lancs.filter(
+        (l) => l.fonteId === f.id && l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) < mes,
+      )
+      if (pagas.length === 0) {
+        total += f.valorEsperado
+        continue
+      }
+      const primeiro = pagas.reduce((m, l) => (mesDe(l.data) < m ? mesDe(l.data) : m), mesDe(pagas[0].data))
+      // Meses sem recebimento dentro da janela (a partir do primeiro recebimento) contam como 0.
       const porMes = anteriores
-        .map((m) => lancs.filter((l) => l.fonteId === f.id && l.tipo === 'entrada' && mesDe(l.data) === m))
-        .filter((ls) => ls.length > 0)
-        .map((ls) => ls.reduce((s, l) => s + l.valor, 0))
-      total += porMes.length === 0 ? f.valorEsperado : Math.round(Math.min(media(porMes), mediana(porMes)))
+        .filter((m) => m >= primeiro)
+        .map((m) => pagas.filter((l) => mesDe(l.data) === m).reduce((s, l) => s + l.valor, 0))
+      total += Math.round(Math.min(media(porMes), mediana(porMes)))
     }
   }
   return total
