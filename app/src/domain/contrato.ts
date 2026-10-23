@@ -36,7 +36,12 @@ export interface EstadoContrato {
   antecipado: Centavos
   restantes: ParcelaContrato[] // `numero` = posição no contrato
   pagas: ParcelaContrato[] // passos regulares reproduzidos (pagas antes do app e pagamentos), com o numero do contrato
-  aplicados: { data: string; valor: Centavos; numero: number; valorParcela: Centavos; excesso: Centavos }[] // pagamentos 'parcela' ligados
+  /**
+   * Pagamentos ligados aplicados. Pagamento sem parcela para consumir ('parcela' com contrato quitado/além do total)
+   * ou antecipação com saldo já zerado entra com `numero: 0`, `valorParcela: 0` e `excesso = valor`,
+   * para o dinheiro continuar aparecendo como despesa no mês (nunca some do fluxo).
+   */
+  aplicados: { data: string; valor: Centavos; numero: number; valorParcela: Centavos; excesso: Centavos; tipo: PagamentoFinanciamento }[]
   jurosAPagar: Centavos
   totalContrato: Centavos
   restanteNominal: Centavos
@@ -78,14 +83,19 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
     .filter((p) => p.status === 'pago' && (ate === undefined || p.data <= ate))
     .sort((a, b) => a.data.localeCompare(b.data))
   for (const p of validos) {
-    if (saldo <= 0) break
     if (p.tipo === 'antecipacao') {
+      if (saldo <= 0) {
+        aplicados.push({ data: p.data, valor: p.valor, numero: 0, valorParcela: 0, excesso: p.valor, tipo: 'antecipacao' })
+        continue
+      }
       const v = Math.min(p.valor, saldo)
       saldo -= v
       antecipado += v
     } else {
       const passo = passoRegular()
-      if (passo) aplicados.push({ data: p.data, valor: p.valor, numero: passo.numero, valorParcela: passo.parcela, excesso: Math.max(0, p.valor - passo.parcela) })
+      aplicados.push(passo
+        ? { data: p.data, valor: p.valor, numero: passo.numero, valorParcela: passo.parcela, excesso: Math.max(0, p.valor - passo.parcela), tipo: 'parcela' }
+        : { data: p.data, valor: p.valor, numero: 0, valorParcela: 0, excesso: p.valor, tipo: 'parcela' })
     }
   }
   const restantes = cronograma(c, saldo, c.totalParcelas - pagas).map((p, i) => ({

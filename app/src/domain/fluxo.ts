@@ -68,9 +68,14 @@ export function resumoMes(e: EntradaResumo) {
     parcelasAtrasadas += atrasadasDe(estado, e.mes)
   }
   // Antecipações pagas no mês: reduzem o saldo (já são saídas pagas), mas não são despesa nem mexem na sobra.
-  const antecipacoes = soma(
-    doMes.filter((l) => ehPagamentoParcela(l, ids) && l.status === 'pago' && l.pagamentoFinanciamento === 'antecipacao'),
-  )
+  // Antecipação sem saldo para abater (contrato já zerado) vira excesso/despesa, não antecipação.
+  const antecipacoes =
+    soma(doMes.filter((l) => ehPagamentoParcela(l, ids) && l.status === 'pago' && l.pagamentoFinanciamento === 'antecipacao')) -
+    e.financiamentos.reduce(
+      (s, f) => s + estadoFinanciamento(f, e.lancamentos, fimDoMes(e.mes)).aplicados
+        .filter((a) => a.tipo === 'antecipacao' && mesDe(a.data) === e.mes).reduce((t, a) => t + a.excesso, 0),
+      0,
+    )
 
   const receitas = soma(entradas)
   const despesas = soma(saidas) + excessoParcelas

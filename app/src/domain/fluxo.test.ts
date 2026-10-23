@@ -242,6 +242,30 @@ describe('pendente e excesso pelo estado do contrato', () => {
   })
 })
 
+describe('pagamento ligado sem parcela para consumir', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  // SAC 200000/1%/2 em 2026-10-05: #1 = 100000 + 2000 = 102000; #2 = 100000 + 1000 = 101000
+  const dois: Financiamento = { ...fin, ...contratoDe(200000, 0.01, 2) }
+  const pgs = [
+    l({ valor: 102000, financiamentoId: 'f1', data: '2026-10-05' }),
+    l({ valor: 101000, financiamentoId: 'f1', data: '2026-11-05' }),
+  ]
+  const ver = (ls: Lancamento[]) => resumoMes({ mes: '2026-12', contas: [conta2], lancamentos: ls, financiamentos: [dois], aporteExtra: 0 })
+  it('terceira parcela de um contrato de 2 entra como despesa (50.000) e reduz a sobra', () => {
+    const r = ver([...pgs, l({ valor: 50000, financiamentoId: 'f1', data: '2026-12-05' })])
+    expect(r.parcelas).toBe(0)
+    expect(r.despesas).toBe(50000)
+    expect(r.sobraNormal).toBe(-50000)
+    expect(r.saldo).toBe(1000000 - 102000 - 101000 - 50000)
+  })
+  it('antecipação com saldo zerado entra como despesa (30.000), não em antecipacoes', () => {
+    const r = ver([...pgs, l({ valor: 30000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-12-10' })])
+    expect(r.despesas).toBe(30000)
+    expect(r.antecipacoes).toBe(0)
+    expect(r.sobraNormal).toBe(-30000)
+  })
+})
+
 describe('financiamentoId órfão (financiamento apagado)', () => {
   const r = (ls: Lancamento[], fs: Financiamento[] = []) =>
     resumoMes({ mes: '2026-10', contas: [conta], lancamentos: ls, financiamentos: fs, aporteExtra: 0 })

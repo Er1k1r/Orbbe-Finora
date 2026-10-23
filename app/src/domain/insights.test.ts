@@ -108,6 +108,27 @@ describe('regra 5 simula a partir do estado do contrato', () => {
   })
 })
 
+describe('regra 5 corta o estado no fim do mês visto', () => {
+  it('antecipação datada em novembro não entra na simulação de outubro', () => {
+    const f: Financiamento = { id: 'a', nome: 'a', ...contratoDe(3600000, 0.01, 24, 'SAC', '2026-01-05'), parcelasPagasAntes: 9 }
+    const ls = [
+      ent('2026-10-01', 500000),
+      { ...sai('alu', '2026-10-05', 100000, 'fixo'), id: 'pg', financiamentoId: 'a' },
+      { ...sai('alu', '2026-11-03', 2000000, 'fixo'), id: 'antNov', financiamentoId: 'a', pagamentoFinanciamento: 'antecipacao' as const },
+    ]
+    const i = gerarInsights(base({ financiamentos: [f], lancamentos: ls })).find((x) => x.tipo === 'sobra_para_divida')!
+    const aporte = i.dados.aporte as number
+    const sim = (ate?: string) => {
+      const e = estadoFinanciamento(f, ls, ate)
+      return simularAporte({
+        saldo: e.saldoDevedor, taxa: 0.01, prazo: e.restantes.length, sistema: 'SAC', aporte, efeito: 'reduzir_prazo', amortizacaoFixa: 150000,
+      }).economiaJuros
+    }
+    expect(i.dados.economia).toBe(sim('2026-10-31')) // saldo 2.100.000 (3.600.000 - 10 x 150.000)
+    expect(sim('2026-10-31')).not.toBe(sim()) // com a antecipação de novembro o saldo cairia a 100.000
+  })
+})
+
 describe('financiamentos', () => {
   const f = (id: string, taxa: number): Financiamento => ({
     id, nome: id, ...contratoDe(1200000, taxa, 24),

@@ -158,11 +158,26 @@ describe('pagas e aplicados', () => {
     // Price 100000/34002/3 a 1%: passo #1 = 34002; pagamento de 35000 => excesso 998
     const e = estadoContrato({ ...c, parcelasPagasAntes: 0 }, [pg({ valor: 35000 })])
     expect(e.pagas.map((p) => p.numero)).toEqual([1])
-    expect(e.aplicados).toEqual([{ data: '2026-09-12', valor: 35000, numero: 1, valorParcela: 34002, excesso: 998 }])
+    expect(e.aplicados).toEqual([{ data: '2026-09-12', valor: 35000, numero: 1, valorParcela: 34002, excesso: 998, tipo: 'parcela' }])
   })
   it('parcelasPagasAntes ficam em pagas mas não em aplicados', () => {
     const e = estadoContrato({ ...c, parcelasPagasAntes: 1 }, [])
     expect(e.pagas).toHaveLength(1)
     expect(e.aplicados).toEqual([])
+  })
+})
+
+describe('pagamento sem parcela para consumir', () => {
+  // SAC 200000/1%/2: #1 = 100000 + 2000, #2 = 100000 + 1000
+  const s: Contrato = { valorFinanciado: 200000, valorParcela: 102000, totalParcelas: 2, sistema: 'SAC', taxaMensal: 0.01, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0 }
+  it('terceira parcela paga num contrato de 2 vira excesso integral (numero 0)', () => {
+    const e = estadoContrato(s, [pg({ data: '2026-10-05', valor: 102000 }), pg({ data: '2026-11-05', valor: 101000 }), pg({ data: '2026-12-05', valor: 50000 })])
+    expect(e.saldoDevedor).toBe(0)
+    expect(e.aplicados[2]).toEqual({ data: '2026-12-05', valor: 50000, numero: 0, valorParcela: 0, excesso: 50000, tipo: 'parcela' })
+  })
+  it('antecipação com saldo zerado vira excesso integral', () => {
+    const e = estadoContrato(s, [pg({ data: '2026-10-05', valor: 102000 }), pg({ data: '2026-11-05', valor: 101000 }), pg({ data: '2026-12-10', valor: 30000, tipo: 'antecipacao' })])
+    expect(e.aplicados[2]).toEqual({ data: '2026-12-10', valor: 30000, numero: 0, valorParcela: 0, excesso: 30000, tipo: 'antecipacao' })
+    expect(e.antecipado).toBe(0)
   })
 })
