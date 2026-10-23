@@ -17,3 +17,9 @@ export function fimDoMes(mes: Mes): string {
   const dia = new Date(Date.UTC(y, m, 0)).getUTCDate()
   return `${mes}-${String(dia).padStart(2, '0')}`
 }
+
+/** Data de hoje no calendário LOCAL ('YYYY-MM-DD'); nunca usa toISOString (UTC). */
+export function hojeLocal(d: Date = new Date()): string {
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
+}
