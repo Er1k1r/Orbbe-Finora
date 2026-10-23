@@ -7,11 +7,18 @@ export type TipoFonte = 'fixa' | 'variavel' | 'eventual'
 export type SistemaAmortizacao = 'SAC' | 'PRICE'
 export type EfeitoAporte = 'reduzir_prazo' | 'reduzir_parcela'
 
+export type EspecieLancamento = 'transferencia' | 'ajuste'
+export type PagamentoFinanciamento = 'parcela' | 'antecipacao'
+export interface Parcelamento { grupoId: string; numero: number; total: number }
+
 export interface Conta {
   id: string
   nome: string
   tipo: 'banco' | 'caixa' | 'carteira'
   saldoInicial: Centavos
+  limiteChequeEspecial?: Centavos
+  taxaChequeEspecial?: number // fração ao mês
+  reserva?: boolean
 }
 export interface FonteDeRenda {
   id: string
@@ -27,6 +34,7 @@ export interface Categoria {
   tipo: TipoLancamento
   natureza: Natureza
   essencial: boolean
+  sistema?: boolean // categorias internas, fora da grade de lançamento
 }
 export interface Lancamento {
   id: string
@@ -43,6 +51,12 @@ export interface Lancamento {
   origemId?: string // lançamento-modelo de uma recorrência
   financiamentoId?: string // marca o lançamento como pagamento da parcela deste financiamento
   geradoAte?: Mes // marca d'água: recorrência já gerada até este mês (inclusive)
+  descricao?: string
+  especie?: EspecieLancamento
+  transferenciaId?: string
+  pagamentoFinanciamento?: PagamentoFinanciamento
+  parcelamento?: Parcelamento
+  recorrenciaAte?: Mes // último mês em que a recorrência ainda gera cópia
 }
 export interface Financiamento {
   id: string

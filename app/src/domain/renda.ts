@@ -1,4 +1,4 @@
-import { ehPagamentoParcela } from './fluxo'
+import { ehMovimentoInterno, ehPagamentoParcela } from './fluxo'
 import { mesDe, mesesAnteriores } from './meses'
 import type { Categoria, Centavos, FonteDeRenda, Lancamento, Mes } from './tipos'
 
@@ -17,7 +17,7 @@ export function rendaEsperada(fontes: FonteDeRenda[], lancs: Lancamento[], mes: 
     else if (f.tipo === 'variavel') {
       // Só entradas efetivamente recebidas da fonte, antes do mês consultado.
       const pagas = lancs.filter(
-        (l) => l.fonteId === f.id && l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) < mes,
+        (l) => l.fonteId === f.id && !ehMovimentoInterno(l) && l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) < mes,
       )
       if (pagas.length === 0) {
         total += f.valorEsperado
@@ -50,7 +50,7 @@ export function custoEssencial(
   const meses = [...mesesAnteriores(mes, 3), mes]
   const totais = meses
     .map((m) =>
-      lancs.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids) && essenciais.has(l.categoriaId) && mesDe(l.data) === m),
+      lancs.filter((l) => l.tipo === 'saida' && !ehMovimentoInterno(l) && !ehPagamentoParcela(l, ids) && essenciais.has(l.categoriaId) && mesDe(l.data) === m),
     )
     .filter((ls) => ls.length > 0)
     .map((ls) => ls.reduce((s, l) => s + l.valor, 0))

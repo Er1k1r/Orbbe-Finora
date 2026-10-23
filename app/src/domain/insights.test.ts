@@ -276,3 +276,13 @@ describe('config', () => {
     expect(tipos(c)).toContain('gasto_crescendo')
   })
 })
+
+describe('movimentos internos', () => {
+  it('transferência em categoria com histórico não dispara gasto_crescendo nem pico_atipico', () => {
+    const hist = [sai('mer', '2026-07-03', 100000), sai('mer', '2026-08-03', 100000), sai('mer', '2026-09-03', 100000)]
+    const transf: Lancamento = { ...sai('mer', '2026-10-03', 500000), especie: 'transferencia' }
+    const t = tipos(base({ lancamentos: [...hist, transf] }))
+    expect(t).not.toContain('gasto_crescendo')
+    expect(t).not.toContain('pico_atipico')
+  })
+})

@@ -196,3 +196,28 @@ describe('saldo até o fim do mês visualizado', () => {
     expect(saldoContas([c, { ...c, id: 'c2', saldoInicial: 5000 }], [])).toBe(105000)
   })
 })
+
+describe('movimentos internos (transferência e ajuste)', () => {
+  const contaA: Conta = { id: 'A', nome: 'A', tipo: 'banco', saldoInicial: 100000 }
+  const contaB: Conta = { id: 'B', nome: 'B', tipo: 'banco', saldoInicial: 0 }
+  const base = [
+    l({ tipo: 'entrada', valor: 50000, contaId: 'A', data: '2026-10-05' }),
+    l({ tipo: 'saida', valor: 30000, contaId: 'A', data: '2026-10-06', especie: 'transferencia', transferenciaId: 't1' }),
+    l({ tipo: 'entrada', valor: 30000, contaId: 'B', data: '2026-10-06', especie: 'transferencia', transferenciaId: 't1' }),
+    l({ tipo: 'entrada', valor: 7000, contaId: 'A', data: '2026-10-07', especie: 'ajuste' }),
+  ]
+  const resumo = (ls: Lancamento[]) =>
+    resumoMes({ mes: '2026-10', contas: [contaA, contaB], lancamentos: ls, financiamentos: [], aporteExtra: 0 })
+  it('não entram em receitas/despesas/sobra; o saldo inclui o ajuste e a transferência soma zero', () => {
+    const r = resumo(base)
+    expect(r.receitas).toBe(50000)
+    expect(r.despesas).toBe(0)
+    expect(r.sobraNormal).toBe(50000)
+    expect(r.saldo).toBe(157000)
+  })
+  it('ajuste pendente não entra em receitasPendentes', () => {
+    const r = resumo([...base, l({ tipo: 'entrada', valor: 9000, status: 'pendente', especie: 'ajuste' })])
+    expect(r.receitasPendentes).toBe(0)
+    expect(r.despesasPendentes).toBe(0)
+  })
+})

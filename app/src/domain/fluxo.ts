@@ -12,6 +12,9 @@ const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
 export const ehPagamentoParcela = (l: Lancamento, ids: ReadonlySet<string>): boolean =>
   l.tipo === 'saida' && l.financiamentoId !== undefined && ids.has(l.financiamentoId)
 
+/** Transferência entre contas e ajuste de conferência: mexem no saldo, nunca em receita/despesa. */
+export const ehMovimentoInterno = (l: Lancamento): boolean => l.especie !== undefined
+
 /** Saldo das contas; com `ate` ('YYYY-MM-DD') só conta pagos com data <= ate. */
 export function saldoContas(contas: Conta[], lancs: Lancamento[], ate?: string): Centavos {
   const inicial = contas.reduce((s, c) => s + c.saldoInicial, 0)
@@ -41,7 +44,7 @@ export interface EntradaResumo {
 
 export function resumoMes(e: EntradaResumo) {
   const ids = new Set(e.financiamentos.map((f) => f.id))
-  const doMes = e.lancamentos.filter((l) => mesDe(l.data) === e.mes)
+  const doMes = e.lancamentos.filter((l) => mesDe(l.data) === e.mes && !ehMovimentoInterno(l))
   const entradas = doMes.filter((l) => l.tipo === 'entrada')
   // Pagamentos de parcela (financiamentoId de financiamento existente) já estão em `parcelas`.
   const saidas = doMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids))
@@ -61,7 +64,7 @@ export function resumoMes(e: EntradaResumo) {
   const sobraNormal = receitas - despesas - parcelas
 
   const saldo = saldoContas(e.contas, e.lancamentos, fimDoMes(e.mes))
-  const ateMes = e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente')
+  const ateMes = e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente' && !ehMovimentoInterno(l))
   const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
   const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids)))
   const antes = e.lancamentos.filter((l) => mesDe(l.data) < e.mes)

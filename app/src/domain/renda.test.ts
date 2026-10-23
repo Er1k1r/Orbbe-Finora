@@ -90,3 +90,21 @@ describe('custoEssencial', () => {
     expect(custoEssencial([...base, orfao], cats, 30000, '2026-10', ['f1'])).toBe(180000 + 30000)
   })
 })
+
+describe('movimentos internos em renda e custo essencial', () => {
+  it('transferência de entrada não conta no histórico da fonte variável', () => {
+    const fontes = [fonte({ id: 'v', tipo: 'variavel', valorEsperado: 300000 })]
+    const ls = [{ ...ent('v', '2026-09-05', 900000), especie: 'transferencia' as const }]
+    expect(rendaEsperada(fontes, ls, '2026-10')).toBe(300000)
+  })
+  it('saída de transferência em categoria essencial não entra em custoEssencial', () => {
+    const cats: Categoria[] = [
+      { id: 'ess', nome: 'E', icone: 'x', tipo: 'saida', natureza: 'fixo', essencial: true },
+    ]
+    const ls: Lancamento[] = [{
+      id: 't', valor: 500000, data: '2026-10-05', tipo: 'saida', categoriaId: 'ess', natureza: 'fixo',
+      contaId: 'c', status: 'pago', especie: 'transferencia',
+    }]
+    expect(custoEssencial(ls, cats, 0, '2026-10', [])).toBe(0)
+  })
+})

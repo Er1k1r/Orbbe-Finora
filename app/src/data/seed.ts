@@ -6,6 +6,9 @@ const s = (id: string, nome: string, icone: string, natureza: 'fixo' | 'variavel
 const e = (id: string, nome: string, icone: string): Categoria =>
   ({ id, nome, icone, tipo: 'entrada', natureza: 'variavel', essencial: false })
 
+const sis = (id: string, nome: string, icone: string): Categoria =>
+  ({ id, nome, icone, tipo: 'saida', natureza: 'variavel', essencial: false, sistema: true })
+
 export const CATEGORIAS_PADRAO: Categoria[] = [
   s('moradia', 'Moradia', 'House', 'fixo', true),
   s('alimentacao', 'Alimentação', 'ForkKnife', 'variavel', true),
@@ -23,8 +26,16 @@ export const CATEGORIAS_PADRAO: Categoria[] = [
   e('vendas', 'Vendas', 'Storefront'),
   e('extras', 'Extras e bicos', 'Hammer'),
   e('rendimentos', 'Rendimentos', 'TrendUp'),
+  sis('transferencia', 'Transferência', 'ArrowsLeftRight'),
+  sis('ajuste', 'Ajuste de saldo', 'Scales'),
 ]
 
 export async function semearCategorias(): Promise<void> {
-  if ((await db.categorias.count()) === 0) await db.categorias.bulkPut(CATEGORIAS_PADRAO)
+  if ((await db.categorias.count()) === 0) {
+    await db.categorias.bulkPut(CATEGORIAS_PADRAO)
+    return
+  }
+  const existentes = new Set((await db.categorias.toArray()).map((c) => c.id))
+  const faltam = CATEGORIAS_PADRAO.filter((c) => c.sistema && !existentes.has(c.id))
+  if (faltam.length > 0) await db.categorias.bulkPut(faltam)
 }
