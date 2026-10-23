@@ -71,8 +71,11 @@ describe('entradas inválidas', () => {
   })
   it('saldo NaN devolve []', () => expect(gerarCronograma({ ...ok, saldo: NaN })).toEqual([]))
   it('parcelaDoMes é 0 para financiamento inválido', () => {
-    const f: Financiamento = { id: 'f', nome: 'x', saldoDevedor: 120000, taxaMensal: NaN, prazoRestante: 4, sistema: 'SAC', diaVencimento: 5 }
-    expect(parcelaDoMes(f)).toBe(0)
+    const f: Financiamento = {
+      id: 'f', nome: 'x', valorFinanciado: 120000, valorParcela: 31200, totalParcelas: 4, sistema: 'SAC',
+      taxaMensal: NaN, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0,
+    }
+    expect(parcelaDoMes(f, '2026-10', [])).toBe(0)
   })
 })
 

@@ -1,8 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { gerarInsights, type ContextoInsights } from './insights'
-import { simularAporte } from './amortizacao'
-import type { Categoria, Conta, Financiamento, FonteDeRenda, Lancamento } from './tipos'
+import { gerarCronograma, simularAporte } from './amortizacao'
+import type { Categoria, Conta, Contrato, Financiamento, FonteDeRenda, Lancamento } from './tipos'
 
+
+const contratoDe = (S: number, i: number, n: number, sistema: 'SAC' | 'PRICE' = 'SAC', primeiraParcela = '2026-10-05'): Contrato => ({
+  valorFinanciado: S, totalParcelas: n, taxaMensal: i, sistema, parcelasPagasAntes: 0, primeiraParcela,
+  valorParcela: gerarCronograma({ saldo: S, taxa: i, prazo: n, sistema })[0]?.parcela ?? 0,
+})
 const cat = (id: string, p: Partial<Categoria> = {}): Categoria => ({
   id, nome: id, icone: 'x', tipo: 'saida', natureza: 'variavel', essencial: false, ...p,
 })
@@ -60,14 +65,14 @@ describe('reserva_baixa', () => {
 
 describe('financiamentos', () => {
   const f = (id: string, taxa: number): Financiamento => ({
-    id, nome: id, saldoDevedor: 1200000, taxaMensal: taxa, prazoRestante: 24, sistema: 'SAC', diaVencimento: 5,
+    id, nome: id, ...contratoDe(1200000, taxa, 24),
   })
   it('divida_mais_cara só com 2 ou mais', () => {
     expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('divida_mais_cara')
     expect(tipos(base({ financiamentos: [f('a', 0.01), f('b', 0.02)] }))).toContain('divida_mais_cara')
   })
   it('comprometimento_renda dispara acima de 30%', () => {
-    const grande = { ...f('a', 0.01), saldoDevedor: 24000000 }
+    const grande = { ...f('a', 0.01), ...contratoDe(24000000, 0.01, 24) }
     expect(tipos(base({ financiamentos: [grande] }))).toContain('comprometimento_renda')
     expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('comprometimento_renda')
   })
@@ -77,7 +82,7 @@ describe('financiamentos', () => {
   it('divida_mais_cara e sobra_para_divida apontam o financiamento de maior taxa', () => {
     // sobra = 500.000 - (62.000 + 37.000) = 401.000; saldo 50.500.000 >= meta 6 * 99.000 = 594.000 (reserva ok)
     const c = base({
-      financiamentos: [f('a', 0.01), { ...f('b', 0.02), saldoDevedor: 600000 }],
+      financiamentos: [f('a', 0.01), { ...f('b', 0.02), ...contratoDe(600000, 0.02, 24) }],
       lancamentos: [ent('2026-10-01', 500000)],
       contas: [{ ...conta, saldoInicial: 50000000 }],
     })
@@ -167,7 +172,8 @@ describe('financiamentos', () => {
     expect(tipos(c)).not.toContain('sobra_para_divida')
   })
   it('financiamento quitado (saldo 0) não é candidato', () => {
-    const quitado = { ...f('a', 0.05), saldoDevedor: 0 }
+    // contrato já encerrado: 24 parcelas pagas antes do app e vencimentos todos no passado => saldo 0, parcela 0
+    const quitado = { ...f('a', 0.05), parcelasPagasAntes: 24, primeiraParcela: '2020-01-05' }
     const c = base({ financiamentos: [quitado, f('b', 0.01)], lancamentos: [ent('2026-10-01', 500000)] })
     expect(tipos(c)).not.toContain('divida_mais_cara')
     expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
@@ -216,7 +222,7 @@ describe('mes_de_risco', () => {
 describe('pagamento de parcela (financiamentoId) fora das regras de despesa', () => {
   // SAC 3.600.000 / 24 = 150.000 + 1% de 3.600.000 = 36.000 => parcela 186.000
   const fin: Financiamento = {
-    id: 'X', nome: 'Casa', saldoDevedor: 3600000, taxaMensal: 0.01, prazoRestante: 24, sistema: 'SAC', diaVencimento: 5,
+    id: 'X', nome: 'Casa', ...contratoDe(3600000, 0.01, 24),
   }
   const pg = (data: string, valor = 186000): Lancamento => ({ ...sai('alu', data, valor, 'fixo'), id: 'pg' + data + valor, financiamentoId: 'X' })
   const fonteVar: FonteDeRenda[] = [{ id: 'v', nome: 'Brownie', tipo: 'variavel', valorEsperado: 500000 }]
@@ -258,7 +264,7 @@ describe('renda esperada zero (R2)', () => {
   })
   it('regra 3 continua exigindo renda > 0', () =>
     expect(tipos(base({ fontes: v, lancamentos: [hist, fixo] }))).not.toContain('despesa_fixa_alta'))
-  const f: Financiamento = { id: 'a', nome: 'Carro', saldoDevedor: 1200000, taxaMensal: 0.01, prazoRestante: 24, sistema: 'SAC', diaVencimento: 5 }
+  const f: Financiamento = { id: 'a', nome: 'Carro', ...contratoDe(1200000, 0.01, 24) }
   it('regra 8 com renda 0 e parcelas > 0 avisa que não há renda cadastrada', () => {
     const i = gerarInsights(base({ fontes: [], financiamentos: [f] })).find((x) => x.tipo === 'comprometimento_renda')
     expect(i?.severidade).toBe('alerta')

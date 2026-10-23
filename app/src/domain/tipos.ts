@@ -58,15 +58,6 @@ export interface Lancamento {
   parcelamento?: Parcelamento
   recorrenciaAte?: Mes // último mês em que a recorrência ainda gera cópia
 }
-export interface Financiamento {
-  id: string
-  nome: string
-  saldoDevedor: Centavos
-  taxaMensal: number // 0.01 = 1% a.m.
-  prazoRestante: number
-  sistema: SistemaAmortizacao
-  diaVencimento: number
-}
 export interface PlanoAmortizacao {
   id: string
   financiamentoId: string
@@ -82,4 +73,9 @@ export interface Contrato {
   taxaMensal: number // calculada do carnê (taxaImplicita)
   primeiraParcela: string // 'YYYY-MM-DD'
   parcelasPagasAntes: number // pagas antes de usar o app (não geram lançamento)
+}
+
+export interface Financiamento extends Contrato {
+  id: string
+  nome: string
 }

@@ -1,7 +1,7 @@
 import { simularAporte } from './amortizacao'
-import { ehMovimentoInterno, ehPagamentoParcela, parcelaDoMes, resumoMes, saldoContas } from './fluxo'
+import { ehMovimentoInterno, ehPagamentoParcela, estadoFinanciamento, parcelaDoMes, resumoMes, saldoContas } from './fluxo'
 import { formatarBRL, formatarNumero, formatarPct } from './dinheiro'
-import { mesDe, mesesAnteriores } from './meses'
+import { fimDoMes, mesDe, mesesAnteriores } from './meses'
 import { custoEssencial, rendaEsperada, reservaAlvoMeses } from './renda'
 import type {
   Categoria, Conta, Financiamento, FonteDeRenda, Lancamento, Mes, PlanoAmortizacao,
@@ -55,7 +55,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   const doMes = saidas.filter((l) => mesDe(l.data) === ctx.mes)
   const anteriores = mesesAnteriores(ctx.mes, 3)
   const renda = rendaEsperada(ctx.fontes, ctx.lancamentos, ctx.mes)
-  const parcelas = ctx.financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0)
+  const parcelas = ctx.financiamentos.reduce((s, f) => s + parcelaDoMes(f, ctx.mes, ctx.lancamentos), 0)
 
   // 1. gasto crescendo
   for (const catId of new Set(doMes.map((l) => l.categoriaId))) {
@@ -124,7 +124,8 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   }
 
   // 5. sobra para a dívida / 6. dívida mais cara
-  const candidatas = ctx.financiamentos.filter((f) => f.saldoDevedor > 0)
+  const estados = new Map(ctx.financiamentos.map((f) => [f.id, estadoFinanciamento(f, ctx.lancamentos, fimDoMes(ctx.mes))]))
+  const candidatas = ctx.financiamentos.filter((f) => (estados.get(f.id)?.saldoDevedor ?? 0) > 0)
   const maisCara = [...candidatas].sort((a, b) => b.taxaMensal - a.taxaMensal)[0]
   const aporteExistente = ctx.planos.reduce((s, p) => s + p.aporteExtraMensal, 0)
   const resumo = resumoMes({
@@ -133,13 +134,16 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   })
   if (maisCara && resumo.sobraOtimizada > 0) {
     const sugerido = reservaOk ? resumo.sobraOtimizada : Math.round(resumo.sobraOtimizada / 2)
-    const aporte = Math.min(sugerido, maisCara.saldoDevedor) // nunca além do saldo da dívida
+    const estado = estados.get(maisCara.id)!
+    const aporte = Math.min(sugerido, estado.saldoDevedor) // nunca além do saldo da dívida
     const planosDela = ctx.planos.filter((p) => p.financiamentoId === maisCara.id)
     const existente = planosDela.reduce((s, p) => s + p.aporteExtraMensal, 0)
     const efeito = planosDela[0]?.efeito ?? 'reduzir_prazo'
     const sim = (x: number) => simularAporte({
-      saldo: maisCara.saldoDevedor, taxa: maisCara.taxaMensal, prazo: maisCara.prazoRestante,
+      saldo: estado.saldoDevedor, taxa: maisCara.taxaMensal, prazo: estado.restantes.length,
       sistema: maisCara.sistema, aporte: x, efeito,
+      parcelaFixa: maisCara.sistema === 'PRICE' ? maisCara.valorParcela : undefined,
+      amortizacaoFixa: maisCara.sistema === 'SAC' ? Math.round(maisCara.valorFinanciado / maisCara.totalParcelas) : undefined,
     })
     const antes = sim(existente)
     const depois = sim(existente + aporte)

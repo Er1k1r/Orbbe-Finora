@@ -61,8 +61,8 @@ const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string,
   },
   financiamentos: {
     obrig: {
-      nome: ehTexto, saldoDevedor: ehIntMin(0), taxaMensal: ehFinitoMin0, prazoRestante: ehIntMin(1),
-      sistema: ehEnum('SAC', 'PRICE'), diaVencimento: ehIntEntre(1, 31),
+      nome: ehTexto, valorFinanciado: ehIntMin(1), valorParcela: ehIntMin(1), totalParcelas: ehIntEntre(1, 1200),
+      sistema: ehEnum('SAC', 'PRICE'), taxaMensal: ehFinitoMin0, primeiraParcela: ehDataReal, parcelasPagasAntes: ehIntMin(0),
     },
     opc: {},
   },

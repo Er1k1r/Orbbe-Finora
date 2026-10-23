@@ -52,7 +52,10 @@ describe('backup: importação segura', () => {
   })
   describe('campos com tipo errado', () => {
     const lanc = { id: 'l1', valor: 500, data: '2026-10-01', tipo: 'saida', categoriaId: 'k', natureza: 'variavel', contaId: 'c1', status: 'pago' }
-    const fin = { id: 'fi', nome: 'Casa', saldoDevedor: 1000, taxaMensal: 0.01, prazoRestante: 12, sistema: 'SAC', diaVencimento: 5 }
+    const fin = {
+      id: 'fi', nome: 'Casa', valorFinanciado: 1000, valorParcela: 93, totalParcelas: 12, sistema: 'SAC',
+      taxaMensal: 0.01, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0,
+    }
     const rejeita = async (extra: object) => {
       await expect(importar(JSON.stringify({ versao: 1, ...vazio, ...extra }))).rejects.toThrow('Arquivo de backup inválido')
       await preservou()
@@ -94,8 +97,13 @@ describe('backup: importação segura', () => {
       await rejeita({ financiamentos: [{ ...fin, taxaMensal: null }] })
       await rejeita({ financiamentos: [{ ...fin, taxaMensal: -0.01 }] })
       await rejeita({ financiamentos: [{ ...fin, sistema: 'Price' }] })
-      await rejeita({ financiamentos: [{ ...fin, prazoRestante: 0 }] })
-      await rejeita({ financiamentos: [{ ...fin, diaVencimento: 32 }] })
+      await rejeita({ financiamentos: [{ ...fin, totalParcelas: 0 }] })
+      await rejeita({ financiamentos: [{ ...fin, totalParcelas: 1201 }] })
+      await rejeita({ financiamentos: [{ ...fin, valorFinanciado: 0 }] })
+      await rejeita({ financiamentos: [{ ...fin, valorParcela: 0.5 }] })
+      await rejeita({ financiamentos: [{ ...fin, primeiraParcela: '2026-02-30' }] })
+      await rejeita({ financiamentos: [{ ...fin, parcelasPagasAntes: -1 }] })
+      await rejeita({ financiamentos: [{ ...fin, saldoDevedor: 1000, prazoRestante: 12, diaVencimento: 5, valorFinanciado: undefined }] })
     })
     it('fonte com diaPagamento fora de 1..31', () =>
       rejeita({ fontes: [{ id: 'f', nome: 'x', tipo: 'fixa', valorEsperado: 1, diaPagamento: 0 }] }))
@@ -104,7 +112,7 @@ describe('backup: importação segura', () => {
     await repo.fontes.salvar({ id: 'f1', nome: 'Salário', tipo: 'fixa', valorEsperado: 500000, diaPagamento: 5 })
     await repo.categorias.salvar({ id: 'k1', nome: 'Mercado', icone: 'ShoppingCart', tipo: 'saida', natureza: 'variavel', essencial: true })
     await repo.lancamentos.salvar({ id: 'l1', valor: 1234, data: '2026-10-01', tipo: 'saida', categoriaId: 'k1', natureza: 'variavel', contaId: 'c1', status: 'pago', fonteId: 'f1', observacao: 'obs', origemId: 'm0', financiamentoId: 'fi1', recorrencia: 'mensal', geradoAte: '2026-10' })
-    await repo.financiamentos.salvar({ id: 'fi1', nome: 'Casa', saldoDevedor: 10000000, taxaMensal: 0.01, prazoRestante: 120, sistema: 'SAC', diaVencimento: 10 })
+    await repo.financiamentos.salvar({ id: 'fi1', nome: 'Casa', valorFinanciado: 10000000, valorParcela: 183333, totalParcelas: 120, sistema: 'SAC', taxaMensal: 0.01, primeiraParcela: '2026-10-10', parcelasPagasAntes: 0 })
     await repo.planos.salvar({ id: 'p1', financiamentoId: 'fi1', aporteExtraMensal: 50000, efeito: 'reduzir_prazo' })
     const antes = JSON.parse(await exportar())
     const json = await exportar()

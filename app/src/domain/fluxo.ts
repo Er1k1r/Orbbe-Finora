@@ -1,4 +1,4 @@
-import { gerarCronograma } from './amortizacao'
+import { estadoContrato, parcelaNoMes, parcelasAtrasadas as atrasadasDe, type EstadoContrato, type PagamentoContrato } from './contrato'
 import { fimDoMes, mesDe } from './meses'
 import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
 
@@ -26,12 +26,19 @@ export function saldoContas(contas: Conta[], lancs: Lancamento[], ate?: string):
   )
 }
 
-export function parcelaDoMes(f: Financiamento): Centavos {
-  return (
-    gerarCronograma({
-      saldo: f.saldoDevedor, taxa: f.taxaMensal, prazo: f.prazoRestante, sistema: f.sistema,
-    })[0]?.parcela ?? 0
-  )
+/** Pagamentos (parcela ou antecipação) ligados ao financiamento, como o contrato os consome. */
+export function pagamentosDe(f: Financiamento, lancs: Lancamento[]): PagamentoContrato[] {
+  return lancs
+    .filter((l) => l.tipo === 'saida' && !ehMovimentoInterno(l) && l.financiamentoId === f.id)
+    .map((l) => ({ data: l.data, valor: l.valor, tipo: l.pagamentoFinanciamento ?? 'parcela', status: l.status }))
+}
+
+export function estadoFinanciamento(f: Financiamento, lancs: Lancamento[], ate?: string): EstadoContrato {
+  return estadoContrato(f, pagamentosDe(f, lancs), ate)
+}
+
+export function parcelaDoMes(f: Financiamento, mes: Mes, lancs: Lancamento[]): Centavos {
+  return parcelaNoMes(f, estadoFinanciamento(f, lancs, fimDoMes(mes)), mes)
 }
 
 export interface EntradaResumo {
@@ -48,16 +55,25 @@ export function resumoMes(e: EntradaResumo) {
   const entradas = doMes.filter((l) => l.tipo === 'entrada')
   // Pagamentos de parcela (financiamentoId de financiamento existente) já estão em `parcelas`.
   const saidas = doMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids))
-  const parcelas = e.financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0)
+  const parcelas = e.financiamentos.reduce((s, f) => s + parcelaDoMes(f, e.mes, e.lancamentos), 0)
   let parcelasPendentes = 0
   let excessoParcelas = 0 // pago acima da parcela do mês: gasto comum, não some da sobra
+  let parcelasAtrasadas = 0
   for (const f of e.financiamentos) {
     const pago = soma(
-      doMes.filter((l) => l.financiamentoId === f.id && l.tipo === 'saida' && l.status === 'pago'),
+      doMes.filter(
+        (l) => l.financiamentoId === f.id && l.tipo === 'saida' && l.status === 'pago' && (l.pagamentoFinanciamento ?? 'parcela') === 'parcela',
+      ),
     )
-    parcelasPendentes += Math.max(0, parcelaDoMes(f) - pago)
-    excessoParcelas += Math.max(0, pago - parcelaDoMes(f))
+    const parcela = parcelaDoMes(f, e.mes, e.lancamentos)
+    parcelasPendentes += Math.max(0, parcela - pago)
+    excessoParcelas += Math.max(0, pago - parcela)
+    parcelasAtrasadas += atrasadasDe(estadoFinanciamento(f, e.lancamentos, fimDoMes(e.mes)), e.mes)
   }
+  // Antecipações pagas no mês: reduzem o saldo (já são saídas pagas), mas não são despesa nem mexem na sobra.
+  const antecipacoes = soma(
+    doMes.filter((l) => ehPagamentoParcela(l, ids) && l.status === 'pago' && l.pagamentoFinanciamento === 'antecipacao'),
+  )
 
   const receitas = soma(entradas)
   const despesas = soma(saidas) + excessoParcelas
@@ -68,10 +84,6 @@ export function resumoMes(e: EntradaResumo) {
   const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
   const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids)))
   const antes = e.lancamentos.filter((l) => mesDe(l.data) < e.mes)
-  // Parcela pendente de mês anterior continua devida (a do mês visto já está em parcelasPendentes).
-  const parcelasAtrasadas = soma(
-    antes.filter((l) => ehPagamentoParcela(l, ids) && l.status === 'pendente'),
-  )
 
   return {
     receitas,
@@ -79,6 +91,7 @@ export function resumoMes(e: EntradaResumo) {
     parcelas,
     parcelasPendentes,
     parcelasAtrasadas,
+    antecipacoes,
     receitasPendentes,
     despesasPendentes,
     sobraNormal,
