@@ -66,13 +66,46 @@ describe('financiamentos', () => {
     expect(tipos(base({ financiamentos: [grande] }))).toContain('comprometimento_renda')
     expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('comprometimento_renda')
   })
+  const achar = (c: ContextoInsights, t: string) => gerarInsights(c).find((i) => i.tipo === t)
+  // f('a', 0.01): SAC 1.200.000 / 24 = 50.000 amortização + 1% de 1.200.000 = 12.000 juros => parcela 62.000
+  // f('b', 0.02) com saldo 600.000: 600.000 / 24 = 25.000 + 2% de 600.000 = 12.000 => parcela 37.000
+  it('divida_mais_cara e sobra_para_divida apontam o financiamento de maior taxa', () => {
+    // sobra = 500.000 - (62.000 + 37.000) = 401.000; saldo 50.500.000 >= meta 6 * 99.000 = 594.000 (reserva ok)
+    const c = base({
+      financiamentos: [f('a', 0.01), { ...f('b', 0.02), saldoDevedor: 600000 }],
+      lancamentos: [ent('2026-10-01', 500000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    expect(achar(c, 'divida_mais_cara')?.dados.financiamento).toBe('b')
+    expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
+  })
   it('sobra_para_divida com sobra positiva e reserva no alvo', () => {
+    // sobra = 500.000 - 62.000 = 438.000; saldo 50.500.000 >= meta 6 * 62.000 = 372.000
     const c = base({
       financiamentos: [f('a', 0.01)],
       lancamentos: [ent('2026-10-01', 500000)],
       contas: [{ ...conta, saldoInicial: 50000000 }],
     })
-    expect(tipos(c)).toContain('sobra_para_divida')
+    const i = achar(c, 'sobra_para_divida')
+    expect(i?.titulo).toBe('Use a sobra para quitar mais rápido')
+    expect(i?.dados.aporte).toBe(438000)
+  })
+  it('sobra_para_divida com reserva baixa divide a sobra ao meio', () => {
+    // entrada pendente: sobra = 500.000 - 62.000 = 438.000, mas saldo = 0 < meta 6 * 62.000 = 372.000
+    const c = base({
+      financiamentos: [f('a', 0.01)],
+      lancamentos: [{ ...ent('2026-10-01', 500000), status: 'pendente' }],
+    })
+    const i = achar(c, 'sobra_para_divida')
+    expect(i?.titulo).toBe('Divida a sobra entre reserva e dívida')
+    expect(i?.dados.aporte).toBe(Math.round(438000 / 2))
+  })
+  it('sobra_para_divida não dispara com sobra <= 0', () => {
+    // sem entradas: sobra = 0 - 62.000 = -62.000
+    expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('sobra_para_divida')
+  })
+  it('sobra_para_divida não dispara sem financiamento', () => {
+    expect(tipos(base({ lancamentos: [ent('2026-10-01', 500000)] }))).not.toContain('sobra_para_divida')
   })
 })
 
