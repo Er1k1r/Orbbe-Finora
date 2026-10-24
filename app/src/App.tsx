@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { List } from '@phosphor-icons/react'
 import { BotaoTema } from './ui/componentes/BotaoTema'
 import { Drawer, ID_MENU } from './ui/componentes/Drawer'
@@ -59,8 +59,9 @@ function Shell() {
   )
 
   if (!dados.pronto) return null
-  // Sem fonte de renda ou sem conta: primeiro uso (ou banco vazio); o FAB e as rotas ficam ocultos.
-  const emOnboarding = dados.fontes.length === 0 || dados.contas.length === 0
+  // Onboarding só num app realmente vazio; com dados mas sem conta, o app abre com um aviso para cadastrar uma.
+  const emOnboarding = dados.fontes.length === 0 && dados.contas.length === 0 && dados.lancamentos.length === 0
+  const semConta = !emOnboarding && dados.contas.length === 0
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (
     <DadosContext.Provider value={valor}>
@@ -75,6 +76,9 @@ function Shell() {
         </div>
       </header>
       <main className="mx-auto max-w-md px-4 pt-4">
+      {semConta && (
+        <Link to="/contas" className="mb-4 grid min-h-11 place-items-center rounded-xl bg-[var(--amarelo-bg)] px-3 text-sm font-semibold text-[var(--texto)]">Cadastre uma conta para continuar</Link>
+      )}
       {emOnboarding ? <Onboarding /> : (
       <Routes>
         <Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />

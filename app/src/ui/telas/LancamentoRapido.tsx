@@ -36,6 +36,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
   const valor = centavosDeDigitos(digitos)
   const campo = useRef<HTMLInputElement>(null)
   const painel = useRef<HTMLDivElement>(null)
+  const salvando = useRef(false) // trava de duplo toque
   const efetivo = tipo === 'saida' ? modo : 'comum' // entrada nunca é parcelada nem pagamento de contrato
 
   // Diálogo: foco vai para o valor ao abrir e volta a quem abriu (o FAB) ao fechar; Escape fecha; Tab fica dentro.
@@ -93,7 +94,14 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
   }
 
   async function salvar(c: Categoria) {
+    if (salvando.current) return
     if (valor <= 0) { campo.current?.focus(); return }
+    if (d.contas.length === 0) { alert('Cadastre uma conta para continuar.'); return }
+    salvando.current = true
+    try { await gravar(c) } finally { salvando.current = false }
+  }
+
+  async function gravar(c: Categoria) {
     if (!dataReal(data)) { alert('Informe uma data válida.'); return } // nunca grava data vazia/inválida
     const desc = descricao.trim()
     const base = {
@@ -114,7 +122,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
       return
     }
     if (efetivo === 'financiamento' && !financId) { alert('Escolha o financiamento.'); return }
-    if (repete && ate && ate < mesDe(data)) { alert('O fim da recorrência deve ser depois da data do lançamento.'); return }
+    if (efetivo === 'comum' && repete && ate && ate < mesDe(data)) { alert('O mês final da recorrência não pode ser anterior ao mês do lançamento.'); return }
     const fonte = fonteId || d.fontes[0]?.id
     const l: Lancamento = {
       ...base, id: novoId(), valor, data, status: pendente ? 'pendente' : 'pago',
@@ -151,6 +159,12 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
         <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição (opcional)" aria-label="Descrição"
           className="mt-4 min-h-11 w-full rounded-xl bg-[var(--casca)] px-3 text-sm" />
 
+        {efetivo === 'financiamento' ? (
+          <button onClick={() => { const c = d.categorias.find((x) => x.id === 'outros') ?? categorias[0]; if (c) void salvar(c) }}
+            className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-white">
+            Registrar pagamento
+          </button>
+        ) : (
         <div className="mt-4 grid grid-cols-4 gap-2">
           {categorias.map((c) => (
             <button key={c.id} onClick={() => salvar(c)}
@@ -160,6 +174,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
             </button>
           ))}
         </div>
+        )}
 
         <button onClick={() => setMais(!mais)} aria-expanded={mais} className="mt-4 min-h-11 text-sm font-semibold text-marca-texto">
           {mais ? 'Menos opções' : 'Mais opções'}
@@ -238,7 +253,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
             )}
           </div>
         )}
-        <p className="mt-3 text-center text-xs text-suave">Digite o valor e toque na categoria para salvar.</p>
+        <p className="mt-3 text-center text-xs text-suave">{efetivo === 'financiamento' ? 'Escolha o contrato em Mais opções e toque em Registrar pagamento.' : efetivo === 'parcelado' ? 'Toque na categoria para criar as parcelas.' : 'Digite o valor e toque na categoria para salvar.'}</p>
       </div>
     </div>
   )

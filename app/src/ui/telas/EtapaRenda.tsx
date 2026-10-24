@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Moldura } from '../componentes/Moldura'
-import { repo, novoId } from '../../data/repo'
+import { novoId } from '../../data/repo'
+import { db } from '../../data/db'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { somenteDigitos } from '../validacao'
 import type { TipoFonte } from '../../domain/tipos'
@@ -15,15 +16,19 @@ export function EtapaRenda() {
   const [sel, setSel] = useState<Record<string, string>>({})
   const [saldo, setSaldo] = useState('')
   const [salvando, setSalvando] = useState(false)
+  // Ids gerados uma vez por assistente: uma nova tentativa sobrescreve as mesmas linhas, nunca duplica.
+  const ids = useRef<Record<string, string>>({ conta: novoId(), fixa: novoId(), variavel: novoId(), eventual: novoId() })
 
   async function concluir() {
     if (salvando) return
     setSalvando(true)
     try {
-      // Fontes primeiro e conta por último: o app só sai do onboarding quando AMBOS existem.
-      for (const o of OPCOES.filter((o) => sel[o.tipo] !== undefined))
-        await repo.fontes.salvar({ id: novoId(), nome: o.nome, tipo: o.tipo, valorEsperado: centavosDeDigitos(sel[o.tipo]) })
-      await repo.contas.salvar({ id: novoId(), nome: 'Conta principal', tipo: 'banco', saldoInicial: centavosDeDigitos(saldo) })
+      // Uma transação: ou grava fontes e conta juntas, ou nada.
+      await db.transaction('rw', db.fontes, db.contas, async () => {
+        for (const o of OPCOES.filter((o) => sel[o.tipo] !== undefined))
+          await db.fontes.put({ id: ids.current[o.tipo], nome: o.nome, tipo: o.tipo, valorEsperado: centavosDeDigitos(sel[o.tipo]) })
+        await db.contas.put({ id: ids.current.conta, nome: 'Conta principal', tipo: 'banco', saldoInicial: centavosDeDigitos(saldo) })
+      })
     } catch (e) {
       setSalvando(false)
       alert((e as Error).message)
