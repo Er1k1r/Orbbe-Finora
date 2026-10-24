@@ -14,8 +14,8 @@ export default defineConfig({
         short_name: 'Finanças',
         display: 'standalone',
         start_url: '.',
-        background_color: '#F4F5F2',
-        theme_color: '#0F5C4A',
+        background_color: '#f1f5f4',
+        theme_color: '#0d2b30',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
