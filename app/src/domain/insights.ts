@@ -3,7 +3,8 @@ import { saldoReserva, situacaoContas } from './contas'
 import { ehMovimentoInterno, ehPagamentoParcela, estadoFinanciamento, parcelaDoMes, resumoMes } from './fluxo'
 import { formatarBRL, formatarNumero, formatarPct } from './dinheiro'
 import { fimDoMes, mesDe, mesesAnteriores } from './meses'
-import { custoEssencial, rendaEsperada, reservaAlvoMeses } from './renda'
+import { custoEssencialReferencia } from './essencial'
+import { rendaEsperada, reservaAlvoMeses } from './renda'
 import type {
   Categoria, Conta, Financiamento, FonteDeRenda, Lancamento, Mes, PlanoAmortizacao,
 } from './tipos'
@@ -112,7 +113,9 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
 
   // 4. reserva baixa
   const { saldo, usandoTodas } = saldoReserva(ctx.contas, ctx.lancamentos)
-  const essencial = custoEssencial(ctx.lancamentos, ctx.categorias, parcelas, ctx.mes, idsFin)
+  const essencial = custoEssencialReferencia(
+    { lancamentos: ctx.lancamentos, categorias: ctx.categorias, financiamentos: ctx.financiamentos }, ctx.mes,
+  )
   const meses = reservaAlvoMeses(ctx.fontes)
   const meta = essencial * meses
   const reservaOk = essencial > 0 && saldo >= meta

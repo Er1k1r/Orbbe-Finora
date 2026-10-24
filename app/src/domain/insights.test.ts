@@ -19,6 +19,13 @@ const conta: Conta = { id: 'c', nome: 'B', tipo: 'banco', saldoInicial: 0 }
 const sai = (categoriaId: string, data: string, valor: number, natureza: 'fixo' | 'variavel' = 'variavel'): Lancamento => ({
   id: categoriaId + data + valor, valor, data, tipo: 'saida', categoriaId, natureza, contaId: 'c', status: 'pago',
 })
+// aluguel recorrente de 100.000 pago em ago (modelo), set e out (copias): custo essencial de referencia = 100.000
+// (out: copia lancada; nov e dez: modelo projetado sem copia), mas 300.000 saem do saldo.
+const aluguelRecorrente = (): Lancamento[] => [
+  { ...sai('alu', '2026-08-05', 100000, 'fixo'), id: 'alu', recorrencia: 'mensal' },
+  { ...sai('alu', '2026-09-05', 100000, 'fixo'), id: 'alu:2026-09', origemId: 'alu' },
+  { ...sai('alu', '2026-10-05', 100000, 'fixo'), id: 'alu:2026-10', origemId: 'alu' },
+]
 const ent = (data: string, valor: number, fonteId = 'f1'): Lancamento => ({
   id: 'e' + data + valor, valor, data, tipo: 'entrada', categoriaId: 'sal', natureza: 'fixo',
   contaId: 'c', fonteId, status: 'pago',
@@ -61,6 +68,17 @@ describe('reserva_baixa', () => {
   const ls = [sai('alu', '2026-10-05', 200000, 'fixo')]
   it('dispara com saldo abaixo da meta', () =>
     expect(tipos(base({ lancamentos: [ent('2026-10-01', 500000), ...ls] }))).toContain('reserva_baixa'))
+  it('usa a referência dos próximos meses: lançamento único não vira custo mensal', () => {
+    // alu 200.000 só em out: referencia = (200.000 + 0 + 0) / 3 = 66.667, meta 6 * 66.667 = 400.002; saldo 700.000 - 200.000 = 500.000
+    const c = base({ lancamentos: ls, contas: [{ ...conta, saldoInicial: 700000 }] })
+    expect(tipos(c)).not.toContain('reserva_baixa')
+  })
+  it('recorrente ainda sem cópia entra na referência (meta 6 * 100.000)', () => {
+    const modelo = { ...sai('alu', '2026-08-05', 100000, 'fixo'), id: 'alu', recorrencia: 'mensal' as const }
+    // out, nov e dez projetados 100.000 cada: meta 600.000
+    expect(tipos(base({ lancamentos: [modelo], contas: [{ ...conta, saldoInicial: 700000 }] }))).not.toContain('reserva_baixa')
+    expect(tipos(base({ lancamentos: [modelo], contas: [{ ...conta, saldoInicial: 700000 - 200000 }] }))).toContain('reserva_baixa')
+  })
   it('não dispara com saldo acima da meta', () => {
     const c = base({ lancamentos: ls, contas: [{ ...conta, saldoInicial: 5000000 }] })
     expect(tipos(c)).not.toContain('reserva_baixa')
@@ -148,7 +166,8 @@ describe('financiamentos', () => {
   // f('a', 0.01): SAC 1.200.000 / 24 = 50.000 amortização + 1% de 1.200.000 = 12.000 juros => parcela 62.000
   // f('b', 0.02) com saldo 600.000: 600.000 / 24 = 25.000 + 2% de 600.000 = 12.000 => parcela 37.000
   it('divida_mais_cara e sobra_para_divida apontam o financiamento de maior taxa', () => {
-    // sobra = 500.000 - (62.000 + 37.000) = 401.000; saldo 50.500.000 >= meta 6 * 99.000 = 594.000 (reserva ok)
+    // sobra = 500.000 - (62.000 + 37.000) = 401.000; saldo 50.500.000 >= meta 6 * referencia 98.000 = 588.000 (reserva ok);
+    // referencia = media de out 99.000 (62.000 + 37.000), nov 98.000 (61.500 + 36.500) e dez 97.000 (61.000 + 36.000)
     const c = base({
       financiamentos: [f('a', 0.01), { ...f('b', 0.02), ...contratoDe(600000, 0.02, 24) }],
       lancamentos: [ent('2026-10-01', 500000)],
@@ -158,7 +177,7 @@ describe('financiamentos', () => {
     expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
   })
   it('sobra_para_divida com sobra positiva e reserva no alvo', () => {
-    // sobra = 500.000 - 62.000 = 438.000; saldo 50.500.000 >= meta 6 * 62.000 = 372.000
+    // sobra = 500.000 - 62.000 = 438.000; saldo 50.500.000 >= meta 6 * referencia 61.500 = 369.000 (media de 62.000, 61.500 e 61.000)
     const c = base({
       financiamentos: [f('a', 0.01)],
       lancamentos: [ent('2026-10-01', 500000)],
@@ -169,7 +188,7 @@ describe('financiamentos', () => {
     expect(i?.dados.aporte).toBe(438000)
   })
   it('sobra_para_divida com reserva baixa divide a sobra ao meio', () => {
-    // entrada pendente: sobra = 500.000 - 62.000 = 438.000, mas saldo = 0 < meta 6 * 62.000 = 372.000
+    // entrada pendente: sobra = 500.000 - 62.000 = 438.000, mas saldo = 0 < meta 6 * referencia 61.500 = 369.000
     const c = base({
       financiamentos: [f('a', 0.01)],
       lancamentos: [{ ...ent('2026-10-01', 500000), status: 'pendente' }],
@@ -258,10 +277,10 @@ describe('financiamentos', () => {
 
 describe('reserva_baixa: texto', () => {
   it('usa vírgula decimal pt-BR nos meses cobertos', () => {
-    // essencial = 100.000 (alu paga em outubro); saldo = 670.000 - 100.000 = 570.000; meta 6 * 100.000
+    // referencia = 100.000 (ver aluguelRecorrente); saldo = 870.000 - 300.000 = 570.000; meta 6 * 100.000
     const c = base({
-      lancamentos: [sai('alu', '2026-10-05', 100000, 'fixo')],
-      contas: [{ ...conta, saldoInicial: 670000 }],
+      lancamentos: aluguelRecorrente(),
+      contas: [{ ...conta, saldoInicial: 870000 }],
     })
     expect(gerarInsights(c).find((i) => i.tipo === 'reserva_baixa')?.detalhe).toContain('5,7 de 6 meses')
   })
@@ -421,12 +440,12 @@ describe('contas negativas', () => {
 })
 
 describe('reserva_baixa com conta reserva', () => {
-  const ls = [sai('alu', '2026-10-05', 100000, 'fixo')]
+  const ls = aluguelRecorrente()
   const det = (contas: Conta[]) => gerarInsights(base({ lancamentos: ls, contas })).find((i) => i.tipo === 'reserva_baixa')
   it('usa só a conta marcada e não mostra dica', () => {
-    // reserva: 600.000 - 100.000 = 500.000; outra conta (10.000.000) fica fora. meta 6 * 100.000
+    // reserva: 800.000 - 300.000 = 500.000; outra conta (10.000.000) fica fora. meta 6 * 100.000 (referencia)
     const i = det([
-      { ...conta, id: 'c', saldoInicial: 600000, reserva: true },
+      { ...conta, id: 'c', saldoInicial: 800000, reserva: true },
       { ...conta, id: 'b', saldoInicial: 10000000 },
     ])
     expect(i?.detalhe).toContain('5,0 de 6 meses')

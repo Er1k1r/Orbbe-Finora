@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { rendaEsperada, reservaAlvoMeses, custoEssencial } from './renda'
-import type { Categoria, FonteDeRenda, Lancamento } from './tipos'
+import { rendaEsperada, reservaAlvoMeses } from './renda'
+import type { FonteDeRenda, Lancamento } from './tipos'
 
 const fonte = (p: Partial<FonteDeRenda>): FonteDeRenda => ({
   id: 'f', nome: 'F', tipo: 'fixa', valorEsperado: 0, ...p,
@@ -63,48 +63,10 @@ describe('reservaAlvoMeses', () => {
   it('sem fontes → 12', () => expect(reservaAlvoMeses([])).toBe(12))
 })
 
-describe('custoEssencial', () => {
-  const cats: Categoria[] = [
-    { id: 'mor', nome: 'Moradia', icone: 'house', tipo: 'saida', natureza: 'fixo', essencial: true },
-    { id: 'laz', nome: 'Lazer', icone: 'film', tipo: 'saida', natureza: 'variavel', essencial: false },
-  ]
-  const s = (categoriaId: string, data: string, valor: number): Lancamento => ({
-    id: categoriaId + data, valor, data, tipo: 'saida', categoriaId, natureza: 'fixo',
-    contaId: 'c', status: 'pago',
-  })
-  it('média das saídas essenciais mais parcelas', () => {
-    const ls = [s('mor', '2026-09-01', 100000), s('mor', '2026-10-01', 120000), s('laz', '2026-10-02', 50000)]
-    expect(custoEssencial(ls, cats, 30000, '2026-10', [])).toBe(110000 + 30000)
-  })
-  it('ignora saída com financiamentoId (parcela já somada à parte)', () => {
-    const base = [s('mor', '2026-10-01', 120000)]
-    const pagamento = { ...s('mor', '2026-10-05', 62000), id: 'pg', financiamentoId: 'f1' }
-    expect(custoEssencial([...base, pagamento], cats, 30000, '2026-10', ['f1']))
-      .toBe(custoEssencial(base, cats, 30000, '2026-10', ['f1']))
-    expect(custoEssencial([...base, pagamento], cats, 30000, '2026-10', ['f1'])).toBe(120000 + 30000)
-  })
-  it('financiamentoId órfão (financiamento apagado) é saída essencial comum', () => {
-    const base = [s('mor', '2026-10-01', 120000)]
-    const orfao = { ...s('mor', '2026-10-05', 60000), id: 'pg', financiamentoId: 'apagado' }
-    // mês único: 120.000 + 60.000 = 180.000, mais parcelas 30.000
-    expect(custoEssencial([...base, orfao], cats, 30000, '2026-10', ['f1'])).toBe(180000 + 30000)
-  })
-})
-
 describe('movimentos internos em renda e custo essencial', () => {
   it('transferência de entrada não conta no histórico da fonte variável', () => {
     const fontes = [fonte({ id: 'v', tipo: 'variavel', valorEsperado: 300000 })]
     const ls = [{ ...ent('v', '2026-09-05', 900000), especie: 'transferencia' as const }]
     expect(rendaEsperada(fontes, ls, '2026-10')).toBe(300000)
-  })
-  it('saída de transferência em categoria essencial não entra em custoEssencial', () => {
-    const cats: Categoria[] = [
-      { id: 'ess', nome: 'E', icone: 'x', tipo: 'saida', natureza: 'fixo', essencial: true },
-    ]
-    const ls: Lancamento[] = [{
-      id: 't', valor: 500000, data: '2026-10-05', tipo: 'saida', categoriaId: 'ess', natureza: 'fixo',
-      contaId: 'c', status: 'pago', especie: 'transferencia',
-    }]
-    expect(custoEssencial(ls, cats, 0, '2026-10', [])).toBe(0)
   })
 })
