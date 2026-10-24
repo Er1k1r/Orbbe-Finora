@@ -19,12 +19,17 @@
 - A data de hoje vem de `hojeLocal()` (`domain/meses.ts`, calendário local); nunca `new Date().toISOString().slice(0, 10)` (UTC). Números e porcentagens exibidos usam `formatarNumero`/`formatarPct` (vírgula pt-BR); nunca `toFixed`.
 - A UI nunca grava `null` em campo opcional (omitir, via spread condicional, ou `undefined`); o importador de backup rejeita `null`. Formulários de financiamento chamam `validarContrato` (taxa calculada por `taxaImplicita`) e nunca gravam `NaN`. Categorias com `sistema: true` (transferência, ajuste) nunca aparecem em grades nem telas de gestão (`categoriasDaGrade`).
 - O estado do banco é lido **uma vez**, no `Shell`, e entregue por contexto (`DadosContext`); telas não montam `useLiveQuery` próprio (evita piscar estados vazios e permite pré-preencher dados salvos).
-- Visual: Soft Structuralism, sem Inter/Roboto/Arial, ícones Phosphor Light, cartões em dupla moldura, curva `cubic-bezier(0.32,0.72,0,1)`, anima só `transform`/`opacity` (exceção: o traço do anel SVG), respeita `prefers-reduced-motion`. Tokens de cor exatamente os do spec §8.
+- Visual: identidade "petróleo e limão" do spec §13 (base `cfc_platform`), sem Inter/Roboto/Arial, ícones Phosphor Light, cartões em dupla moldura com raio 16 px, curva `cubic-bezier(0.32,0.72,0,1)`, anima só `transform`/`opacity` (exceção: o traço do anel SVG), respeita `prefers-reduced-motion`. Tokens de cor, claro e escuro, **exatamente os do spec §13**; fontes Red Hat Display (títulos e números) e Figtree (texto).
+- Regra do limão (`--destaque`, 10%): só como **preenchimento** (botão principal/FAB, aba ou item atual do menu sobre `--marinho`, aporte no anel, um realce por tela). **Nunca texto limão sobre fundo claro**: todo texto/ícone de ação em petróleo usa `text-marca-texto` (`--azul-texto`); o antigo `text-marca-texto` não existe mais (conferir cada ocorrência ao implementar).
+- Pendente nunca é texto colorido: use o chip `chip-pendente` (fundo `--amarelo-bg`, texto `--texto`) ou o bloco `aviso`. Entradas/saídas: `text-positivo` (`--verde-texto`) e `text-negativo` (`--vermelho-texto`), sempre com sinal.
+- Campos numéricos: todo `<input inputMode="numeric">` filtra com `somenteDigitos` (até 12 dígitos, `ui/validacao.ts`); toda data digitada passa por `dataReal` antes de salvar (nunca grava data vazia ou inválida).
 - Cor nunca é a única pista: sempre sinal +/− e rótulo.
 - Alvos de toque ≥ 44 px; `min-h-[100dvh]`, nunca `h-screen`.
 - Nada de padrão visual Tely.
 
 **User decisions (already made):** PWA local-first com caminho para APK via Capacitor · perfil por fonte de renda (`fixa`/`variavel`/`eventual`) · escopo v1 = núcleo + financiamentos + insights por regras (13º/férias e fatura de cartão ficam para v2) · visual próprio inspirado nas referências (drawer, seletor de mês, FAB, anel) · ideias do Kontto aprovadas em 2026-10-23: onboarding em 3 perguntas com objetivos, checklist "Vamos começar", cartão de privacidade, restaurar backup na abertura, e interpretador de notificação bancária no motor (Task 14). A captura nativa de notificações fica na fase APK (fora deste plano). Motor v1.1 (spec §12, decisões do dono de 2026-10-23): financiamento é um contrato cadastrado pelo carnê (taxa calculada), compra parcelada, contas com cheque especial, reserva, transferência e ajuste, custo essencial com lançados e futuros, "Comprometido nos próximos meses" e armazenamento persistente; as telas das Tasks 8–13 usam essas APIs.
+
+**Limitação conhecida (registrada, decisão do dono pendente):** a previsão por conta (`situacaoContas(...).previsto`, o aviso "vai ficar negativa até o fim do mês") **não inclui parcelas de contrato que ainda não têm lançamento**, porque o financiamento não tem `contaId`. Se o dono decidir, a v1.2 adiciona `contaId` ao financiamento e a previsão da conta passa a somar a parcela do contrato.
 
 **Desvio do spec (registrado):** no drawer, **Orçamento** e **Gráficos** ficam para a v1.1; **Reserva** vira um cartão (`CartaoReserva`) no Resumo e na tela Insights. O restante do spec §7 está coberto.
 
@@ -85,7 +90,7 @@ app/
 git init
 npm create vite@latest app -- --template react-ts
 cd app
-npm install dexie dexie-react-hooks react-router-dom @phosphor-icons/react @fontsource/plus-jakarta-sans @fontsource/geist-mono
+npm install dexie dexie-react-hooks react-router-dom @phosphor-icons/react @fontsource/red-hat-display @fontsource/figtree
 npm install -D tailwindcss @tailwindcss/vite vitest fake-indexeddb jsdom @testing-library/react vite-plugin-pwa
 ```
 
@@ -108,8 +113,8 @@ export default defineConfig({
         short_name: 'Finanças',
         display: 'standalone',
         start_url: '.',
-        background_color: '#F4F5F2',
-        theme_color: '#0F5C4A',
+        background_color: '#f1f5f4',
+        theme_color: '#0d2b30',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -2130,12 +2135,13 @@ git add app/src/data && git commit -m "feat(data): dexie, repositorio, seed de c
 **Goal:** Tokens visuais, componentes `Moldura`/`Cartao`/`SeletorMes`/`Fab`/`Drawer`, rotas e hook de dados.
 
 **Files:**
-- Create: `app/src/ui/tema.css`, `app/src/ui/rotulos.ts`, `app/src/ui/componentes/Moldura.tsx`, `SeletorMes.tsx`, `Fab.tsx`, `Drawer.tsx`, `app/src/ui/hooks/useDados.ts`, `app/src/ui/hooks/DadosContext.tsx`
+- Create: `app/src/ui/tema.css`, `app/src/ui/tema.ts`, `app/src/ui/validacao.ts`, `app/src/ui/componentes/BotaoTema.tsx`, `app/src/ui/rotulos.ts`, `app/src/ui/componentes/Moldura.tsx`, `SeletorMes.tsx`, `Fab.tsx`, `Drawer.tsx`, `app/src/ui/hooks/useDados.ts`, `app/src/ui/hooks/DadosContext.tsx`
 - Modify: `app/src/index.css`, `app/src/main.tsx`, `app/src/App.tsx`, `app/index.html`
 
 **Acceptance Criteria:**
 - [ ] App abre com cabeçalho (menu, seletor de mês) e FAB; menu abre o drawer com as entradas do spec §7 (exceto Orçamento/Gráficos).
-- [ ] Tema claro e escuro seguem `prefers-color-scheme` com os hex do spec §8.
+- [ ] Tema claro e escuro com **exatamente os tokens do spec §13** (`--fundo`, `--superficie`, `--superficie-2`, `--texto`, `--texto-suave`, `--linha`, `--marinho`, `--azul`, `--azul-texto`, `--destaque`, `--verde*`, `--vermelho*`, `--amarelo-bg`): padrão `prefers-color-scheme`, com botão no cabeçalho para trocar (`[data-theme="claro"|"escuro"]`, preferência em `localStorage` aplicada por script inline no `index.html` antes da primeira pintura, sem flash).
+- [ ] Identidade §13: fontes Red Hat Display (`--font-display`, títulos e `.valor` com `tabular-nums`) e Figtree (`--font-sans`); cartões com raio 16 px; cabeçalho, drawer e cartão-herói do Resumo em `--marinho` com texto claro; FAB com fundo `--destaque` (limão) e ícone `--marinho`; limão nunca como texto sobre fundo claro; `theme-color` e ícones PWA em `#0d2b30` com acento limão.
 - [ ] `npm run build` passa; sem erros no console ao abrir.
 - [ ] O `Shell` chama `pedirPersistencia()` (`data/armazenamento.ts`) uma vez na abertura e guarda o `EstadoArmazenamento` (`'persistente' | 'nao_persistente' | 'indisponivel'`) no contexto (`armazenamento`), para a tela de Backup (Task 13).
 - [ ] Categorias com `sistema: true` (transferência, ajuste) ficam fora de toda grade e tela de gestão: as telas filtram com `categoriasDaGrade` (nomes em listas continuam vindo da lista completa `categorias`). `semearCategorias()` na abertura também recria as de sistema em bancos que já tinham categorias.
@@ -2144,43 +2150,96 @@ git add app/src/data && git commit -m "feat(data): dexie, repositorio, seed de c
 
 **Steps:**
 
+- [ ] **Step 0: Trocar as fontes no `package.json`** (o scaffold da Task 0 já instalou as fontes antigas; o spec §13 usa Red Hat Display e Figtree). Em um clone novo o `npm install` da Task 0 já traz as novas e o comando abaixo é inofensivo:
+
+```bash
+cd app
+npm uninstall @fontsource/plus-jakarta-sans @fontsource/geist-mono
+npm install @fontsource/red-hat-display @fontsource/figtree
+```
+
+Conferir em `package.json` que `@fontsource/plus-jakarta-sans` e `@fontsource/geist-mono` sumiram das `dependencies`.
+
 - [ ] **Step 1: Tokens (`tema.css`) e importação de fontes**
 
-`app/src/ui/tema.css`:
+`app/src/ui/tema.css` (tokens do spec §13, linha a linha; `--sobre-marinho`, `--casca` e `--sombra` são derivados: texto sobre `--marinho`, fundo de campos/trilhos e elevação):
 
 ```css
-@import '@fontsource/plus-jakarta-sans/400.css';
-@import '@fontsource/plus-jakarta-sans/600.css';
-@import '@fontsource/plus-jakarta-sans/800.css';
-@import '@fontsource/geist-mono/500.css';
+@import '@fontsource/red-hat-display/500.css';
+@import '@fontsource/red-hat-display/700.css';
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/600.css';
 
 :root {
-  --papel: #f4f5f2;
+  color-scheme: light dark;
+  --fundo: #f1f5f4;
   --superficie: #ffffff;
-  --tinta: #14201c;
-  --tinta-suave: #5d6b66;
-  --marca: #0f5c4a;
-  --positivo: #2fa87a;
-  --negativo: #d9534f;
-  --alerta: #e39a2d;
-  --divida: #2a6f86;
-  --casca: rgba(20, 32, 28, 0.05);
-  --linha: rgba(20, 32, 28, 0.08);
-  --sombra: 0 24px 48px -24px rgba(20, 32, 28, 0.18);
+  --superficie-2: #edf3f2;
+  --texto: #10262b;
+  --texto-suave: #4a6168;
+  --linha: #dce8e6;
+  --marinho: #0d2b30;
+  --azul: #0b6b73;
+  --azul-texto: #0b6b73;
+  --destaque: #c6ef4f;
+  --verde: #15803d;
+  --verde-texto: #126b2f;
+  --verde-bg: #e4f5ea;
+  --vermelho: #c62828;
+  --vermelho-texto: #c62828;
+  --vermelho-bg: #fdecec;
+  --amarelo-bg: #fff4dd;
+  --sobre-marinho: #e4f2f0; /* texto sobre --marinho (derivado: = --texto do escuro) */
+  --casca: var(--superficie-2); /* fundo de campos e trilhos */
+  --sombra: 0 24px 48px -24px rgba(13, 43, 48, 0.18);
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
 }
+/* Escuro: padrão do sistema (a menos que o usuário tenha escolhido claro), ou escolhido no botão. */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --papel: #0b100e;
-    --superficie: #131b18;
-    --tinta: #eef2ef;
-    --tinta-suave: #98a8a1;
-    --marca: #3fbf99;
-    --casca: rgba(255, 255, 255, 0.05);
-    --linha: rgba(255, 255, 255, 0.1);
+  :root:not([data-theme='claro']) {
+    --fundo: #09171a;
+    --superficie: #102226;
+    --superficie-2: #163035;
+    --texto: #e4f2f0;
+    --texto-suave: #9db8b6;
+    --linha: #1f3c40;
+    --marinho: #0b2a2f;
+    --azul: #0f7f88;
+    --azul-texto: #62d6d8;
+    --destaque: #d4f55a;
+    --verde: #2f9e5c;
+    --verde-texto: #5bd58a;
+    --verde-bg: #12301f;
+    --vermelho: #c7352d;
+    --vermelho-texto: #ff8f85;
+    --vermelho-bg: #3a1a1f;
+    --amarelo-bg: #3a2c12;
     --sombra: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
   }
 }
+:root[data-theme='escuro'],
+.heroi { /* o cartão-herói usa sempre a paleta escura sobre --marinho */
+  --fundo: #09171a;
+  --superficie: #102226;
+  --superficie-2: #163035;
+  --texto: #e4f2f0;
+  --texto-suave: #9db8b6;
+  --linha: #1f3c40;
+  --marinho: #0b2a2f;
+  --azul: #0f7f88;
+  --azul-texto: #62d6d8;
+  --destaque: #d4f55a;
+  --verde: #2f9e5c;
+  --verde-texto: #5bd58a;
+  --verde-bg: #12301f;
+  --vermelho: #c7352d;
+  --vermelho-texto: #ff8f85;
+  --vermelho-bg: #3a1a1f;
+  --amarelo-bg: #3a2c12;
+  --sombra: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme='escuro'] { color-scheme: dark; }
+:root[data-theme='claro'] { color-scheme: light; }
 ```
 
 `app/src/index.css`:
@@ -2189,28 +2248,34 @@ git add app/src/data && git commit -m "feat(data): dexie, repositorio, seed de c
 @import 'tailwindcss';
 @import './ui/tema.css';
 
+/* Cores utilitárias remapeadas para os tokens do spec §13. Preenchimentos usam --azul; TEXTO em petróleo usa --azul-texto. */
 @theme {
-  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, monospace;
-  --color-papel: var(--papel);
+  --font-sans: 'Figtree', system-ui, sans-serif;
+  --font-display: 'Red Hat Display', 'Figtree', system-ui, sans-serif;
   --color-superficie: var(--superficie);
-  --color-tinta: var(--tinta);
-  --color-suave: var(--tinta-suave);
-  --color-marca: var(--marca);
-  --color-positivo: var(--positivo);
-  --color-negativo: var(--negativo);
-  --color-alerta: var(--alerta);
-  --color-divida: var(--divida);
+  --color-tinta: var(--texto);
+  --color-suave: var(--texto-suave);
+  --color-marca: var(--azul); /* fundos: botão secundário, barras */
+  --color-marca-texto: var(--azul-texto); /* links e textos em petróleo (antigo text-marca-texto) */
+  --color-positivo: var(--verde-texto);
+  --color-negativo: var(--vermelho-texto);
+  --color-divida: var(--azul-texto); /* dívida = família azul; versão de texto, legível nos dois temas */
+  --color-destaque: var(--destaque); /* limão: só preenchimento, nunca texto sobre fundo claro */
+  --color-marinho: var(--marinho);
 }
 
 html, body, #root { min-height: 100dvh; }
 body {
-  background: var(--papel);
-  color: var(--tinta);
+  background: var(--fundo);
+  color: var(--texto);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
-.valor { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--font-display); }
+.valor { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+/* Pendente: chip amarelo com texto normal (substitui o antigo text-alerta). */
+.chip-pendente { background: var(--amarelo-bg); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; }
+.aviso { background: var(--amarelo-bg); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
@@ -2223,12 +2288,13 @@ body {
 ```tsx
 import type { ReactNode } from 'react'
 
-export function Moldura({ children, className = '' }: { children: ReactNode; className?: string }) {
+/** Cartão do spec §13 (raio 16 px). `heroi`: cartão-herói em --marinho com texto claro (paleta escura local). */
+export function Moldura({ children, className = '', heroi = false }: { children: ReactNode; className?: string; heroi?: boolean }) {
   return (
-    <div className={`rounded-[2rem] p-1.5 ring-1 ring-[var(--linha)] bg-[var(--casca)] ${className}`}>
+    <div className={`rounded-[16px] p-1.5 ring-1 ring-[var(--linha)] ${heroi ? 'heroi bg-[var(--marinho)] text-[var(--texto)]' : 'bg-[var(--superficie-2)]'} ${className}`}>
       <div
-        className="rounded-[calc(2rem-0.375rem)] bg-[var(--superficie)] p-5"
-        style={{ boxShadow: 'var(--sombra), inset 0 1px 1px rgba(255,255,255,0.25)' }}
+        className={`rounded-[10px] p-5 ${heroi ? 'bg-[var(--marinho)]' : 'bg-[var(--superficie)]'}`}
+        style={{ boxShadow: 'var(--sombra), inset 0 1px 1px rgba(255,255,255,0.12)' }}
       >
         {children}
       </div>
@@ -2273,7 +2339,7 @@ export function SeletorMes({ mes, onChange }: { mes: string; onChange: (m: strin
         onClick={() => onChange(mesAnterior(mes, 1))}>
         <CaretLeft size={20} weight="light" />
       </button>
-      <span className="min-w-32 text-center font-semibold">{NOMES[m - 1]} <span className="text-suave font-normal">{ano}</span></span>
+      <span className="min-w-32 text-center font-semibold">{NOMES[m - 1]} <span className="font-normal opacity-70">{ano}</span></span>
       <button aria-label="Próximo mês" className="size-11 grid place-items-center rounded-full active:scale-95 transition-transform duration-300 ease-[var(--ease)]"
         onClick={() => onChange(mesAnterior(mes, -1))}>
         <CaretRight size={20} weight="light" />
@@ -2291,8 +2357,8 @@ import { Plus } from '@phosphor-icons/react'
 export function Fab({ onClick }: { onClick: () => void }) {
   return (
     <button aria-label="Novo lançamento" onClick={onClick}
-      className="fixed bottom-6 right-5 size-14 rounded-full bg-marca text-[var(--papel)] grid place-items-center active:scale-95 transition-transform duration-300 ease-[var(--ease)]"
-      style={{ boxShadow: '0 16px 32px -12px rgba(15,92,74,0.55)' }}>
+      className="fixed bottom-6 right-5 size-14 rounded-full bg-[var(--destaque)] text-[var(--marinho)] grid place-items-center active:scale-95 transition-transform duration-300 ease-[var(--ease)]"
+      style={{ boxShadow: '0 16px 32px -12px rgba(13,43,48,0.55)' }}>
       <Plus size={26} weight="light" />
     </button>
   )
@@ -2324,15 +2390,15 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
       <div onClick={fechar} aria-hidden
         className={`fixed inset-0 bg-black/40 transition-opacity duration-500 ease-[var(--ease)] ${aberto ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
       <nav aria-label="Menu" inert={!aberto}
-        className={`fixed inset-y-0 left-0 w-[82%] max-w-80 bg-[var(--superficie)] p-4 pt-8 transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
+        className={`fixed inset-y-0 left-0 w-[82%] max-w-80 bg-[var(--marinho)] text-[var(--sobre-marinho)] p-4 pt-8 transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
         <ul className="grid gap-1">
           {ITENS.map((it, i) =>
             'secao' in it ? (
-              <li key={i} className="mt-5 mb-1 px-3 text-[10px] uppercase tracking-[0.2em] text-suave">{it.secao}</li>
+              <li key={i} className="mt-5 mb-1 px-3 text-[10px] uppercase tracking-[0.2em] opacity-60">{it.secao}</li>
             ) : (
               <li key={it.para}>
                 <NavLink to={it.para} end={it.para === '/'} onClick={fechar}
-                  className={({ isActive }) => `flex items-center gap-3 rounded-full px-4 min-h-12 ${isActive ? 'bg-[var(--casca)] text-marca font-semibold' : ''}`}>
+                  className={({ isActive }) => `flex items-center gap-3 rounded-full px-4 min-h-12 ${isActive ? 'bg-white/10 text-[var(--destaque)] font-semibold' : ''}`}>
                   <it.Icone size={22} weight="light" /> {it.rotulo}
                 </NavLink>
               </li>
@@ -2392,12 +2458,63 @@ export function useDados(): Dados {
 }
 ```
 
+`ui/validacao.ts` (usado por todas as telas com campos numéricos e datas):
+
+```ts
+/** Só dígitos, no máximo 12 (cabe com folga em inteiro seguro: R$ 9.999.999.999,99). */
+export const somenteDigitos = (v: string): string => v.replace(/\D/g, '').slice(0, 12)
+
+/** 'YYYY-MM-DD' existente no calendário (rejeita vazio, mês 13, 30/02). */
+export function dataReal(v: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false
+  const [a, m, d] = v.split('-').map(Number)
+  return m >= 1 && m <= 12 && d >= 1 && d <= new Date(Date.UTC(a, m, 0)).getUTCDate()
+}
+```
+
+`ui/tema.ts` e `componentes/BotaoTema.tsx` (botão de tema no cabeçalho; a preferência fica em `localStorage`, só quando o usuário escolhe):
+
+```ts
+// ui/tema.ts
+export type Tema = 'claro' | 'escuro'
+const CHAVE = 'financas.tema'
+
+/** Tema em vigor: a escolha salva ou, sem ela, o do sistema. */
+export function temaAtual(): Tema {
+  const marcado = document.documentElement.getAttribute('data-theme')
+  if (marcado === 'claro' || marcado === 'escuro') return marcado
+  return matchMedia('(prefers-color-scheme: dark)').matches ? 'escuro' : 'claro'
+}
+export function escolherTema(t: Tema) {
+  document.documentElement.setAttribute('data-theme', t)
+  try { localStorage.setItem(CHAVE, t) } catch { /* modo privado: vale só nesta sessão */ }
+}
+```
+
+```tsx
+// componentes/BotaoTema.tsx
+import { useState } from 'react'
+import { Moon, Sun } from '@phosphor-icons/react'
+import { escolherTema, temaAtual } from '../tema'
+
+export function BotaoTema() {
+  const [tema, setTema] = useState(temaAtual())
+  const alternar = () => { const novo = tema === 'escuro' ? 'claro' : 'escuro'; escolherTema(novo); setTema(novo) }
+  return (
+    <button aria-label={tema === 'escuro' ? 'Usar tema claro' : 'Usar tema escuro'} onClick={alternar} className="size-11 grid place-items-center">
+      {tema === 'escuro' ? <Sun size={22} weight="light" /> : <Moon size={22} weight="light" />}
+    </button>
+  )
+}
+```
+
 `App.tsx`:
 
 ```tsx
 import { useEffect, useState } from 'react'
 import { HashRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { List } from '@phosphor-icons/react'
+import { BotaoTema } from './ui/componentes/BotaoTema'
 import { Drawer } from './ui/componentes/Drawer'
 import { Fab } from './ui/componentes/Fab'
 import { SeletorMes } from './ui/componentes/SeletorMes'
@@ -2415,35 +2532,49 @@ function Shell() {
   const [lancando, setLancando] = useState(false)
   const dados = useDadosAoVivo() // única leitura do banco; as telas recebem por DadosContext
   const [armazenamento, setArmazenamento] = useState<EstadoArmazenamento>()
+  const [hoje, setHoje] = useState(hojeLocal()) // dia local; muda ao voltar para o app em outro dia/mês
   const nav = useNavigate()
 
   useEffect(() => { semearCategorias() }, [])
   // Pede armazenamento persistente uma vez; o estado vai pelo contexto para a tela de Backup.
   useEffect(() => { void pedirPersistencia().then(setArmazenamento) }, [])
+  // App aberto por dias: ao voltar (foco / aba visível) relê o dia local; se o mês virou, o efeito abaixo gera as cópias novas.
+  useEffect(() => {
+    const atualizar = () => setHoje(hojeLocal())
+    window.addEventListener('focus', atualizar)
+    document.addEventListener('visibilitychange', atualizar)
+    return () => { window.removeEventListener('focus', atualizar); document.removeEventListener('visibilitychange', atualizar) }
+  }, [])
+  // Roda na abertura, quando o mês local muda e após qualquer mudança dos lançamentos (inclusive logo depois de
+  // `importar`, que troca o banco inteiro). É idempotente: sem nada a gerar, `gerarRecorrentes` devolve vazio e o efeito sai.
   useEffect(() => {
     if (!dados.pronto) return
-    const { copias, modelos } = gerarRecorrentes(dados.lancamentos, hojeLocal())
+    const { copias, modelos } = gerarRecorrentes(dados.lancamentos, hoje)
     if (copias.length === 0 && modelos.length === 0) return
     // Uma transação com bulkPut: modelos (geradoAte avançado) e cópias juntos. Ids determinísticos
     // tornam o efeito duplicado do StrictMode (e duas abas) inofensivo.
     void db.transaction('rw', db.lancamentos, () => db.lancamentos.bulkPut([...modelos, ...copias]))
-  }, [dados.pronto]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dados.pronto, dados.lancamentos, hoje.slice(0, 7)]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!dados.pronto) return null
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (
     <DadosContext.Provider value={{ ...dados, armazenamento }}>
-    <div className="mx-auto max-w-md min-h-[100dvh] px-4 pb-28">
-      <header className="flex items-center justify-between pt-4 pb-3">
-        <button aria-label="Abrir menu" className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
-          <List size={26} weight="light" />
-        </button>
-        <SeletorMes mes={mes} onChange={setMes} />
-        <span className="size-11" />
+    <div className="min-h-[100dvh] pb-28">
+      <header className="sticky top-0 z-30 bg-[var(--marinho)] text-[var(--sobre-marinho)]">
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 pb-3 pt-4">
+          <button aria-label="Abrir menu" className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
+            <List size={26} weight="light" />
+          </button>
+          <SeletorMes mes={mes} onChange={setMes} />
+          <BotaoTema />
+        </div>
       </header>
+      <main className="mx-auto max-w-md px-4 pt-4">
       <Routes>
         <Route path="*" element={<div>Em construção</div>} />
       </Routes>
+      </main>
       <Fab onClick={() => setLancando(true)} />
       <Drawer aberto={aberto} fechar={() => setAberto(false)} />
       {lancando && null}
@@ -2458,15 +2589,24 @@ export default function App() {
 }
 ```
 
-(Ao editar um lançamento-modelo recorrente na UI, preserve o `geradoAte` existente: salve `{ ...modelo, ...edicoes }`, nunca um objeto reconstruído sem o campo. Modelos e cópias são persistidos juntos, em uma transação com `bulkPut`, como o JSDoc de `gerarRecorrentes` pede. Reativar/estender uma recorrência encerrada é tratado na Task 10.)
+(Ao editar um lançamento-modelo recorrente na UI, preserve o `geradoAte` existente: salve `{ ...modelo, ...edicoes }`, nunca um objeto reconstruído sem o campo. Modelos e cópias são persistidos juntos, em uma transação com `bulkPut`, como o JSDoc de `gerarRecorrentes` pede.)
 
 (`lancando` e `nav` são conectados na Task 10 e Task 9; manter como está até lá.)
 
-`main.tsx` importa `./index.css`. `index.html`: `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`, `<meta name="theme-color" content="#0F5C4A">`, `lang="pt-BR"`, título "Finanças Pessoais".
+`main.tsx` importa `./index.css`. `index.html`: `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`, `<meta name="theme-color" content="#0d2b30">` (o marinho do cabeçalho, nos dois temas), `lang="pt-BR"`, título "Finanças Pessoais", e, no `<head>` **antes** de qualquer CSS/JS (evita o flash de tema), o script inline que aplica a preferência salva:
+
+```html
+<script>
+  try {
+    var t = localStorage.getItem('financas.tema')
+    if (t === 'claro' || t === 'escuro') document.documentElement.setAttribute('data-theme', t)
+  } catch (e) {}
+</script>
+```
 
 - [ ] **Step 4: Verificar**
 
-Run: `npm run build` → sucesso. Rodar `npm run dev`, abrir no navegador em 390×844: menu abre/fecha com animação, seletor de mês troca, FAB visível, tema acompanha o sistema, console sem erros.
+Run: `npm run build` → sucesso. Rodar `npm run dev`, abrir no navegador em 390×844: menu abre/fecha com animação, seletor de mês troca, FAB limão visível, tema acompanha o sistema e o botão do cabeçalho alterna claro/escuro (a escolha sobrevive ao recarregar, sem flash), cabeçalho e drawer em marinho, console sem erros. Conferir os hex de cada token com o spec §13 nos dois temas e que nenhum texto limão aparece sobre fundo claro.
 
 - [ ] **Step 5: Commit**
 
@@ -2486,15 +2626,15 @@ git add -A && git commit -m "feat(ui): tema, componentes base, drawer e shell"
 - Modify: `app/src/App.tsx` (rotas `/` e `/compromissos`, passa `mes`)
 
 **Acceptance Criteria:**
-- [ ] Anel mostra arco verde (sobra otimizada), arco azul-petróleo (aporte) e trilho; sobra normal ≤ 0 mostra anel coral com valor negativo.
-- [ ] Valores vêm de `resumoMes`; `Saldo` é o do fim do mês visualizado. Saldo seguro e pendências refletem lançamentos `pendente` **e as parcelas de financiamento ainda não pagas** (`parcelasPendentes` + `parcelasAtrasadas`, linha "Parcelas a pagar").
+- [ ] Anel (spec §13) no cartão-herói `--marinho`: arco petróleo `--azul` (sobra otimizada), arco limão `--destaque` (aporte), trilho `--linha`; sobra normal ≤ 0 mostra anel `--vermelho` com valor negativo. Sempre com sinal e rótulo além da cor.
+- [ ] Valores vêm de `resumoMes`; `Saldo` é o do fim do mês visualizado. Saldo seguro e pendências refletem lançamentos `pendente`, recorrências ainda sem cópia (itens virtuais pendentes, já somados por `resumoMes`), **as parcelas de financiamento ainda não pagas** (`parcelasPendentes` + `parcelasAtrasadas`, linha "Parcelas a pagar") **e as antecipações agendadas** (`antecipacoesPendentes`, linha própria). O cartão Visão geral mostra também as antecipações pagas no mês (`antecipacoes`, que reduzem o saldo mas não são despesa nem mexem na sobra).
 - [ ] Até 3 insights aparecem com título e detalhe; vazio mostra "Sem alertas este mês". Os insights de conta negativa (`conta_negativa`, `conta_ficara_negativa`) aparecem em destaque **no topo da tela**, acima do checklist e dos cartões.
 - [ ] Sem dados, mostra estado vazio com convite "Registre seu primeiro lançamento".
 - [ ] Cartão "Vamos começar" (checklist de 4 passos: conta, primeiro gasto, renda, financiamento) aparece enquanto houver passo pendente e não tiver sido fechado; "Não tenho financiamento" conclui o 4º passo.
 - [ ] Cartão "Comprometido nos próximos meses": 3 meses a partir do mês visto, com o total de cada um (`projetarCompromissos(...).meses`) e os próximos términos ("óculos termina em jun/27", de `.terminos`); o link "Ver 6 meses" abre a tela `/compromissos` (6 meses, por tipo, com a lista de itens). Item cuja `descricao` cai no id da categoria é exibido com o NOME da categoria (`nomeCompromisso`).
-- [ ] Cartão de Reserva (`CartaoReserva`): `saldoReserva` ÷ `custoEssencialReferencia` pelo `statusReserva`, com a meta de `reservaAlvoMeses`; se `usandoTodas`, mostra a dica para marcar a conta que é a reserva.
+- [ ] Cartão de Reserva (`CartaoReserva`): `saldoReserva(contas, lancamentos, fimDoMes(mes))` ÷ `custoEssencialReferencia(..., mes)` pelo `statusReserva`, com a meta de `reservaAlvoMeses` — sempre pelo **mês visto** (o mesmo número do insight de reserva baixa), não por `hojeLocal()`; barra em `--azul`. Se `usandoTodas`, mostra a dica para marcar a conta que é a reserva.
 - [ ] Ordem e presença dos cartões seguem os objetivos do onboarding (`ordemCartoes`): `contas_em_dia` coloca Pendências primeiro; `destino` adiciona "Para onde foi o dinheiro" (top 3 categorias); `meta` adiciona o cartão de Reserva; "Comprometido" entra sempre, depois de Pendências.
-- [ ] `topCategorias` (ignora transferências e ajustes) e `statusReserva` têm testes e valores conferidos à mão.
+- [ ] `topCategorias` (ignora transferências, ajustes e pagamentos de financiamento) e `statusReserva` têm testes e valores conferidos à mão. O Resumo nunca mostra pagamento de financiamento sob categoria alguma (a parcela aparece só em "Financiamentos").
 
 **Verify:** `cd app && npm run build` e conferência visual no navegador com dados de teste (criar 3–4 lançamentos pelo console: `indexedDB` ou pela Task 10)
 
@@ -2529,11 +2669,11 @@ export function SobraRing({ normal, otimizada, aporte }: { normal: Centavos; oti
       <svg viewBox="0 0 120 120" className="size-full">
         <circle cx="60" cy="60" r={R} fill="none" stroke="var(--linha)" strokeWidth="10" />
         {negativa ? (
-          <Arco inicio={0} pct={100} cor="var(--negativo)" />
+          <Arco inicio={0} pct={100} cor="var(--vermelho)" />
         ) : (
           <>
-            <Arco inicio={0} pct={pctOtima} cor="var(--positivo)" />
-            <Arco inicio={pctOtima} pct={pctAporte} cor="var(--divida)" />
+            <Arco inicio={0} pct={pctOtima} cor="var(--azul)" />
+            <Arco inicio={pctOtima} pct={pctAporte} cor="var(--destaque)" />
           </>
         )}
       </svg>
@@ -2557,7 +2697,7 @@ import { saldoReserva } from '../../domain/contas'
 import { custoEssencialReferencia } from '../../domain/essencial'
 import { resumoMes } from '../../domain/fluxo'
 import { gerarInsights, type Insight } from '../../domain/insights'
-import { hojeLocal, mesDe } from '../../domain/meses'
+import { fimDoMes } from '../../domain/meses'
 import { projetarCompromissos } from '../../domain/projecao'
 import { reservaAlvoMeses } from '../../domain/renda'
 import { statusReserva } from '../../domain/reserva'
@@ -2582,11 +2722,12 @@ export function useResumo(mes: Mes) {
     // 6 meses a partir do mês visto; o Resumo mostra os 3 primeiros, a tela /compromissos todos.
     const compromissos = projetarCompromissos({ lancamentos: d.lancamentos, financiamentos: d.financiamentos }, mes, 6)
 
-    // Reserva: saldo ATUAL das contas de reserva e custo essencial de referência a partir do mês de HOJE.
-    const { saldo, usandoTodas } = saldoReserva(d.contas, d.lancamentos)
+    // Reserva do MÊS VISTO (mesmo critério do insight `reserva_baixa`): saldo das contas de reserva até o fim do mês
+    // visto e custo essencial de referência a partir desse mês. Nunca `hojeLocal()`: o cartão e o insight têm de concordar.
+    const { saldo, usandoTodas } = saldoReserva(d.contas, d.lancamentos, fimDoMes(mes))
     const custo = custoEssencialReferencia(
       { lancamentos: d.lancamentos, categorias: d.categorias, financiamentos: d.financiamentos },
-      mesDe(hojeLocal()),
+      mes,
     )
     const alvo = reservaAlvoMeses(d.fontes)
     const reserva = { saldo, usandoTodas, custo, alvo, ...statusReserva(saldo, custo, alvo) }
@@ -2598,7 +2739,7 @@ export function useResumo(mes: Mes) {
 
 - [ ] **Step 3: `Resumo.tsx`**
 
-Estrutura (todos os cartões usam `Moldura`; valores com classe `valor`; entrada `text-positivo` com prefixo `+`, saída `text-negativo` com prefixo `−`, pendente `text-alerta`):
+Estrutura (todos os cartões usam `Moldura`; o cartão do anel usa `<Moldura heroi>`; valores com classe `valor`; entrada `text-positivo` com prefixo `+`, saída `text-negativo` com prefixo `−`, pendente no chip `chip-pendente`):
 
 ```tsx
 import { Link } from 'react-router-dom'
@@ -2627,7 +2768,7 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
       <Moldura>
         <h2 className="text-xl font-semibold">Comece pelo primeiro lançamento</h2>
         <p className="mt-2 text-suave">Registre uma entrada ou saída para ver sua sobra do mês.</p>
-        <button onClick={abrirLancamento} className="mt-4 min-h-12 rounded-full bg-marca px-6 font-semibold text-[var(--papel)]">
+        <button onClick={abrirLancamento} className="mt-4 min-h-12 rounded-full bg-marca px-6 font-semibold text-white">
           Registrar lançamento
         </button>
       </Moldura>
@@ -2635,7 +2776,7 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
 
   return (
     <div className="grid gap-5">
-      <Moldura>
+      <Moldura heroi>
         <SobraRing normal={r.sobraNormal} otimizada={r.sobraOtimizada} aporte={aporte} />
         <div className="mt-4 grid grid-cols-3 text-center text-sm">
           <div><div className="text-suave">Inicial</div><div className="valor">{formatarBRL(r.inicial)}</div></div>
@@ -2646,12 +2787,15 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
 
       <Moldura>
         <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Pendências</h3>
-        <Linha rotulo="Receitas pendentes" valor={`+ ${formatarBRL(r.receitasPendentes)}`} cor="text-alerta" />
-        <Linha rotulo="Despesas pendentes" valor={`− ${formatarBRL(r.despesasPendentes)}`} cor="text-alerta" />
+        <Linha rotulo="Receitas pendentes" valor={`+ ${formatarBRL(r.receitasPendentes)}`} cor="chip-pendente" />
+        <Linha rotulo="Despesas pendentes" valor={`− ${formatarBRL(r.despesasPendentes)}`} cor="chip-pendente" />
         <Linha rotulo="Parcelas a pagar" valor={`− ${formatarBRL(r.parcelasPendentes + r.parcelasAtrasadas)}`} cor="text-divida" />
+        {r.antecipacoesPendentes > 0 && (
+          <Linha rotulo="Antecipações agendadas" valor={`− ${formatarBRL(r.antecipacoesPendentes)}`} cor="chip-pendente" />
+        )}
         <div className="mt-1 border-t border-[var(--linha)] pt-2">
           <Linha rotulo="Saldo seguro" valor={formatarBRL(r.saldoSeguro)} />
-          <p className="text-xs text-suave">Saldo no fim do mês menos despesas e parcelas ainda não pagas.</p>
+          <p className="text-xs text-suave">Saldo no fim do mês menos despesas, parcelas e antecipações ainda não pagas.</p>
         </div>
       </Moldura>
 
@@ -2660,6 +2804,9 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
         <Linha rotulo="Receitas" valor={`+ ${formatarBRL(r.receitas)}`} cor="text-positivo" />
         <Linha rotulo="Despesas" valor={`− ${formatarBRL(r.despesas)}`} cor="text-negativo" />
         <Linha rotulo="Financiamentos" valor={`− ${formatarBRL(r.parcelas)}`} cor="text-divida" />
+        {r.antecipacoes > 0 && (
+          <Linha rotulo="Antecipações pagas (não entram na sobra)" valor={`− ${formatarBRL(r.antecipacoes)}`} cor="text-divida" />
+        )}
       </Moldura>
 
       <Moldura>
@@ -2668,12 +2815,12 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
         <ul className="mt-2 grid gap-3">
           {insights.slice(0, 3).map((i) => (
             <li key={i.id}>
-              <div className={`font-semibold ${i.severidade === 'alerta' ? 'text-alerta' : ''}`}>{i.titulo}</div>
+              <div className={`font-semibold ${i.severidade === 'alerta' ? 'text-negativo' : ''}`}>{i.titulo}</div>
               <div className="text-sm text-suave">{i.detalhe}</div>
             </li>
           ))}
         </ul>
-        <Link to="/insights" className="mt-3 inline-block text-marca font-semibold">Ver todos</Link>
+        <Link to="/insights" className="mt-3 inline-block text-marca-texto font-semibold">Ver todos</Link>
       </Moldura>
 
       <Moldura>
@@ -2704,15 +2851,18 @@ Em `App.tsx`, trocar o `Routes` por `<Route path="/" element={<Resumo mes={mes} 
 
 - [ ] **Step 3b: Funções puras (com teste), preferências, checklist e ordem dos cartões**
 
-`domain/categorias.ts` (transferências e ajustes mexem no saldo, nunca em gasto por categoria):
+`domain/categorias.ts` (transferências e ajustes mexem no saldo, nunca em gasto por categoria; pagamentos de financiamento existente também ficam de fora: a parcela é do contrato e aparece em "Financiamentos", nunca sob uma categoria):
 
 ```ts
-import { ehMovimentoInterno } from './fluxo'
+import { ehMovimentoInterno, ehPagamentoParcela } from './fluxo'
 import { mesDe } from './meses'
-import type { Centavos, Lancamento, Mes } from './tipos'
+import type { Centavos, Financiamento, Lancamento, Mes } from './tipos'
 
-export function topCategorias(lancs: Lancamento[], mes: Mes, n: number) {
-  const saidas = lancs.filter((l) => l.tipo === 'saida' && !ehMovimentoInterno(l) && mesDe(l.data) === mes)
+export function topCategorias(lancs: Lancamento[], financiamentos: Pick<Financiamento, 'id'>[], mes: Mes, n: number) {
+  const ids = new Set(financiamentos.map((f) => f.id))
+  const saidas = lancs.filter(
+    (l) => l.tipo === 'saida' && !ehMovimentoInterno(l) && !ehPagamentoParcela(l, ids) && mesDe(l.data) === mes,
+  )
   const total = saidas.reduce((s, l) => s + l.valor, 0)
   if (total === 0) return []
   const por = new Map<string, Centavos>()
@@ -2731,6 +2881,8 @@ import { describe, it, expect } from 'vitest'
 import { topCategorias } from './categorias'
 import type { Lancamento } from './tipos'
 
+const f1 = { id: 'f1' }
+
 const s = (categoriaId: string, valor: number, data = '2026-10-05'): Lancamento => ({
   id: categoriaId + valor + data, valor, data, tipo: 'saida', categoriaId,
   natureza: 'variavel', contaId: 'c', status: 'pago',
@@ -2739,19 +2891,32 @@ const s = (categoriaId: string, valor: number, data = '2026-10-05'): Lancamento 
 describe('topCategorias', () => {
   const ls = [s('mer', 6000), s('alu', 3000), s('mer', 1000), s('mer', 9999, '2026-09-01')]
   it('agrupa, ordena e calcula percentual do mês', () => {
-    expect(topCategorias(ls, '2026-10', 5)).toEqual([
+    expect(topCategorias(ls, [], '2026-10', 5)).toEqual([
       { categoriaId: 'mer', total: 7000, pct: 70 },
       { categoriaId: 'alu', total: 3000, pct: 30 },
     ])
   })
-  it('respeita o limite n', () => expect(topCategorias(ls, '2026-10', 1)).toHaveLength(1))
-  it('mês sem saídas devolve lista vazia', () => expect(topCategorias(ls, '2026-11', 3)).toEqual([]))
+  it('respeita o limite n', () => expect(topCategorias(ls, [], '2026-10', 1)).toHaveLength(1))
+  it('mês sem saídas devolve lista vazia', () => expect(topCategorias(ls, [], '2026-11', 3)).toEqual([]))
   it('ignora transferência e ajuste', () => {
     const internos: Lancamento[] = [
       { ...s('transferencia', 50000), especie: 'transferencia' },
       { ...s('ajuste', 5000), especie: 'ajuste' },
     ]
-    expect(topCategorias([...ls, ...internos], '2026-10', 5)).toEqual(topCategorias(ls, '2026-10', 5))
+    expect(topCategorias([...ls, ...internos], [], '2026-10', 5)).toEqual(topCategorias(ls, [], '2026-10', 5))
+  })
+  it('ignora pagamento de financiamento existente, mas não o de financiamento apagado', () => {
+    // 95.000 ligado a f1 (existe): fora, o resultado não muda (mer 7.000 = 70%, alu 3.000 = 30%).
+    const pagamento: Lancamento = { ...s('moradia', 95000), financiamentoId: 'f1' }
+    expect(topCategorias([...ls, pagamento], [f1], '2026-10', 5)).toEqual(topCategorias(ls, [f1], '2026-10', 5))
+    // financiamentoId órfão (financiamento apagado) volta a ser saída comum: total 7.000 + 3.000 + 20.000 = 30.000
+    // moradia 20.000 = 66,67% → 67; mer 7.000 = 23,33% → 23; alu 3.000 = 10%.
+    const orfao: Lancamento = { ...s('moradia', 20000), financiamentoId: 'apagado' }
+    expect(topCategorias([...ls, orfao], [f1], '2026-10', 5)).toEqual([
+      { categoriaId: 'moradia', total: 20000, pct: 67 },
+      { categoriaId: 'mer', total: 7000, pct: 23 },
+      { categoriaId: 'alu', total: 3000, pct: 10 },
+    ])
   })
 })
 ```
@@ -2873,15 +3038,15 @@ export function ChecklistInicial({ abrirLancamento }: { abrirLancamento: () => v
       <ul className="mt-3">
         {passos.map((p) => (
           <li key={p.id} className="flex min-h-11 items-center gap-3">
-            {p.feito ? <CheckCircle size={22} weight="fill" className="text-marca" /> : <Circle size={22} weight="light" />}
+            {p.feito ? <CheckCircle size={22} weight="fill" className="text-marca-texto" /> : <Circle size={22} weight="light" />}
             <span className={p.feito ? 'text-suave line-through' : 'font-semibold'}>{p.rotulo}</span>
           </li>
         ))}
       </ul>
       {proximo.para ? (
-        <Link to={proximo.para} className="mt-3 grid min-h-12 place-items-center rounded-full bg-marca font-semibold text-[var(--papel)]">{proximo.acao}</Link>
+        <Link to={proximo.para} className="mt-3 grid min-h-12 place-items-center rounded-full bg-marca font-semibold text-white">{proximo.acao}</Link>
       ) : (
-        <button onClick={abrirLancamento} className="mt-3 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">{proximo.acao}</button>
+        <button onClick={abrirLancamento} className="mt-3 min-h-12 w-full rounded-full bg-marca font-semibold text-white">{proximo.acao}</button>
       )}
       {proximo.id === 'divida' && (
         <button onClick={() => salvarPrefs({ semFinanciamento: true })} className="mt-1 min-h-11 w-full text-sm text-suave">Não tenho financiamento</button>
@@ -2908,7 +3073,7 @@ export function CartaoReserva({ reserva: r, verMais = false }: { reserva: DadosR
       <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Reserva</h3>
       <p className="mt-2 valor text-2xl">{formatarNumero(r.cobertos)} <span className="text-base text-suave">de {r.alvo} meses</span></p>
       <div className="mt-3 h-2 rounded-full bg-[var(--linha)]" role="progressbar" aria-valuenow={Math.round(r.progresso)} aria-valuemin={0} aria-valuemax={100}>
-        <div className="h-2 rounded-full bg-positivo" style={{ width: `${r.progresso}%` }} />
+        <div className="h-2 rounded-full bg-marca" style={{ width: `${r.progresso}%` }} />
       </div>
       <p className="mt-2 text-sm text-suave">
         Saldo da reserva {formatarBRL(r.saldo)} · custo essencial de referência {formatarBRL(r.custo)} por mês.
@@ -2916,17 +3081,17 @@ export function CartaoReserva({ reserva: r, verMais = false }: { reserva: DadosR
       </p>
       {r.usandoTodas && (
         <p className="mt-2 text-sm text-suave">
-          Usando o saldo de todas as contas. <Link to="/contas" className="font-semibold text-marca">Marque a conta que é sua reserva</Link> para o cálculo ficar exato.
+          Usando o saldo de todas as contas. <Link to="/contas" className="font-semibold text-marca-texto">Marque a conta que é sua reserva</Link> para o cálculo ficar exato.
         </p>
       )}
-      {verMais && <Link to="/insights" className="mt-3 inline-block font-semibold text-marca">Ver insights</Link>}
+      {verMais && <Link to="/insights" className="mt-3 inline-block font-semibold text-marca-texto">Ver insights</Link>}
     </Moldura>
   )
 }
 ```
 
 Em `Resumo.tsx`: montar um `Record<Cartao, ReactNode>` com os cartões já escritos no Step 3, mais:
-- `destino`: `<Moldura>` "Para onde foi o dinheiro" listando `topCategorias(lancamentos, mes, 3)` com nome da categoria, `%` e `formatarBRL(total)` (saída em coral com sinal −).
+- `destino`: `<Moldura>` "Para onde foi o dinheiro" listando `topCategorias(lancamentos, financiamentos, mes, 3)` com nome da categoria, `%` e `formatarBRL(total)` (saída em coral com sinal −).
 - `reserva`: `<CartaoReserva reserva={reserva} verMais />`.
 - `compromissos`: cartão "Comprometido nos próximos meses" (3 meses, términos e link para a tela de 6 meses):
 
@@ -2953,16 +3118,16 @@ compromissos: (
         ))}
       </>
     )}
-    <Link to="/compromissos" className="mt-3 inline-block font-semibold text-marca">Ver 6 meses</Link>
+    <Link to="/compromissos" className="mt-3 inline-block font-semibold text-marca-texto">Ver 6 meses</Link>
   </Moldura>
 ),
 ```
 
-(imports extras em `Resumo.tsx`: `CartaoReserva`, `rotuloMes` e `nomeCompromisso` de `../rotulos`, `topCategorias`). No topo do `return` (antes do checklist e dos cartões; também no estado vazio, pois um saldo inicial negativo já gera alerta), os alertas de conta negativa:
+(imports extras em `Resumo.tsx`: `CartaoReserva`, `rotuloMes` e `nomeCompromisso` de `../rotulos`, `topCategorias`; `financiamentos` vem de `useResumo(mes)`). No topo do `return` (antes do checklist e dos cartões; também no estado vazio, pois um saldo inicial negativo já gera alerta), os alertas de conta negativa:
 
 ```tsx
 {alertasConta.map((i) => (
-  <div key={i.id} role="alert" className="rounded-2xl bg-[var(--casca)] p-4 ring-1 ring-negativo">
+  <div key={i.id} role="alert" className="rounded-2xl bg-[var(--casca)] p-4 ring-1 ring-[var(--vermelho)]">
     <div className="font-semibold text-negativo">{i.titulo}</div>
     <div className="text-sm text-suave">{i.detalhe}</div>
   </div>
@@ -3044,8 +3209,9 @@ git add -A && git commit -m "feat(ui): tela Resumo com anel da sobra"
 **Acceptance Criteria:**
 - [ ] Abas Saída | Entrada; teclado numérico abre com foco no valor; digitar `1250` mostra `R$ 12,50`.
 - [ ] Campo **descrição** visível sob o valor (opcional; gravado em `descricao` só quando preenchido). Grade de categorias do tipo escolhido (`categoriasDaGrade`: categorias de sistema nunca aparecem), ordenadas por uso; tocar numa categoria **salva** (valor > 0) e fecha; data padrão = hoje (`hojeLocal()`).
+- [ ] **Data válida**: `salvar` bloqueia (com `alert`) data vazia ou inexistente (`dataReal` de `ui/validacao.ts`) — o `<input type="date">` devolve `''` quando limpo e isso nunca é gravado. Campos de dígitos usam `somenteDigitos` (até 12).
 - [ ] "Mais opções": conta, data, natureza, fonte (entrada), observação, pendente, repete todo mês (com "Termina em" opcional → `recorrenciaAte`) e, em saídas, o seletor **"Tipo de saída"**: *Comum*, *Parcelado* ou *Pagamento de financiamento*. Campos opcionais ficam omitidos quando vazios — nunca `null`.
-- [ ] **Parcelado**: o valor digitado é o da parcela; informa total de parcelas (≥ 2), qual é a parcela deste mês e a data dela; mostra a prévia ("Faltam 9 parcelas · R$ 450,00 · última em …", de `resumoParcelamento`) e grava o grupo com `criarParcelamento` + `bulkPut` (da parcela atual até a última; a atual com o status escolhido, as futuras pendentes). Erros do motor aparecem em `alert`.
+- [ ] **Parcelado**: o valor digitado é o da parcela; informa total de parcelas (≥ 2), qual é a parcela deste mês e a data dela; mostra a prévia com a semântica de `resumoParcelamento` (`restantes` = parcelas ainda pendentes): com a parcela atual **paga**, 4/12 de R$ 50,00 mostra "Faltam 8 · R$ 400,00 · última em jun/27"; só quando a atual está **pendente** a prévia soma a de hoje e acrescenta "(inclui a de hoje)" ("Faltam 9 · R$ 450,00 · última em jun/27 (inclui a de hoje)") e grava o grupo com `criarParcelamento` + `bulkPut` (da parcela atual até a última; a atual com o status escolhido, as futuras pendentes). Erros do motor aparecem em `alert`.
 - [ ] **Pagamento de financiamento**: escolhe o contrato e se é *Parcela* ou *Antecipação* → grava `financiamentoId` + `pagamentoFinanciamento`; em "Parcela", o valor vem preenchido com a parcela do contrato (`estadoFinanciamento(f, lancamentos).restantes[0].parcela`) e avisa quando o valor digitado difere (a parcela avança exatamente uma; o excesso conta como despesa).
 - [ ] Na lista, todo lançamento `pendente` (inclusive cada cópia recorrente, que nasce pendente) tem o botão **"Marcar como pago"**, que salva `{ ...l, status: 'pago' }`; o botão **"Cancelar recorrência"** (no modelo e nas cópias de uma recorrência ativa) usa `cancelarRecorrencia(modelo, mês atual)`; parcelados mostram **"4/12"**; a linha mostra `descricao` quando existe (a categoria vai para o texto secundário).
 - [ ] Lista de lançamentos do mês com filtro por tipo e exclusão (botão de lixeira com confirmação; excluir uma transferência apaga as duas pontas).
@@ -3080,6 +3246,7 @@ import { estadoFinanciamento } from '../../domain/fluxo'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import { criarParcelamento, resumoParcelamento } from '../../domain/parcelamento'
 import { rotuloMes } from '../rotulos'
+import { dataReal, somenteDigitos } from '../validacao'
 import type { Categoria, Lancamento, PagamentoFinanciamento, TipoLancamento } from '../../domain/tipos'
 
 export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
@@ -3131,6 +3298,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
 
   async function salvar(c: Categoria) {
     if (valor <= 0) { campo.current?.focus(); return }
+    if (!dataReal(data)) { alert('Informe uma data válida.'); return } // nunca grava data vazia/inválida
     const desc = descricao.trim()
     const base = {
       tipo, categoriaId: c.id, natureza: natureza === 'auto' ? c.natureza : natureza,
@@ -3178,7 +3346,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
         <label className="mt-5 block text-center">
           <span className="sr-only">Valor</span>
           <input ref={campo} autoFocus inputMode="numeric" value={digitos}
-            onChange={(e) => setDigitos(e.target.value.replace(/\D/g, '').slice(0, 10))}
+            onChange={(e) => setDigitos(somenteDigitos(e.target.value))}
             className="absolute opacity-0 pointer-events-none" aria-label="Valor em centavos" />
           <span onClick={() => campo.current?.focus()} className="valor block text-4xl font-medium">{formatarBRL(valor)}</span>
           {efetivo === 'parcelado' && <span className="text-xs text-suave">valor de cada parcela</span>}
@@ -3197,7 +3365,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
           ))}
         </div>
 
-        <button onClick={() => setMais(!mais)} className="mt-4 min-h-11 text-sm font-semibold text-marca">
+        <button onClick={() => setMais(!mais)} className="mt-4 min-h-11 text-sm font-semibold text-marca-texto">
           {mais ? 'Menos opções' : 'Mais opções'}
         </button>
         {mais && (
@@ -3214,14 +3382,15 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
             {efetivo === 'parcelado' && (
               <>
                 <label className="grid gap-1">Total de parcelas
-                  <input inputMode="numeric" value={totalParc} onChange={(e) => setTotalParc(e.target.value.replace(/\D/g, ''))} placeholder="12" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+                  <input inputMode="numeric" value={totalParc} onChange={(e) => setTotalParc(somenteDigitos(e.target.value))} placeholder="12" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
                 </label>
                 <label className="grid gap-1">Qual é a parcela deste mês?
-                  <input inputMode="numeric" value={parcAtual} onChange={(e) => setParcAtual(e.target.value.replace(/\D/g, ''))} placeholder="1" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+                  <input inputMode="numeric" value={parcAtual} onChange={(e) => setParcAtual(somenteDigitos(e.target.value))} placeholder="1" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
                 </label>
                 {previa && (
                   <p className="text-suave">
-                    Faltam {previa.restantes} parcelas · {formatarBRL(previa.valorRestante)} · última em {previa.ultimaData ? rotuloMes(mesDe(previa.ultimaData)) : ''}
+                    Faltam {previa.restantes} · {formatarBRL(previa.valorRestante)} · última em {previa.ultimaData ? rotuloMes(mesDe(previa.ultimaData)) : ''}
+                    {pendente ? ' (inclui a de hoje)' : ''}
                   </p>
                 )}
               </>
@@ -3251,7 +3420,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
                 </div>
                 {pagTipo === 'parcela' && proxima && <p className="text-suave">Parcela do contrato: {formatarBRL(proxima.parcela)}</p>}
                 {difere && proxima && (
-                  <p role="alert" className="text-alerta">
+                  <p role="alert" className="aviso">
                     Pagar uma parcela sempre avança exatamente uma parcela do contrato.{' '}
                     {valor > proxima.parcela ? `A diferença de ${formatarBRL(valor - proxima.parcela)} conta como despesa comum.` : 'O contrato dá a parcela por paga mesmo com valor menor.'}
                   </p>
@@ -3372,7 +3541,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
                   {l.tipo === 'entrada' ? '+' : '−'} {formatarBRL(l.valor)}
                 </span>
                 {l.status === 'pendente' && (
-                  <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-marca"
+                  <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-marca-texto"
                     onClick={() => repo.lancamentos.salvar({ ...l, status: 'pago' })}>
                     Marcar como pago
                   </button>
@@ -3398,7 +3567,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
 Notas sobre recorrência:
 - "Cancelar recorrência" encerra no mês atual (`cancelarRecorrencia(modelo, mês atual)`): o modelo não gera mais cópias depois dele e nada já lançado é apagado.
 - Editar um modelo preserva o `geradoAte` (salve `{ ...modelo, ...edicoes }`).
-- Futuro "reativar/estender": ao remover ou aumentar `recorrenciaAte`, **resetar `geradoAte` para o `recorrenciaAte` antigo** (`{ ...modelo, recorrenciaAte: novo, geradoAte: modelo.recorrenciaAte }`). O gerador avança `geradoAte` até o mês de hoje mesmo depois do fim; sem o reset, os meses entre o fim antigo e `geradoAte` seriam pulados.
+- Reativar/estender: remover ou aumentar `recorrenciaAte` basta (`{ ...modelo, recorrenciaAte: novo }`, sem mexer em `geradoAte`): o motor nunca avança a marca d'água além de `recorrenciaAte`, então os meses que ficaram de fora são gerados na próxima abertura do app.
 
 - [ ] **Step 4: `EtapaRenda.tsx`** — perguntas 2 e 3 do onboarding: escolhe fontes por exemplo e cria conta (o `Onboarding.tsx` que orquestra as etapas está no Step 4b)
 
@@ -3407,6 +3576,7 @@ import { useState } from 'react'
 import { Moldura } from '../componentes/Moldura'
 import { repo, novoId } from '../../data/repo'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
+import { somenteDigitos } from '../validacao'
 import type { TipoFonte } from '../../domain/tipos'
 
 const OPCOES: { tipo: TipoFonte; nome: string; exemplo: string }[] = [
@@ -3441,7 +3611,7 @@ export function EtapaRenda() {
             {ativo && (
               <label className="mt-3 grid gap-1 text-sm">Quanto você espera por mês?
                 <input inputMode="numeric" value={sel[o.tipo]} placeholder="0"
-                  onChange={(e) => setSel((s) => ({ ...s, [o.tipo]: e.target.value.replace(/\D/g, '') }))}
+                  onChange={(e) => setSel((s) => ({ ...s, [o.tipo]: somenteDigitos(e.target.value) }))}
                   className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
                 <span className="text-suave">{formatarBRL(centavosDeDigitos(sel[o.tipo]))}</span>
               </label>
@@ -3451,13 +3621,13 @@ export function EtapaRenda() {
       })}
       <Moldura>
         <label className="grid gap-1 text-sm">Quanto você tem hoje em conta e carteira?
-          <input inputMode="numeric" value={saldo} onChange={(e) => setSaldo(e.target.value.replace(/\D/g, ''))}
+          <input inputMode="numeric" value={saldo} onChange={(e) => setSaldo(somenteDigitos(e.target.value))}
             className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="0" />
           <span className="text-suave">{formatarBRL(centavosDeDigitos(saldo))}</span>
         </label>
       </Moldura>
       <button disabled={Object.keys(sel).length === 0} onClick={concluir}
-        className="min-h-12 rounded-full bg-marca px-6 font-semibold text-[var(--papel)] disabled:opacity-40">
+        className="min-h-12 rounded-full bg-marca px-6 font-semibold text-white disabled:opacity-40">
         Começar
       </button>
     </div>
@@ -3475,8 +3645,8 @@ import { CheckCircle, Lock } from '@phosphor-icons/react'
 export function Privacidade() {
   return (
     <ul className="grid gap-3 rounded-2xl bg-[var(--casca)] p-4 text-sm">
-      <li className="flex gap-3"><Lock size={22} weight="light" className="shrink-0 text-marca" />Nada sai do seu celular: o app não envia seus dados para lugar nenhum.</li>
-      <li className="flex gap-3"><CheckCircle size={22} weight="light" className="shrink-0 text-marca" />Faça um backup de vez em quando para não perder nada ao trocar de aparelho.</li>
+      <li className="flex gap-3"><Lock size={22} weight="light" className="shrink-0 text-marca-texto" />Nada sai do seu celular: o app não envia seus dados para lugar nenhum.</li>
+      <li className="flex gap-3"><CheckCircle size={22} weight="light" className="shrink-0 text-marca-texto" />Faça um backup de vez em quando para não perder nada ao trocar de aparelho.</li>
     </ul>
   )
 }
@@ -3528,7 +3698,7 @@ export default function Onboarding() {
         })}
         <button disabled={sel.length === 0}
           onClick={() => { salvarPrefs({ objetivos: sel }); setEtapa('renda') }}
-          className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)] disabled:opacity-40">
+          className="min-h-12 rounded-full bg-marca font-semibold text-white disabled:opacity-40">
           Continuar
         </button>
       </div>
@@ -3539,9 +3709,9 @@ export default function Onboarding() {
       <h1 className="text-3xl font-extrabold leading-tight">Controle seus gastos.<br />Fácil assim.</h1>
       <p className="text-suave">Responda 3 perguntas e o app se monta do seu jeito.</p>
       <Moldura><Privacidade /></Moldura>
-      <button onClick={() => setEtapa('objetivos')} className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)]">Montar meu controle</button>
+      <button onClick={() => setEtapa('objetivos')} className="min-h-12 rounded-full bg-marca font-semibold text-white">Montar meu controle</button>
       <p className="text-center text-xs text-suave">Leva menos de 1 minuto · sem cadastro</p>
-      <button onClick={() => arquivo.current?.click()} className="min-h-11 text-sm font-semibold text-marca">Já uso · Restaurar backup</button>
+      <button onClick={() => arquivo.current?.click()} className="min-h-11 text-sm font-semibold text-marca-texto">Já uso · Restaurar backup</button>
       <input ref={arquivo} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && restaurar(e.target.files[0])} />
     </div>
   )
@@ -3558,7 +3728,7 @@ Commit junto com o Step 6 (o FAB e as rotas ainda não existem no onboarding: ma
 
 - [ ] **Step 6: Verificar e commitar**
 
-Run: `npm run build` → sucesso. No navegador: onboarding → criar saída de R$ 12,50 em Mercado (valor + 1 toque) → aparece no Resumo e em Lançamentos; marcar "pendente" altera Saldo seguro. Parcelado: "Mais opções" → Parcelado, R$ 50,00 × 12, parcela atual 4 → criam-se 9 lançamentos (4/12 a 12/12), a lista mostra "4/12" e a prévia mostra "Faltam 9 parcelas · R$ 450,00 · última em …". Pagamento de financiamento: escolher o contrato e "Parcela" → valor pré-preenchido com a parcela do contrato, aviso se for diferente. Transferência e ajuste (Task 11) nunca aparecem na grade de categorias.
+Run: `npm run build` → sucesso. No navegador: onboarding → criar saída de R$ 12,50 em Mercado (valor + 1 toque) → aparece no Resumo e em Lançamentos; marcar "pendente" altera Saldo seguro. Parcelado: "Mais opções" → Parcelado, R$ 50,00 × 12, parcela atual 4 → criam-se 9 lançamentos (4/12 a 12/12), a lista mostra "4/12" e a prévia mostra "Faltam 8 · R$ 400,00 · última em jun/27" (a parcela de hoje está paga); marcando "Esta parcela ainda não foi paga" a prévia passa a "Faltam 9 · R$ 450,00 · última em jun/27 (inclui a de hoje)". Pagamento de financiamento: escolher o contrato e "Parcela" → valor pré-preenchido com a parcela do contrato, aviso se for diferente. Transferência e ajuste (Task 11) nunca aparecem na grade de categorias.
 
 ```bash
 git add -A && git commit -m "feat(ui): lancamento rapido, lista de lancamentos e onboarding"
@@ -3575,10 +3745,10 @@ git add -A && git commit -m "feat(ui): lancamento rapido, lista de lancamentos e
 - Modify: `app/src/App.tsx` (rotas `/contas`, `/fontes`, `/categorias`)
 
 **Acceptance Criteria:**
-- [ ] Contas: lista com o saldo por conta vindo de `situacaoContas(contas, lancamentos, mêsAtual).saldo` (pagos até o fim do mês corrente, **não** o saldo do mês visto; é o mesmo número usado em "Conferir saldo"), adicionar, editar nome/tipo/saldo inicial, remover (bloqueia se houver lançamentos na conta, inclusive transferências e ajustes, com mensagem).
-- [ ] Saldo inicial **com sinal**: botão ± ao lado do campo (`CampoValor`); o saldo pode ser negativo. Campos opcionais **limite** e **taxa do cheque especial** (% ao mês) e a caixa **"Esta é minha reserva"**; vazios ficam omitidos (nunca `null`). Sem nenhuma conta marcada, a tela avisa que a reserva usa todas.
+- [ ] Contas: lista com o saldo por conta vindo de `situacaoContas(contas, lancamentos, mêsAtual).saldo` (pagos até o fim do mês corrente, **não** o saldo do mês visto), adicionar, editar nome/tipo/saldo inicial, remover (bloqueia se houver lançamentos na conta, inclusive transferências e ajustes, com mensagem).
+- [ ] Saldo inicial **com sinal**: botão ± ao lado do campo (`CampoValor`); o saldo pode ser negativo. Campos opcionais **limite** e **taxa do cheque especial** (% ao mês, até 4 casas decimais: 7,9899 é preservado ao editar) e a caixa **"Esta é minha reserva"**; vazios ficam omitidos (nunca `null`). Sem nenhuma conta marcada, a tela avisa que a reserva usa todas.
 - [ ] Cartão da conta: badge **"Conta negativa"** com o juro estimado do mês (`jurosEstimadoMes`, quando há taxa), aviso de "vai ficar negativa até o fim do mês" (`ficaraNegativa`, com o `previsto`) e **limite disponível** (`limiteDisponivel`, quando há limite).
-- [ ] **Conferir saldo**: o usuário informa o saldo real (com sinal), vê a diferença e, ao salvar, `criarAjuste({ saldoApp: situacaoContas(...).saldo, saldoReal, ... })` lança o ajuste (`null` = já confere, nada é gravado).
+- [ ] **Conferir saldo**: o usuário informa o saldo real (com sinal), vê a diferença e, ao salvar, `criarAjuste({ saldoApp, saldoReal, ... })` lança o ajuste (`null` = já confere, nada é gravado). O `saldoApp` é o saldo **de hoje**: `saldoContas([conta], lancamentosDaConta, hojeLocal())` (pagos com data até hoje), não o do fim do mês, porque o banco mostra o saldo de agora; pendentes e lançamentos futuros não entram. O motor (`criarAjuste`) não muda.
 - [ ] **Transferir**: escolhe a conta de destino, valor e descrição opcional; `criarTransferencia` e as duas pontas gravadas juntas (`bulkPut`). Erros do motor (mesma conta, valor zero) aparecem em `alert`.
 - [ ] Fontes: lista com tipo e valor esperado; adicionar/editar/remover.
 - [ ] Categorias: lista por tipo (sem as de sistema: transferência e ajuste não aparecem nem podem ser editadas); adicionar com nome, ícone (escolha entre 12 ícones), natureza e "essencial"; remover bloqueado se em uso.
@@ -3603,7 +3773,7 @@ export function FormRapido({ titulo, onSalvar, onCancelar, children }: {
         {children}
         <div className="grid grid-cols-2 gap-2">
           <button type="button" onClick={onCancelar} className="min-h-12 rounded-full bg-[var(--casca)] font-semibold">Cancelar</button>
-          <button type="submit" className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)]">Salvar</button>
+          <button type="submit" className="min-h-12 rounded-full bg-marca font-semibold text-white">Salvar</button>
         </div>
       </form>
     </div>
@@ -3615,6 +3785,7 @@ export function FormRapido({ titulo, onSalvar, onCancelar, children }: {
 
 ```tsx
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
+import { somenteDigitos } from '../validacao'
 
 /** Dígitos + sinal → centavos (sem -0). */
 export const comSinal = (digitos: string, negativo: boolean) => {
@@ -3633,7 +3804,7 @@ export function CampoValor({ rotulo, digitos, onDigitos, negativo, onNegativo }:
           onClick={() => onNegativo(!negativo)} className="size-11 shrink-0 rounded-xl bg-[var(--casca)] text-lg font-semibold">
           {negativo ? '−' : '+'}
         </button>
-        <input inputMode="numeric" aria-label={rotulo} value={digitos} onChange={(e) => onDigitos(e.target.value.replace(/\D/g, ''))}
+        <input inputMode="numeric" aria-label={rotulo} value={digitos} onChange={(e) => onDigitos(somenteDigitos(e.target.value))}
           className="valor min-h-11 w-full rounded-xl bg-[var(--casca)] px-3" />
       </div>
       <span className="text-suave">{formatarBRL(comSinal(digitos, negativo))}</span>
@@ -3653,7 +3824,9 @@ import { useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { db } from '../../data/db'
 import { criarAjuste, criarTransferencia, saldoReserva, situacaoContas } from '../../domain/contas'
-import { centavosDeDigitos, formatarBRL, formatarNumero } from '../../domain/dinheiro'
+import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
+import { saldoContas } from '../../domain/fluxo'
+import { somenteDigitos } from '../validacao'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import type { Conta } from '../../domain/tipos'
 
@@ -3661,7 +3834,9 @@ export default function Contas() {
   const d = useDados()
   const mesAtual = mesDe(hojeLocal())
   const situacao = new Map(situacaoContas(d.contas, d.lancamentos, mesAtual).map((s) => [s.contaId, s]))
-  const reserva = saldoReserva(d.contas, d.lancamentos)
+  const reserva = saldoReserva(d.contas, d.lancamentos) // só `usandoTodas` interessa aqui
+  // Saldo de HOJE da conta (pagos com data <= hoje): é o que se confere com o banco; o cartão mostra o do fim do mês.
+  const saldoHoje = (c: Conta) => saldoContas([c], d.lancamentos.filter((l) => l.contaId === c.id), hojeLocal())
 
   // cadastro/edição
   const [edit, setEdit] = useState<Conta | null>(null)
@@ -3682,12 +3857,14 @@ export default function Contas() {
     setEdit(c)
     setSaldo(String(Math.abs(c.saldoInicial))); setNeg(c.saldoInicial < 0)
     setLimite(c.limiteChequeEspecial === undefined ? '' : String(c.limiteChequeEspecial))
-    setTaxa(c.taxaChequeEspecial === undefined ? '' : formatarNumero(c.taxaChequeEspecial * 100, 2))
+    // até 4 casas decimais de percent, sem zeros à direita ("8", "7,9899")
+    setTaxa(c.taxaChequeEspecial === undefined ? '' : new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 4 }).format(c.taxaChequeEspecial * 100))
   }
   const novo = () => abrir({ id: novoId(), nome: '', tipo: 'banco', saldoInicial: 0 })
 
   async function salvar() {
     if (!edit || !edit.nome.trim()) return
+    // `taxa` guarda o percent com até 4 casas (vírgula ou ponto); a fração gravada mantém essa precisão.
     const taxaNum = taxa.trim() === '' ? undefined : Number(taxa.replace(',', '.')) / 100
     if (taxaNum !== undefined && !(Number.isFinite(taxaNum) && taxaNum >= 0)) { alert('Taxa do cheque especial inválida.'); return }
     const lim = centavosDeDigitos(limite)
@@ -3710,8 +3887,7 @@ export default function Contas() {
   // Conferir saldo: o saldo do app é o de `situacaoContas` (o mesmo exibido no cartão); a diferença vira um ajuste.
   async function salvarConferencia() {
     if (!conferir) return
-    const saldoApp = situacao.get(conferir.id)?.saldo ?? 0
-    const ajuste = criarAjuste({ id: novoId(), contaId: conferir.id, saldoApp, saldoReal: comSinal(real, negReal), data: hojeLocal() })
+    const ajuste = criarAjuste({ id: novoId(), contaId: conferir.id, saldoApp: saldoHoje(conferir), saldoReal: comSinal(real, negReal), data: hojeLocal() })
     if (ajuste) await repo.lancamentos.salvar(ajuste)
     else alert('O saldo já confere.')
     setConferir(null)
@@ -3751,7 +3927,7 @@ export default function Contas() {
               </p>
             )}
             {s?.ficaraNegativa && (
-              <p role="status" className="mt-2 rounded-xl bg-[var(--casca)] px-3 py-2 text-sm text-alerta">
+              <p role="status" className="aviso mt-2 text-sm">
                 Vai ficar negativa até o fim do mês (previsto {formatarBRL(s.previsto)})
               </p>
             )}
@@ -3761,10 +3937,10 @@ export default function Contas() {
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2 text-sm font-semibold">
-              <button className="min-h-11 px-3 text-marca" onClick={() => abrir(c)}>Editar</button>
-              <button className="min-h-11 px-3 text-marca" onClick={() => { setConferir(c); setReal(''); setNegReal(false) }}>Conferir saldo</button>
+              <button className="min-h-11 px-3 text-marca-texto" onClick={() => abrir(c)}>Editar</button>
+              <button className="min-h-11 px-3 text-marca-texto" onClick={() => { setConferir(c); setReal(''); setNegReal(false) }}>Conferir saldo</button>
               {d.contas.length > 1 && (
-                <button className="min-h-11 px-3 text-marca"
+                <button className="min-h-11 px-3 text-marca-texto"
                   onClick={() => { setTransf(c); setDestinoId(d.contas.find((x) => x.id !== c.id)?.id ?? ''); setValorTr(''); setDescTr('') }}>
                   Transferir
                 </button>
@@ -3774,7 +3950,7 @@ export default function Contas() {
           </Moldura>
         )
       })}
-      <button onClick={novo} className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)]">Adicionar conta</button>
+      <button onClick={novo} className="min-h-12 rounded-full bg-marca font-semibold text-white">Adicionar conta</button>
 
       {edit && (
         <FormRapido titulo="Conta" onSalvar={salvar} onCancelar={() => setEdit(null)}>
@@ -3786,11 +3962,11 @@ export default function Contas() {
           </label>
           <CampoValor rotulo="Saldo inicial" digitos={saldo} onDigitos={setSaldo} negativo={neg} onNegativo={setNeg} />
           <label className="grid gap-1 text-sm">Limite do cheque especial (opcional)
-            <input inputMode="numeric" value={limite} onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+            <input inputMode="numeric" value={limite} onChange={(e) => setLimite(somenteDigitos(e.target.value))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
             <span className="text-suave">{formatarBRL(centavosDeDigitos(limite))}</span>
           </label>
           <label className="grid gap-1 text-sm">Taxa do cheque especial, % ao mês (opcional)
-            <input inputMode="decimal" value={taxa} onChange={(e) => setTaxa(e.target.value)} placeholder="ex.: 8" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+            <input inputMode="decimal" value={taxa} onChange={(e) => setTaxa(e.target.value.replace(/[^\d.,]/g, '').slice(0, 10))} placeholder="ex.: 8" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
           </label>
           <label className="flex min-h-11 items-center gap-3 text-sm">
             <input type="checkbox" className="size-5" checked={edit.reserva === true} onChange={(e) => setEdit({ ...edit, reserva: e.target.checked })} />
@@ -3801,9 +3977,9 @@ export default function Contas() {
 
       {conferir && (
         <FormRapido titulo={`Conferir saldo · ${conferir.nome}`} onSalvar={salvarConferencia} onCancelar={() => setConferir(null)}>
-          <p className="text-sm text-suave">Saldo no app: <span className="valor">{formatarBRL(situacao.get(conferir.id)?.saldo ?? 0)}</span></p>
+          <p className="text-sm text-suave">Saldo no app hoje: <span className="valor">{formatarBRL(saldoHoje(conferir))}</span></p>
           <CampoValor rotulo="Saldo real no banco" digitos={real} onDigitos={setReal} negativo={negReal} onNegativo={setNegReal} />
-          <p className="text-sm">Diferença: <span className="valor">{formatarBRL(comSinal(real, negReal) - (situacao.get(conferir.id)?.saldo ?? 0))}</span>. Salvar lança um ajuste de saldo para igualar.</p>
+          <p className="text-sm">Diferença: <span className="valor">{formatarBRL(comSinal(real, negReal) - saldoHoje(conferir))}</span>. Salvar lança um ajuste de saldo para igualar.</p>
         </FormRapido>
       )}
 
@@ -3815,7 +3991,7 @@ export default function Contas() {
             </select>
           </label>
           <label className="grid gap-1 text-sm">Valor
-            <input inputMode="numeric" value={valorTr} onChange={(e) => setValorTr(e.target.value.replace(/\D/g, ''))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+            <input inputMode="numeric" value={valorTr} onChange={(e) => setValorTr(somenteDigitos(e.target.value))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
             <span className="text-suave">{formatarBRL(centavosDeDigitos(valorTr))}</span>
           </label>
           <label className="grid gap-1 text-sm">Descrição (opcional)<input value={descTr} onChange={(e) => setDescTr(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
@@ -3830,13 +4006,15 @@ export default function Contas() {
 - [ ] **Step 3: `Fontes.tsx`** — mesmo padrão de `Contas.tsx`, com campos `nome`, `tipo` (`fixa`/`variavel`/`eventual`, rótulos "Fixa", "Variável", "Eventual"), `valorEsperado` (dígitos→centavos) e, se `fixa`, `diaPagamento` (1–31). Remover é bloqueado se houver lançamento com `fonteId` igual (mensagem "Esta fonte tem entradas registradas."). Lista exibe nome, tipo e `formatarBRL(valorEsperado)`; botão "Adicionar fonte de renda".
 
 ```tsx
-// Esqueleto exato do estado e do salvar (o restante segue Contas.tsx):
+// Esqueleto exato do estado e do salvar (o restante segue Contas.tsx).
+// `diaPagamento` é omitido quando não vale: nunca se grava `undefined`/`null` no campo (o importador de backup rejeita `null`).
 const novo = () => abrir({ id: novoId(), nome: '', tipo: 'fixa', valorEsperado: 0 })
 async function salvar() {
   if (!edit || !edit.nome.trim()) return
+  const { diaPagamento: _d, ...base } = edit
   await repo.fontes.salvar({
-    ...edit, nome: edit.nome.trim(), valorEsperado: centavosDeDigitos(valor),
-    diaPagamento: edit.tipo === 'fixa' && dia ? Math.min(31, Math.max(1, Number(dia))) : undefined,
+    ...base, nome: edit.nome.trim(), valorEsperado: centavosDeDigitos(valor),
+    ...(edit.tipo === 'fixa' && dia ? { diaPagamento: Math.min(31, Math.max(1, Number(dia))) } : {}),
   })
   setEdit(null)
 }
@@ -3873,7 +4051,7 @@ git add -A && git commit -m "feat(ui): contas, fontes de renda e categorias"
 - Modify: `app/src/App.tsx` (rotas `/dividas` e `/dividas/:id`, ambas recebem `mes`)
 
 **Acceptance Criteria:**
-- [ ] Lista mostra por contrato: saldo devedor (`estadoFinanciamento(...).saldoDevedor`), parcela do mês (`parcelaDoMes(f, mes, lancamentos)`), `parcelasPagas/totalParcelas`, sistema e, se `parcelasAtrasadas(estado, mes) > 0`, o aviso de parcelas atrasadas.
+- [ ] Lista mostra por contrato: saldo devedor (`estadoFinanciamento(...).saldoDevedor`), parcela do mês (`parcelaDoMes(f, mes, lancamentos)`), `parcelasPagas/totalParcelas`, sistema e, se `parcelasAtrasadas(estado, mes) > 0`, o aviso de parcelas atrasadas. O estado da lista é o do **mês visto**: `estadoFinanciamento(f, lancamentos, fimDoMes(mes))` (saldo devedor, pagas e atrasadas coerentes com o Resumo do mesmo mês); em mês futuro o rótulo do aviso é "A pagar" (não "Atrasadas"), pois é o que ficará em aberto até lá.
 - [ ] Formulário pelo carnê: nome, valor financiado, valor da parcela (Price: fixa; SAC: a 1ª), nº de parcelas, 1ª parcela (data), sistema, parcelas já pagas (padrão 0) e, opcional, a taxa que o usuário acha que é. A **taxa mensal é calculada** com `taxaImplicita` e mostrada na hora ("Taxa do carnê: 1,00% a.m."); se o usuário digitar uma taxa diferente, aviso "a taxa informada não bate com o carnê; o app usa a do carnê". Antes de salvar chama `validarContrato` (mais o nome) e mostra os erros em pt-BR; `NaN` nunca é gravado e nenhum campo opcional recebe `null`.
 - [ ] Detalhe mostra: total do contrato (`estado.totalContrato`, **não** parcela × n: a última parcela absorve o arredondamento), já pago (n/N e R$), juros pagos (`jurosPagos`), juros a pagar (`jurosAPagar`), saldo devedor (`saldoDevedor`), **quitar hoje** (= saldo devedor) e **desconto por quitar** (`descontoQuitacao`), com o aviso de estimativa (o banco pode somar IOF, seguro e tarifas).
 - [ ] Simulador "antecipar as últimas N parcelas": N inteiro ≥ 1 e ≤ parcelas restantes; usa `antecipacaoUltimas(estado, f.taxaMensal, n)` e mostra valor a pagar, nominal e desconto; botão "Registrar antecipação" cria a saída ligada com `pagamentoFinanciamento: 'antecipacao'`.
@@ -3895,6 +4073,9 @@ import { parcelasAtrasadas, taxaImplicita, validarContrato } from '../../domain/
 import { centavosDeDigitos, formatarBRL, formatarPct } from '../../domain/dinheiro'
 import type { Contrato, Financiamento, SistemaAmortizacao } from '../../domain/tipos'
 
+// campos de dígitos (valorFin, valorParc, total, pagas) filtram com `somenteDigitos` (até 12). A data da 1ª parcela vem de um
+// <input type="date"> (vazio quando limpo): `validarContrato` já recusa data vazia/inexistente ("A data da primeira parcela é inválida."),
+// então a data nunca é gravada inválida; mostre esses erros e não salve.
 // estado do formulário: nome, valorFin/valorParc (dígitos = centavos), total, pagas (só dígitos),
 // primeira ('YYYY-MM-DD'), sistema, taxaTexto (opcional, % ao mês, ex. "1,5")
 const dadosCarne = {
@@ -3913,7 +4094,7 @@ const taxaDifere =
 async function salvar() {
   const contrato: Contrato = {
     ...dadosCarne,
-    taxaMensal: implicita ?? 0, // com `null`, validarContrato já reporta "parcela pequena demais"
+    taxaMensal: implicita ?? 0, // com `null`, validarContrato já reporta o problema (parcela pequena demais ou valores que não fecham)
     primeiraParcela: primeira,
     parcelasPagasAntes: Number(pagas || '0'),
   }
@@ -3941,7 +4122,7 @@ async function remover(f: Financiamento) {
 }
 ```
 
-Cada cartão (`Link` para `/dividas/:id`) calcula `const estado = estadoFinanciamento(f, d.lancamentos)` e exibe: `nome`; `formatarBRL(estado.saldoDevedor)`; `Parcela do mês ${formatarBRL(parcelaDoMes(f, mes, d.lancamentos))}` (valor em `text-divida`); `${estado.parcelasPagas}/${f.totalParcelas} pagas · ${f.sistema}`; e, se `parcelasAtrasadas(estado, mes) > 0`, `Atrasadas: ${formatarBRL(...)}` em `text-alerta`.
+Cada cartão (`Link` para `/dividas/:id`) calcula `const estado = estadoFinanciamento(f, d.lancamentos, fimDoMes(mes))` (import de `fimDoMes` em `domain/meses`; mês visto, não "tudo") e exibe: `nome`; `formatarBRL(estado.saldoDevedor)`; `Parcela do mês ${formatarBRL(parcelaDoMes(f, mes, d.lancamentos))}` (valor em `text-divida`); `${estado.parcelasPagas}/${f.totalParcelas} pagas · ${f.sistema}`; e, se `parcelasAtrasadas(estado, mes) > 0`, `${mes > mesDe(hojeLocal()) ? 'A pagar' : 'Atrasadas'}: ${formatarBRL(...)}` no chip `chip-pendente`.
 
 - [ ] **Step 2: `FormPagamento.tsx`** — folha que cria a saída ligada ao contrato (parcela ou antecipação). Não confundir com o tipo `PagamentoFinanciamento` de `domain/tipos`.
 
@@ -3952,6 +4133,7 @@ import { categoriasDaGrade, useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { hojeLocal } from '../../domain/meses'
+import { dataReal, somenteDigitos } from '../validacao'
 import type { Centavos, Financiamento, PagamentoFinanciamento } from '../../domain/tipos'
 
 export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descricao, fechar }: {
@@ -3967,12 +4149,14 @@ export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descrica
   const [digitos, setDigitos] = useState(String(valorInicial))
   const [data, setData] = useState(hojeLocal())
   const [contaId, setContaId] = useState(d.contas[0]?.id ?? '')
-  const [categoriaId, setCategoriaId] = useState((grade.find((c) => c.id === 'moradia') ?? grade[0])?.id ?? '')
+  // Padrão "Outros" (nunca `moradia`): é só um rótulo do lançamento; o Resumo não mostra pagamento de financiamento por categoria.
+  const [categoriaId, setCategoriaId] = useState((grade.find((c) => c.id === 'outros') ?? grade[0])?.id ?? '')
   const valor = centavosDeDigitos(digitos)
   const difere = tipo === 'parcela' && parcelaContrato !== undefined && valor !== parcelaContrato
 
   async function salvar() {
     if (valor <= 0 || !contaId || !categoriaId) return
+    if (!dataReal(data)) { alert('Informe uma data válida.'); return } // nunca grava data vazia/inválida
     await repo.lancamentos.salvar({
       id: novoId(), valor, data, tipo: 'saida', categoriaId,
       natureza: tipo === 'parcela' ? 'fixo' : 'variavel',
@@ -3985,7 +4169,7 @@ export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descrica
   return (
     <FormRapido titulo={tipo === 'parcela' ? 'Pagar parcela' : 'Registrar antecipação'} onSalvar={salvar} onCancelar={fechar}>
       <label className="grid gap-1 text-sm">Valor pago
-        <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
+        <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(somenteDigitos(e.target.value))}
           className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
         <span className="text-suave">{formatarBRL(valor)}</span>
       </label>
@@ -3993,7 +4177,7 @@ export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descrica
         <p className="text-sm text-suave">Parcela do contrato: <span className="valor">{formatarBRL(parcelaContrato)}</span></p>
       )}
       {difere && (
-        <p role="alert" className="text-sm text-alerta">
+        <p role="alert" className="aviso text-sm">
           Pagar uma parcela sempre avança exatamente uma parcela do contrato. {valor > (parcelaContrato ?? 0)
             ? `A diferença de ${formatarBRL(valor - (parcelaContrato ?? 0))} conta como despesa comum.`
             : 'O contrato dá a parcela por paga mesmo com valor menor; confira o valor do carnê.'}
@@ -4025,6 +4209,7 @@ import { FormPagamento } from './FormPagamento'
 import { useResumo } from '../hooks/useResumo'
 import { repo, novoId } from '../../data/repo'
 import { simularAporte } from '../../domain/amortizacao'
+import { somenteDigitos } from '../validacao'
 import { antecipacaoUltimas } from '../../domain/contrato'
 import { centavosDeDigitos, formatarBRL, formatarPct } from '../../domain/dinheiro'
 import { estadoFinanciamento } from '../../domain/fluxo'
@@ -4096,7 +4281,7 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
         </div>
         <p className="mt-2 text-xs text-suave">Estimativa: o banco pode somar IOF, seguro e tarifas.</p>
         {proxima ? (
-          <button onClick={() => setPagando('parcela')} className="mt-3 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">
+          <button onClick={() => setPagando('parcela')} className="mt-3 min-h-12 w-full rounded-full bg-marca font-semibold text-white">
             Pagar parcela {proxima.numero} · {formatarBRL(proxima.parcela)}
           </button>
         ) : <p className="mt-3 font-semibold text-positivo">Contrato quitado.</p>}
@@ -4106,7 +4291,7 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
         <Moldura>
           <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Antecipar as últimas parcelas</h3>
           <label className="mt-2 grid gap-1 text-sm">Quantas parcelas (de {estado.restantes.length} restantes)?
-            <input inputMode="numeric" value={nTexto} onChange={(e) => setNTexto(e.target.value.replace(/\D/g, ''))}
+            <input inputMode="numeric" value={nTexto} onChange={(e) => setNTexto(somenteDigitos(e.target.value))}
               className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="1" />
           </label>
           {ant && (
@@ -4114,7 +4299,7 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
               <Linha rotulo="Valor a pagar hoje" valor={formatarBRL(ant.valor)} />
               <Linha rotulo="Soma nominal das parcelas" valor={formatarBRL(ant.nominal)} />
               <Linha rotulo="Desconto" valor={`− ${formatarBRL(ant.desconto)}`} cor="text-positivo" />
-              <button onClick={() => setPagando('antecipacao')} className="mt-2 min-h-11 text-sm font-semibold text-marca">Registrar antecipação</button>
+              <button onClick={() => setPagando('antecipacao')} className="mt-2 min-h-11 text-sm font-semibold text-marca-texto">Registrar antecipação</button>
             </div>
           )}
         </Moldura>
@@ -4124,12 +4309,12 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
         <>
           <Moldura>
             <label className="grid gap-1 text-sm">Aporte extra por mês
-              <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
+              <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(somenteDigitos(e.target.value))}
                 className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="0" />
               <span className="text-suave">{formatarBRL(aporte)}</span>
             </label>
             <button disabled={sobraLivre <= 0} onClick={() => setDigitos(String(sobraLivre))}
-              className="mt-2 min-h-11 text-sm font-semibold text-marca disabled:opacity-40">
+              className="mt-2 min-h-11 text-sm font-semibold text-marca-texto disabled:opacity-40">
               Usar sobra do mês ({formatarBRL(sobraLivre)})
             </button>
             <div role="radiogroup" className="mt-3 grid grid-cols-2 rounded-full bg-[var(--casca)] p-1 text-sm">
@@ -4151,7 +4336,7 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
               <div className="valor text-2xl text-positivo">+ {formatarBRL(sim.economiaJuros)}</div>
               <div className="text-sm text-suave">{sim.mesesEconomizados} meses a menos</div>
             </div>
-            <button onClick={salvarPlano} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">
+            <button onClick={salvarPlano} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-white">
               Salvar como plano
             </button>
           </Moldura>
@@ -4175,7 +4360,7 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
 
 Adicionar em `App.tsx`: `/dividas` → `<Dividas mes={mes} />`, `/dividas/:id` → `<DividaDetalhe mes={mes} />`.
 
-Run: `npm run build` → sucesso. No navegador, cadastrar o carnê de conferência (SAC, financiado R$ 1.200,00, 1ª parcela R$ 312,00, 4 parcelas, 0 pagas): a taxa aparece como 1,00%; digitar taxa 2 → aviso de divergência. No detalhe: total do contrato R$ 1.230,00 (R$ 312 + 309 + 306 + 303 = 1.230; igual a `estado.totalContrato`), simular aporte R$ 300,00 "Reduzir prazo" → economia R$ 12,00 e 2 meses; "Pagar parcela" cria a saída ligada, o saldo devedor cai e a parcela do mês no Resumo não dobra; "Antecipar as últimas 2" mostra valor e desconto. Salvar plano → sobra otimizada no Resumo cai em R$ 300,00 (anel mostra arco azul-petróleo).
+Run: `npm run build` → sucesso. No navegador, cadastrar o carnê de conferência (SAC, financiado R$ 1.200,00, 1ª parcela R$ 312,00, 4 parcelas, 0 pagas): a taxa aparece como 1,00%; digitar taxa 2 → aviso de divergência. No detalhe: total do contrato R$ 1.230,00 (R$ 312 + 309 + 306 + 303 = 1.230; igual a `estado.totalContrato`), simular aporte R$ 300,00 "Reduzir prazo" → economia R$ 12,00 e 2 meses; "Pagar parcela" cria a saída ligada, o saldo devedor cai e a parcela do mês no Resumo não dobra; "Antecipar as últimas 2" mostra valor e desconto. Salvar plano → sobra otimizada no Resumo cai em R$ 300,00 (o anel mostra o arco limão do aporte).
 
 ```bash
 git add -A && git commit -m "feat(ui): dividas pelo carne, estado do contrato e simulador de amortizacao"
@@ -4220,7 +4405,7 @@ export default function Insights({ mes }: { mes: string }) {
       {todosInsights.length === 0 && <Moldura><p className="text-suave">Sem alertas este mês.</p></Moldura>}
       {todosInsights.map((i) => (
         <Moldura key={i.id}>
-          <div className={`font-semibold ${i.severidade === 'alerta' ? 'text-alerta' : ''}`}>{i.titulo}</div>
+          <div className={`font-semibold ${i.severidade === 'alerta' ? 'text-negativo' : ''}`}>{i.titulo}</div>
           <p className="mt-1 text-sm text-suave">{i.detalhe}</p>
         </Moldura>
       ))}
@@ -4277,11 +4462,11 @@ export default function Backup() {
         <h3 className="mt-4 text-[10px] uppercase tracking-[0.2em] text-suave">Armazenamento</h3>
         <p role="status" className="mt-1 text-sm">{armazenamento ? TEXTO_ARMAZENAMENTO[armazenamento] : 'Verificando o armazenamento…'}</p>
         {armazenamento === 'nao_persistente' && (
-          <button onClick={async () => setPedido(await pedirPersistencia())} className="mt-1 min-h-11 text-sm font-semibold text-marca">
+          <button onClick={async () => setPedido(await pedirPersistencia())} className="mt-1 min-h-11 text-sm font-semibold text-marca-texto">
             Pedir proteção de novo
           </button>
         )}
-        <button onClick={baixar} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">Exportar backup</button>
+        <button onClick={baixar} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-white">Exportar backup</button>
         <button onClick={() => arquivo.current?.click()} className="mt-2 min-h-12 w-full rounded-full bg-[var(--casca)] font-semibold">Importar backup</button>
         <input ref={arquivo} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && ler(e.target.files[0])} />
         {msg && <p role="status" className="mt-3 text-sm">{msg}</p>}
@@ -4293,7 +4478,7 @@ export default function Backup() {
 
 - [ ] **Step 3: Rotas e ícones PWA**
 
-Adicionar `/insights` → `<Insights mes={mes} />` e `/backup` → `<Backup />`. Gerar `public/icon-192.png` e `icon-512.png` (fundo `#0F5C4A` com um anel claro centralizado; pode ser desenhado em um SVG simples e exportado com qualquer ferramenta) e conferir que o manifest os referencia.
+Adicionar `/insights` → `<Insights mes={mes} />` e `/backup` → `<Backup />`. Gerar `public/icon-192.png` e `icon-512.png` (fundo `#0d2b30` com um anel limão `#c6ef4f` centralizado, no estilo do anel da sobra; pode ser desenhado em um SVG simples e exportado com qualquer ferramenta) e conferir que o manifest os referencia.
 
 - [ ] **Step 4: Verificação final**
 
@@ -4447,6 +4632,6 @@ git add app/src/domain && git commit -m "feat(domain): interpretador de notifica
 - §5 regras (sobras, saldo, previsto, saldo seguro, renda esperada, custo essencial, reserva, amortização) → Tasks 2–4, testadas.
 - §6 8 insights → Task 6, cada um com teste de disparo e de não disparo; limites configuráveis.
 - §7 telas: Resumo (T9), lançamento rápido + onboarding + lista (T10), contas/fontes/categorias (T11), dívidas/simulador (T12), insights/reserva/backup (T13). Recorrência (T5, acionada no shell em T8). Orçamento e Gráficos adiados (registrado no topo).
-- §8 visual → tokens e componentes em T8; anel em T9.
+- §8 e §13 visual (paleta petróleo e limão, fontes, tema claro/escuro com botão) → tokens e componentes em T8; anel em T9.
 - §9 testes → Vitest nas Tasks 1–7; UI verificada por build e navegador.
 - Consistência de nomes: `resumoMes`, `parcelaDoMes`, `saldoContas`, `simularAporte`, `gerarCronograma`, `rendaEsperada`, `reservaAlvoMeses`, `custoEssencial`, `gerarRecorrentes`, `gerarInsights`, `repo.*`, `novoId` usados de forma idêntica entre tarefas.
