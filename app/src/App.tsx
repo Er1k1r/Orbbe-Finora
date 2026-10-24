@@ -11,6 +11,8 @@ import { semearCategorias } from './data/seed'
 import { db } from './data/db'
 import { gerarRecorrentes } from './domain/recorrencia'
 import { hojeLocal, mesDe } from './domain/meses'
+import Resumo from './ui/telas/Resumo'
+import Compromissos from './ui/telas/Compromissos'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
@@ -66,6 +68,8 @@ function Shell() {
       </header>
       <main className="mx-auto max-w-md px-4 pt-4">
       <Routes>
+        <Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />
+        <Route path="/compromissos" element={<Compromissos mes={mes} />} />
         <Route path="*" element={<div>Em construção</div>} />
       </Routes>
       </main>
