@@ -1,5 +1,6 @@
 import { simularAporte } from './amortizacao'
-import { ehMovimentoInterno, ehPagamentoParcela, estadoFinanciamento, parcelaDoMes, resumoMes, saldoContas } from './fluxo'
+import { saldoReserva, situacaoContas } from './contas'
+import { ehMovimentoInterno, ehPagamentoParcela, estadoFinanciamento, parcelaDoMes, resumoMes } from './fluxo'
 import { formatarBRL, formatarNumero, formatarPct } from './dinheiro'
 import { fimDoMes, mesDe, mesesAnteriores } from './meses'
 import { custoEssencial, rendaEsperada, reservaAlvoMeses } from './renda'
@@ -21,6 +22,7 @@ export interface Insight {
   tipo:
     | 'gasto_crescendo' | 'pico_atipico' | 'despesa_fixa_alta' | 'reserva_baixa'
     | 'sobra_para_divida' | 'divida_mais_cara' | 'mes_de_risco' | 'comprometimento_renda'
+    | 'conta_negativa' | 'conta_ficara_negativa'
   severidade: 'info' | 'alerta'
   titulo: string
   detalhe: string
@@ -38,6 +40,7 @@ export interface ContextoInsights {
   config?: Partial<typeof CONFIG_INSIGHTS>
 }
 
+const DICA_RESERVA = ' Dica: marque a conta que é sua reserva para este cálculo ficar exato.'
 const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
 const mediana = (xs: number[]) => {
   const s = [...xs].sort((a, b) => a - b)
@@ -108,7 +111,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   }
 
   // 4. reserva baixa
-  const saldo = saldoContas(ctx.contas, ctx.lancamentos)
+  const { saldo, usandoTodas } = saldoReserva(ctx.contas, ctx.lancamentos)
   const essencial = custoEssencial(ctx.lancamentos, ctx.categorias, parcelas, ctx.mes, idsFin)
   const meses = reservaAlvoMeses(ctx.fontes)
   const meta = essencial * meses
@@ -118,9 +121,30 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
     out.push({
       id: 'reserva-baixa', tipo: 'reserva_baixa', severidade: 'alerta',
       titulo: 'Reserva abaixo da meta',
-      detalhe: `Você cobre ${formatarNumero(cobertos)} de ${meses} meses de custo essencial. Faltam ${formatarBRL(meta - saldo)}.`,
+      detalhe: `Você cobre ${formatarNumero(cobertos)} de ${meses} meses de custo essencial. Faltam ${formatarBRL(meta - saldo)}.${usandoTodas ? DICA_RESERVA : ''}`,
       dados: { saldo, meta, meses },
     })
+  }
+
+  // 4b. contas negativas (cheque especial) e contas que vão ficar negativas até o fim do mês
+  for (const sc of situacaoContas(ctx.contas, ctx.lancamentos, ctx.mes)) {
+    const nome = ctx.contas.find((c) => c.id === sc.contaId)?.nome ?? sc.contaId
+    if (sc.negativa) {
+      const juros = sc.jurosEstimadoMes > 0 ? ` Juros estimados do cheque especial: ${formatarBRL(sc.jurosEstimadoMes)} no mês.` : ''
+      out.push({
+        id: `conta-negativa-${sc.contaId}`, tipo: 'conta_negativa', severidade: 'alerta',
+        titulo: `${nome} está negativa em ${formatarBRL(sc.usoLimite)}`,
+        detalhe: `Saldo de ${formatarBRL(sc.saldo)}.${juros} Se no banco ela não está negativa, falta lançar alguma entrada nesta conta.`,
+        dados: { conta: sc.contaId, saldo: sc.saldo, juros: sc.jurosEstimadoMes },
+      })
+    } else if (sc.ficaraNegativa) {
+      out.push({
+        id: `conta-ficara-negativa-${sc.contaId}`, tipo: 'conta_ficara_negativa', severidade: 'alerta',
+        titulo: `${nome} vai ficar negativa até o fim do mês`,
+        detalhe: `Saldo de ${formatarBRL(sc.saldo)} hoje e previsto de ${formatarBRL(sc.previsto)} com os lançamentos pendentes.`,
+        dados: { conta: sc.contaId, saldo: sc.saldo, previsto: sc.previsto },
+      })
+    }
   }
 
   // 5. sobra para a dívida / 6. dívida mais cara

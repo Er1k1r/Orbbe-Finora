@@ -3,6 +3,8 @@ import { gerarInsights, type ContextoInsights } from './insights'
 import { gerarCronograma, simularAporte } from './amortizacao'
 import { estadoFinanciamento } from './fluxo'
 import { taxaImplicita } from './contrato'
+import { criarTransferencia } from './contas'
+import { formatarBRL } from './dinheiro'
 import type { Categoria, Conta, Contrato, Financiamento, FonteDeRenda, Lancamento } from './tipos'
 
 
@@ -366,5 +368,67 @@ describe('movimentos internos', () => {
     })).find((i) => i.tipo === 'mes_de_risco')
     expect(r).toBeDefined()
     expect(r?.dados.recebido).toBe(50000)
+  })
+})
+
+describe('contas negativas', () => {
+  const nega: Conta = { id: 'n', nome: 'Nubank', tipo: 'banco', saldoInicial: -5000 }
+  it('conta_negativa: título, detalhe com juros e frase do lançamento faltante', () => {
+    const c = base({ contas: [{ ...nega, taxaChequeEspecial: 0.08, limiteChequeEspecial: 100000 }] })
+    const i = gerarInsights(c).find((x) => x.tipo === 'conta_negativa')
+    expect(i?.id).toBe('conta-negativa-n')
+    expect(i?.severidade).toBe('alerta')
+    expect(i?.titulo).toBe(`Nubank está negativa em ${formatarBRL(5000)}`)
+    expect(i?.detalhe).toContain(formatarBRL(400))
+    expect(i?.detalhe).toContain('Se no banco ela não está negativa, falta lançar alguma entrada nesta conta.')
+  })
+  it('conta_negativa sem taxa: sem juros no detalhe', () => {
+    const i = gerarInsights(base({ contas: [nega] })).find((x) => x.tipo === 'conta_negativa')
+    expect(i?.detalhe).not.toContain('juros')
+    expect(i?.detalhe).toContain('falta lançar alguma entrada')
+  })
+  it('ids únicos por conta', () => {
+    const c = base({ contas: [nega, { ...nega, id: 'm', nome: 'Itaú' }] })
+    const ids = gerarInsights(c).filter((x) => x.tipo === 'conta_negativa').map((x) => x.id)
+    expect(ids).toEqual(['conta-negativa-n', 'conta-negativa-m'])
+  })
+  it('conta positiva não gera', () =>
+    expect(tipos(base({ contas: [{ ...nega, saldoInicial: 5000 }] }))).not.toContain('conta_negativa'))
+  it('conta_ficara_negativa com o previsto', () => {
+    const pend: Lancamento = { ...sai('mer', '2026-10-20', 15000), status: 'pendente' }
+    const c = base({ contas: [{ ...conta, nome: 'Inter', saldoInicial: 10000 }], lancamentos: [pend] })
+    const todos = gerarInsights(c)
+    const i = todos.find((x) => x.tipo === 'conta_ficara_negativa')
+    expect(i?.id).toBe('conta-ficara-negativa-c')
+    expect(i?.severidade).toBe('alerta')
+    expect(i?.titulo).toBe('Inter vai ficar negativa até o fim do mês')
+    expect(i?.detalhe).toContain(formatarBRL(-5000))
+    expect(todos.map((x) => x.tipo)).not.toContain('conta_negativa')
+  })
+  it('transferência que negativa a origem gera conta_negativa', () => {
+    const [s, e] = criarTransferencia({ id: 't', contaOrigemId: 'c', contaDestinoId: 'd', valor: 8000, data: '2026-10-03' })
+    const c = base({
+      contas: [{ ...conta, saldoInicial: 5000 }, { ...conta, id: 'd', nome: 'D' }], lancamentos: [s, e],
+    })
+    expect(tipos(c)).toContain('conta_negativa')
+  })
+})
+
+describe('reserva_baixa com conta reserva', () => {
+  const ls = [sai('alu', '2026-10-05', 100000, 'fixo')]
+  const det = (contas: Conta[]) => gerarInsights(base({ lancamentos: ls, contas })).find((i) => i.tipo === 'reserva_baixa')
+  it('usa só a conta marcada e não mostra dica', () => {
+    // reserva: 600.000 - 100.000 = 500.000; outra conta (10.000.000) fica fora. meta 6 * 100.000
+    const i = det([
+      { ...conta, id: 'c', saldoInicial: 600000, reserva: true },
+      { ...conta, id: 'b', saldoInicial: 10000000 },
+    ])
+    expect(i?.detalhe).toContain('5,0 de 6 meses')
+    expect(i?.detalhe).not.toContain('Dica')
+    expect(i?.dados.saldo).toBe(500000)
+  })
+  it('sem conta marcada usa todas e termina com a dica', () => {
+    const i = det([{ ...conta, saldoInicial: 600000 }])
+    expect(i?.detalhe.endsWith(' Dica: marque a conta que é sua reserva para este cálculo ficar exato.')).toBe(true)
   })
 })
