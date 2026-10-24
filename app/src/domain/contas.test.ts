@@ -76,6 +76,11 @@ describe('situacaoContas', () => {
 
 describe('saldoReserva', () => {
   const contas = [conta('a', { saldoInicial: 200000, reserva: true }), conta('b', { saldoInicial: 50000 })]
+  it('com `ate`, ignora pago posterior ao corte', () => {
+    const ls = [lanc({ valor: 10000, data: '2026-10-05' }), lanc({ valor: 70000, data: '2026-11-03' })]
+    expect(saldoReserva(contas, ls, '2026-10-31').saldo).toBe(190000)
+    expect(saldoReserva(contas, ls).saldo).toBe(120000)
+  })
   it('usa só a conta marcada', () => expect(saldoReserva(contas, [])).toEqual({ saldo: 200000, usandoTodas: false }))
   it('sem marcada usa todas', () =>
     expect(saldoReserva(contas.map((c) => ({ ...c, reserva: false })), [])).toEqual({ saldo: 250000, usandoTodas: true }))

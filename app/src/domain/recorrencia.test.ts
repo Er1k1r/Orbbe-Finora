@@ -90,6 +90,24 @@ describe('gerarRecorrentes', () => {
   })
 })
 
+describe("marca d'água com recorrenciaAte", () => {
+  it('não avança além de recorrenciaAte e a reativação gera os meses seguintes', () => {
+    const cancelado = cancelarRecorrencia(modelo, '2026-10')
+    const r1 = gerarRecorrentes([cancelado], '2026-12-10')
+    expect(r1.copias.map((c) => c.data)).toEqual(['2026-09-05', '2026-10-05'])
+    expect(r1.modelos[0].geradoAte).toBe('2026-10')
+    // reativa: remove recorrenciaAte, preservando o geradoAte salvo
+    const salvo = aplicar([cancelado], r1)
+    const { recorrenciaAte: _a, ...reativado } = salvo.find((l) => l.id === 'm1') as Lancamento
+    const r2 = gerarRecorrentes([...salvo.filter((l) => l.id !== 'm1'), reativado], '2026-12-10')
+    expect(r2.copias.map((c) => c.data)).toEqual(['2026-11-05', '2026-12-05'])
+    expect(r2.modelos[0].geradoAte).toBe('2026-12')
+  })
+  it('sem recorrenciaAte a marca segue o mês de hoje', () => {
+    expect(gerarRecorrentes([modelo], '2026-12-10').modelos[0].geradoAte).toBe('2026-12')
+  })
+})
+
 describe('modelosSemCopia e recorrentesVirtuais (fonte única de recorrência pendente)', () => {
   const m = { ...modelo, geradoAte: '2026-10' as const }
   it('meses <= geradoAte contam como cobertos mesmo sem cópia (cópia apagada não ressuscita)', () => {

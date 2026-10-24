@@ -2,6 +2,19 @@ import { describe, it, expect } from 'vitest'
 import { antecipacaoUltimas, estadoContrato, parcelaNoMes, parcelasAtrasadas, taxaImplicita, validarContrato, type PagamentoContrato } from './contrato'
 import type { Contrato } from './tipos'
 
+describe('taxaImplicita: taxa implausível', () => {
+  it('Price com campos trocados (taxa >= 100% ao mês) devolve null', () => {
+    // financiado 100.000, parcela 200.000, 12x: nem a 100% ao mês a parcela chegaria a 200.000 (pmt(100%) ~ 100.024)
+    expect(taxaImplicita({ valorFinanciado: 100000, valorParcela: 200000, totalParcelas: 12, sistema: 'PRICE' })).toBeNull()
+  })
+  it('SAC com campos trocados: i = (200.000 - 100.000/12) / 100.000 = 1,92 ao mês devolve null', () => {
+    expect(taxaImplicita({ valorFinanciado: 100000, valorParcela: 200000, totalParcelas: 12, sistema: 'SAC' })).toBeNull()
+  })
+  it('taxa alta mas abaixo de 100% ao mês continua válida', () => {
+    expect(taxaImplicita({ valorFinanciado: 100000, valorParcela: 60000, totalParcelas: 3, sistema: 'PRICE' })).not.toBeNull()
+  })
+})
+
 describe('taxaImplicita', () => {
   it('Price', () => {
     expect(taxaImplicita({ valorFinanciado: 100000, valorParcela: 34002, totalParcelas: 3, sistema: 'PRICE' })).toBeCloseTo(0.01, 4)
@@ -145,6 +158,11 @@ describe('validarContrato', () => {
     ['pagas antes acima do total', { parcelasPagasAntes: 49 }],
   ])('%s gera exatamente um problema', (_n, extra) => {
     expect(validarContrato({ ...ok, ...extra })).toHaveLength(1)
+  })
+  it('campos trocados (parcela maior que o financiado): mensagem própria, não "pequena demais"', () => {
+    const msg = ['Os valores do carnê não fecham: confira o valor financiado e o valor da parcela.']
+    expect(validarContrato({ ...ok, valorFinanciado: 100000, valorParcela: 200000, totalParcelas: 12 })).toEqual(msg)
+    expect(validarContrato({ ...ok, sistema: 'SAC', valorFinanciado: 100000, valorParcela: 200000, totalParcelas: 12 })).toEqual(msg)
   })
   it('parcela pequena demais para o valor financiado', () => {
     expect(validarContrato({ ...ok, valorParcela: 1000 })).toEqual(['O valor da parcela é pequeno demais para esse valor financiado.'])

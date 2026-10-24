@@ -78,6 +78,8 @@ export function gerarRecorrentes(existentes: Lancamento[], hoje: string): Result
   for (const modelo of existentes.filter((l) => l.recorrencia === 'mensal')) {
     const mesModelo = mesDe(modelo.data)
     if (mesModelo >= mesHoje) continue
+    // A marca d'água nunca passa de recorrenciaAte: reativar a recorrência depois gera os meses que ficaram de fora.
+    const alvo = modelo.recorrenciaAte !== undefined && modelo.recorrenciaAte < mesHoje ? modelo.recorrenciaAte : mesHoje
     const marca = modelo.geradoAte
     let mes = proximoMes(mesModelo)
     while (mes <= mesHoje) {
@@ -90,7 +92,7 @@ export function gerarRecorrentes(existentes: Lancamento[], hoje: string): Result
       }
       mes = proximoMes(mes)
     }
-    if (marca === undefined || marca < mesHoje) modelos.push({ ...modelo, geradoAte: mesHoje })
+    if (marca === undefined || marca < alvo) modelos.push({ ...modelo, geradoAte: alvo })
   }
   return { copias, modelos }
 }

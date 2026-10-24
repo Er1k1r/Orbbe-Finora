@@ -6,16 +6,17 @@ export type DadosCarne = Pick<Contrato, 'valorFinanciado' | 'valorParcela' | 'to
 
 const pmtExato = (pv: number, i: number, n: number) => (i === 0 ? pv / n : (pv * i) / (1 - Math.pow(1 + i, -n)))
 
-/** Taxa mensal implícita no carnê; null quando os dados não fecham (parcela pequena demais). */
+/** Taxa mensal implícita no carnê; null quando os dados não fecham (parcela pequena demais ou taxa >= 100% ao mês, tipicamente campos trocados). */
 export function taxaImplicita(c: DadosCarne): number | null {
   const { valorFinanciado: pv, valorParcela: p, totalParcelas: n } = c
   if (!(pv > 0) || !(p > 0) || !Number.isInteger(n) || n < 1) return null
   if (c.sistema === 'SAC') {
     const i = (p - pv / n) / pv
-    return i >= 0 ? i : null
+    return i >= 0 && i < 1 ? i : null
   }
   if (p * n < pv) return null
   if (p * n === pv) return 0
+  if (pmtExato(pv, 1, n) <= p) return null // nem a 100% ao mês a parcela chegaria a esse valor
   let lo = 0
   let hi = 1
   for (let k = 0; k < 200; k++) {
@@ -178,6 +179,9 @@ export function validarContrato(c: Contrato): string[] {
   if (!dataReal(c.primeiraParcela)) erros.push('A data da primeira parcela é inválida.')
   if (!Number.isInteger(c.parcelasPagasAntes) || c.parcelasPagasAntes < 0 || c.parcelasPagasAntes > c.totalParcelas)
     erros.push('As parcelas pagas antes do app devem ser um inteiro de 0 até o total de parcelas.')
-  if (erros.length === 0 && taxaImplicita(c) === null) erros.push('O valor da parcela é pequeno demais para esse valor financiado.')
+  if (erros.length === 0 && taxaImplicita(c) === null)
+    erros.push(c.valorParcela * c.totalParcelas < c.valorFinanciado
+      ? 'O valor da parcela é pequeno demais para esse valor financiado.'
+      : 'Os valores do carnê não fecham: confira o valor financiado e o valor da parcela.')
   return erros
 }

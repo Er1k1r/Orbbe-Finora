@@ -38,13 +38,13 @@ export function situacaoContas(contas: Conta[], lancs: Lancamento[], mes: Mes): 
   })
 }
 
-/** Saldo da reserva de emergência: contas marcadas `reserva`; sem nenhuma marcada, todas. */
-export function saldoReserva(contas: Conta[], lancs: Lancamento[]): { saldo: Centavos; usandoTodas: boolean } {
+/** Saldo da reserva de emergência: contas marcadas `reserva`; sem nenhuma marcada, todas. Com `ate`, só pagos até essa data. */
+export function saldoReserva(contas: Conta[], lancs: Lancamento[], ate?: string): { saldo: Centavos; usandoTodas: boolean } {
   const marcadas = contas.filter((c) => c.reserva)
   const usandoTodas = marcadas.length === 0
   const alvo = usandoTodas ? contas : marcadas
   const ids = new Set(alvo.map((c) => c.id))
-  return { saldo: saldoContas(alvo, lancs.filter((l) => ids.has(l.contaId))), usandoTodas }
+  return { saldo: saldoContas(alvo, lancs.filter((l) => ids.has(l.contaId)), ate), usandoTodas }
 }
 
 export interface EntradaTransferencia {

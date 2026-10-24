@@ -112,7 +112,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   }
 
   // 4. reserva baixa
-  const { saldo, usandoTodas } = saldoReserva(ctx.contas, ctx.lancamentos)
+  const { saldo, usandoTodas } = saldoReserva(ctx.contas, ctx.lancamentos, fimDoMes(ctx.mes))
   const essencial = custoEssencialReferencia(
     { lancamentos: ctx.lancamentos, categorias: ctx.categorias, financiamentos: ctx.financiamentos }, ctx.mes,
   )
@@ -144,7 +144,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
       out.push({
         id: `conta-ficara-negativa-${sc.contaId}`, tipo: 'conta_ficara_negativa', severidade: 'alerta',
         titulo: `${nome} vai ficar negativa até o fim do mês`,
-        detalhe: `Saldo de ${formatarBRL(sc.saldo)} hoje e previsto de ${formatarBRL(sc.previsto)} com os lançamentos pendentes.`,
+        detalhe: `Previsto no fim do mês: ${formatarBRL(sc.previsto)} com os pendentes lançados.`,
         dados: { conta: sc.contaId, saldo: sc.saldo, previsto: sc.previsto },
       })
     }

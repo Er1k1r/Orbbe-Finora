@@ -421,7 +421,8 @@ describe('contas negativas', () => {
     expect(i?.id).toBe('conta-ficara-negativa-c')
     expect(i?.severidade).toBe('alerta')
     expect(i?.titulo).toBe('Inter vai ficar negativa até o fim do mês')
-    expect(i?.detalhe).toContain(formatarBRL(-5000))
+    // saldo 10.000 (pagos até o fim do mês) - pendente 15.000 = -5.000; texto no fim do mês, sem "hoje"
+    expect(i?.detalhe).toBe(`Previsto no fim do mês: ${formatarBRL(-5000)} com os pendentes lançados.`)
     expect(todos.map((x) => x.tipo)).not.toContain('conta_negativa')
   })
   it('insights presos ao mês visto', () => {
@@ -436,6 +437,24 @@ describe('contas negativas', () => {
       contas: [{ ...conta, saldoInicial: 5000 }, { ...conta, id: 'd', nome: 'D' }], lancamentos: [s, e],
     })
     expect(tipos(c)).toContain('conta_negativa')
+  })
+})
+
+describe('reserva_baixa: corte no fim do mês visto e meta de 12 meses', () => {
+  it('pago em mês posterior ao visto não entra no saldo da reserva', () => {
+    // saldo em out: 800.000 - 300.000 = 500.000 < meta 600.000; entrada paga em novembro (1.000.000) não conta
+    const futura: Lancamento = { ...ent('2026-11-10', 1000000), contaId: 'c' }
+    const c = base({ lancamentos: [...aluguelRecorrente(), futura], contas: [{ ...conta, saldoInicial: 800000 }] })
+    const i = gerarInsights(c).find((x) => x.tipo === 'reserva_baixa')
+    expect(i?.dados.saldo).toBe(500000)
+  })
+  it('renda majoritariamente variável: meta = referência x 12', () => {
+    // referência 100.000 (aluguelRecorrente); saldo 1.200.000 - 300.000 = 900.000 < 12 x 100.000 = 1.200.000
+    const fontes: FonteDeRenda[] = [{ id: 'v', nome: 'Freela', tipo: 'variavel', valorEsperado: 500000 }]
+    const c = base({ lancamentos: aluguelRecorrente(), fontes, contas: [{ ...conta, saldoInicial: 1200000 }] })
+    const i = gerarInsights(c).find((x) => x.tipo === 'reserva_baixa')
+    expect(i?.dados.meses).toBe(12)
+    expect(i?.dados.meta).toBe(1200000)
   })
 })
 
