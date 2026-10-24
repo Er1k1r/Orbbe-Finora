@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from './db'
 import { repo } from './repo'
 import { exportar, importar } from './backup'
+import { criarAjuste, criarTransferencia } from '../domain/contas'
+import { criarParcelamento } from '../domain/parcelamento'
 
 beforeEach(async () => { await db.delete(); await db.open() })
 
@@ -26,19 +28,19 @@ describe('backup: importação segura', () => {
 
   beforeEach(async () => { await repo.contas.salvar(conta) })
 
-  it('rejeita {"versao":1} sem tabelas e preserva os dados', async () => {
-    await expect(importar('{"versao":1}')).rejects.toThrow('Arquivo de backup inválido')
-    await expect(importar('{"versao":1,"foo":1}')).rejects.toThrow('Arquivo de backup inválido')
+  it('rejeita {"versao":2} sem tabelas e preserva os dados', async () => {
+    await expect(importar('{"versao":2}')).rejects.toThrow('Arquivo de backup inválido')
+    await expect(importar('{"versao":2,"foo":1}')).rejects.toThrow('Arquivo de backup inválido')
     await preservou()
   })
   it('rejeita tabela que não é array e preserva os dados', async () => {
-    await expect(importar(JSON.stringify({ versao: 1, ...vazio, contas: 'x' }))).rejects.toThrow('Arquivo de backup inválido')
+    await expect(importar(JSON.stringify({ versao: 2, ...vazio, contas: 'x' }))).rejects.toThrow('Arquivo de backup inválido')
     await preservou()
   })
   it('rejeita linha sem id string e preserva os dados', async () => {
-    await expect(importar(JSON.stringify({ versao: 1, ...vazio, fontes: [{ nome: 'x' }] }))).rejects.toThrow('Arquivo de backup inválido')
-    await expect(importar(JSON.stringify({ versao: 1, ...vazio, fontes: [{ id: 5 }] }))).rejects.toThrow('Arquivo de backup inválido')
-    await expect(importar(JSON.stringify({ versao: 1, ...vazio, fontes: [null] }))).rejects.toThrow('Arquivo de backup inválido')
+    await expect(importar(JSON.stringify({ versao: 2, ...vazio, fontes: [{ nome: 'x' }] }))).rejects.toThrow('Arquivo de backup inválido')
+    await expect(importar(JSON.stringify({ versao: 2, ...vazio, fontes: [{ id: 5 }] }))).rejects.toThrow('Arquivo de backup inválido')
+    await expect(importar(JSON.stringify({ versao: 2, ...vazio, fontes: [null] }))).rejects.toThrow('Arquivo de backup inválido')
     await preservou()
   })
   it('rejeita array e null no topo sem tocar nos dados', async () => {
@@ -47,7 +49,8 @@ describe('backup: importação segura', () => {
     await preservou()
   })
   it('versão desconhecida preserva os dados', async () => {
-    await expect(importar(JSON.stringify({ versao: 2, ...vazio }))).rejects.toThrow('Versão de backup não suportada')
+    await expect(importar(JSON.stringify({ versao: 1, ...vazio }))).rejects.toThrow('Versão de backup não suportada')
+    await expect(importar(JSON.stringify({ versao: 99, ...vazio }))).rejects.toThrow('Versão de backup não suportada')
     await preservou()
   })
   describe('campos com tipo errado', () => {
@@ -57,7 +60,7 @@ describe('backup: importação segura', () => {
       taxaMensal: 0.01, primeiraParcela: '2026-10-05', parcelasPagasAntes: 0,
     }
     const rejeita = async (extra: object) => {
-      await expect(importar(JSON.stringify({ versao: 1, ...vazio, ...extra }))).rejects.toThrow('Arquivo de backup inválido')
+      await expect(importar(JSON.stringify({ versao: 2, ...vazio, ...extra }))).rejects.toThrow('Arquivo de backup inválido')
       await preservou()
     }
     it('saldoInicial string', () => rejeita({ contas: [{ ...conta, saldoInicial: '1000' }] }))
@@ -83,7 +86,7 @@ describe('backup: importação segura', () => {
       await rejeita({ lancamentos: [{ ...lanc, geradoAte: '2026-13' }] })
     })
     it('aceita datas reais, inclusive 29/02 de ano bissexto', async () => {
-      await importar(JSON.stringify({ versao: 1, ...vazio, lancamentos: [{ ...lanc, data: '2028-02-29', geradoAte: '2028-12' }] }))
+      await importar(JSON.stringify({ versao: 2, ...vazio, lancamentos: [{ ...lanc, data: '2028-02-29', geradoAte: '2028-12' }] }))
       expect(await repo.lancamentos.listar()).toHaveLength(1)
     })
     it('enums inválidos', async () => {
@@ -105,6 +108,36 @@ describe('backup: importação segura', () => {
       await rejeita({ financiamentos: [{ ...fin, parcelasPagasAntes: -1 }] })
       await rejeita({ financiamentos: [{ ...fin, saldoDevedor: 1000, prazoRestante: 12, diaVencimento: 5, valorFinanciado: undefined }] })
     })
+    it('campos novos de conta e categoria', async () => {
+      await rejeita({ contas: [{ ...conta, limiteChequeEspecial: -1 }] })
+      await rejeita({ contas: [{ ...conta, limiteChequeEspecial: 1.5 }] })
+      await rejeita({ contas: [{ ...conta, taxaChequeEspecial: -0.1 }] })
+      await rejeita({ contas: [{ ...conta, taxaChequeEspecial: null }] })
+      await rejeita({ contas: [{ ...conta, reserva: 'sim' }] })
+      await rejeita({ categorias: [{ id: 'k', nome: 'x', icone: 'i', tipo: 'saida', natureza: 'fixo', essencial: true, sistema: 'sim' }] })
+    })
+    it('campos novos de lançamento', async () => {
+      await rejeita({ lancamentos: [{ ...lanc, descricao: 5 }] })
+      await rejeita({ lancamentos: [{ ...lanc, especie: 'estorno' }] })
+      await rejeita({ lancamentos: [{ ...lanc, transferenciaId: 5 }] })
+      await rejeita({ lancamentos: [{ ...lanc, pagamentoFinanciamento: 'quitacao' }] })
+      await rejeita({ lancamentos: [{ ...lanc, recorrenciaAte: '2026-13' }] })
+    })
+    it('parcelamento malformado', async () => {
+      const ok = { grupoId: 'g', numero: 1, total: 3 }
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: 'x' }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: null }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: [] }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, grupoId: 5 } }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, numero: 0 } }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, numero: 1.5 } }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, total: 1 } }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, numero: 4 } }] })
+    })
+    it('aceita saldoInicial negativo e limite zero', async () => {
+      await importar(JSON.stringify({ versao: 2, ...vazio, contas: [{ ...conta, saldoInicial: -5000, limiteChequeEspecial: 0, taxaChequeEspecial: 0, reserva: false }] }))
+      expect((await repo.contas.listar())[0].saldoInicial).toBe(-5000)
+    })
     it('fonte com diaPagamento fora de 1..31', () =>
       rejeita({ fontes: [{ id: 'f', nome: 'x', tipo: 'fixa', valorEsperado: 1, diaPagamento: 0 }] }))
   })
@@ -120,5 +153,29 @@ describe('backup: importação segura', () => {
     await importar(json)
     expect(JSON.parse(await exportar())).toEqual(antes)
     for (const t of ['contas', 'fontes', 'categorias', 'lancamentos', 'financiamentos', 'planos']) expect(antes[t]).toHaveLength(1)
+  })
+})
+
+describe('backup v2: ida e volta com campos novos', () => {
+  it('preserva tudo o que o próprio app produz', async () => {
+    await repo.contas.salvar({ id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: -20000, limiteChequeEspecial: 100000, taxaChequeEspecial: 0.08 })
+    await repo.contas.salvar({ id: 'c2', nome: 'Cofre', tipo: 'caixa', saldoInicial: 0, reserva: true })
+    await repo.categorias.salvar({ id: 'transferencia', nome: 'Transferência', icone: 'ArrowLeftRight', tipo: 'saida', natureza: 'variavel', essencial: false, sistema: true })
+    await repo.financiamentos.salvar({ id: 'fi1', nome: 'Casa', valorFinanciado: 10000000, valorParcela: 183333, totalParcelas: 120, sistema: 'SAC', taxaMensal: 0.01, primeiraParcela: '2026-10-10', parcelasPagasAntes: 0 })
+    const [saida, entrada] = criarTransferencia({ id: 't1', contaOrigemId: 'c1', contaDestinoId: 'c2', valor: 5000, data: '2026-10-02', descricao: 'Guardar' })
+    const ajuste = criarAjuste({ id: 'a1', contaId: 'c1', saldoApp: 1000, saldoReal: 1500, data: '2026-10-03' })!
+    const parcelas = criarParcelamento({
+      grupoId: 'g1', valorParcela: 3000, total: 3, parcelaAtual: 1, dataParcelaAtual: '2026-10-05', statusAtual: 'pago',
+      base: { tipo: 'saida', categoriaId: 'k1', natureza: 'variavel', contaId: 'c1', descricao: 'TV' },
+    })
+    const pagamento = { id: 'p1', valor: 183333, data: '2026-10-10', tipo: 'saida' as const, categoriaId: 'k1', natureza: 'fixo' as const, contaId: 'c1', status: 'pago' as const, financiamentoId: 'fi1', pagamentoFinanciamento: 'parcela' as const }
+    const recorrente = { id: 'r1', valor: 100, data: '2026-10-01', tipo: 'saida' as const, categoriaId: 'k1', natureza: 'fixo' as const, contaId: 'c1', status: 'pendente' as const, recorrencia: 'mensal' as const, geradoAte: '2026-10', recorrenciaAte: '2027-03' }
+    for (const l of [saida, entrada, ajuste, ...parcelas, pagamento, recorrente]) await repo.lancamentos.salvar(l)
+    const json = await exportar()
+    const antes = JSON.parse(json)
+    expect(antes.lancamentos).toHaveLength(2 + 1 + 3 + 2)
+    await db.delete(); await db.open()
+    await importar(json)
+    expect(JSON.parse(await exportar())).toEqual(antes)
   })
 })

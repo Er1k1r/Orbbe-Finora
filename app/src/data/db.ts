@@ -21,6 +21,9 @@ class FinancasDB extends Dexie {
       financiamentos: 'id',
       planos: 'id, financiamentoId',
     })
+    this.version(2).stores({
+      lancamentos: 'id, data, contaId, categoriaId, origemId, transferenciaId, financiamentoId, parcelamento.grupoId',
+    })
   }
 }
 

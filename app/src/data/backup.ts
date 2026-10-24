@@ -1,7 +1,7 @@
 import type { Table } from 'dexie'
 import { db } from './db'
 
-const VERSAO = 1
+const VERSAO = 2
 const TABELAS = ['contas', 'fontes', 'categorias', 'lancamentos', 'financiamentos', 'planos'] as const
 
 export async function exportar(): Promise<string> {
@@ -28,6 +28,11 @@ const ehDataReal = (v: unknown) => {
   if (m < 1 || m > 12 || d < 1) return false
   return d <= new Date(Date.UTC(a, m, 0)).getUTCDate()
 }
+const ehParcelamento = (v: unknown) => {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) return false
+  const p = v as Record<string, unknown>
+  return ehTexto(p.grupoId) && ehIntMin(1)(p.numero) && ehIntMin(2)(p.total) && (p.numero as number) <= (p.total as number)
+}
 const ehMesReal = (v: unknown) => typeof v === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(v)
 
 type Regra = (v: unknown) => boolean
@@ -35,7 +40,7 @@ type Regra = (v: unknown) => boolean
 const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string, Regra> }> = {
   contas: {
     obrig: { nome: ehTexto, tipo: ehEnum('banco', 'caixa', 'carteira'), saldoInicial: ehInt },
-    opc: {},
+    opc: { limiteChequeEspecial: ehIntMin(0), taxaChequeEspecial: ehFinitoMin0, reserva: ehBool },
   },
   fontes: {
     obrig: { nome: ehTexto, tipo: ehEnum('fixa', 'variavel', 'eventual'), valorEsperado: ehIntMin(0) },
@@ -46,7 +51,7 @@ const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string,
       nome: ehTexto, icone: ehTexto, tipo: ehEnum('entrada', 'saida'),
       natureza: ehEnum('fixo', 'variavel'), essencial: ehBool,
     },
-    opc: {},
+    opc: { sistema: ehBool },
   },
   lancamentos: {
     obrig: {
@@ -57,6 +62,8 @@ const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string,
     opc: {
       fonteId: ehTexto, observacao: ehTexto, origemId: ehTexto, financiamentoId: ehTexto,
       recorrencia: ehEnum('mensal'), geradoAte: ehMesReal,
+      descricao: ehTexto, especie: ehEnum('transferencia', 'ajuste'), transferenciaId: ehTexto,
+      pagamentoFinanciamento: ehEnum('parcela', 'antecipacao'), recorrenciaAte: ehMesReal, parcelamento: ehParcelamento,
     },
   },
   financiamentos: {
