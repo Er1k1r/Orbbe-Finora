@@ -19,6 +19,8 @@ import Onboarding from './ui/telas/Onboarding'
 import Contas from './ui/telas/Contas'
 import Fontes from './ui/telas/Fontes'
 import Categorias from './ui/telas/Categorias'
+import Dividas from './ui/telas/Dividas'
+import DividaDetalhe from './ui/telas/DividaDetalhe'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
@@ -90,6 +92,8 @@ function Shell() {
         <Route path="/contas" element={<Contas />} />
         <Route path="/fontes" element={<Fontes />} />
         <Route path="/categorias" element={<Categorias />} />
+        <Route path="/dividas" element={<Dividas mes={mes} />} />
+        <Route path="/dividas/:id" element={<DividaDetalhe mes={mes} />} />
         <Route path="*"element={<div>Em construção</div>} />
       </Routes>
       )}
