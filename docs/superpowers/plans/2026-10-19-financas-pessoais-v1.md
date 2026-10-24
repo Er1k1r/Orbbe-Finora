@@ -17,16 +17,16 @@
 - `src/domain` não importa React, Dexie nem nada de `ui/` ou `data/`.
 - Parcelas de financiamento entram no motor a partir do cadastro (`parcelaDoMes`). Um pagamento real é uma saída com `financiamentoId` de um financiamento **existente**: ela representa a parcela (não conta em dobro em despesas, sobra nem insights de despesa); com o financiamento apagado o `financiamentoId` deixa de ser vínculo e a saída é comum. Pagamento acima da parcela: o excesso conta como despesa comum. Parcela pendente de mês anterior continua devida (`parcelasAtrasadas`).
 - A data de hoje vem de `hojeLocal()` (`domain/meses.ts`, calendário local); nunca `new Date().toISOString().slice(0, 10)` (UTC). Números e porcentagens exibidos usam `formatarNumero`/`formatarPct` (vírgula pt-BR); nunca `toFixed`.
-- A UI nunca grava `null` em campo opcional (omitir/`undefined`); o importador de backup rejeita `null`. Formulários de financiamento chamam `validarFinanciamento` e nunca gravam `NaN`.
+- A UI nunca grava `null` em campo opcional (omitir, via spread condicional, ou `undefined`); o importador de backup rejeita `null`. Formulários de financiamento chamam `validarContrato` (taxa calculada por `taxaImplicita`) e nunca gravam `NaN`. Categorias com `sistema: true` (transferência, ajuste) nunca aparecem em grades nem telas de gestão (`categoriasDaGrade`).
 - O estado do banco é lido **uma vez**, no `Shell`, e entregue por contexto (`DadosContext`); telas não montam `useLiveQuery` próprio (evita piscar estados vazios e permite pré-preencher dados salvos).
 - Visual: Soft Structuralism, sem Inter/Roboto/Arial, ícones Phosphor Light, cartões em dupla moldura, curva `cubic-bezier(0.32,0.72,0,1)`, anima só `transform`/`opacity` (exceção: o traço do anel SVG), respeita `prefers-reduced-motion`. Tokens de cor exatamente os do spec §8.
 - Cor nunca é a única pista: sempre sinal +/− e rótulo.
 - Alvos de toque ≥ 44 px; `min-h-[100dvh]`, nunca `h-screen`.
 - Nada de padrão visual Tely.
 
-**User decisions (already made):** PWA local-first com caminho para APK via Capacitor · perfil por fonte de renda (`fixa`/`variavel`/`eventual`) · escopo v1 = núcleo + financiamentos + insights por regras (13º/férias e fatura de cartão ficam para v2) · visual próprio inspirado nas referências (drawer, seletor de mês, FAB, anel) · ideias do Kontto aprovadas em 2026-10-23: onboarding em 3 perguntas com objetivos, checklist "Vamos começar", cartão de privacidade, restaurar backup na abertura, e interpretador de notificação bancária no motor (Task 14). A captura nativa de notificações fica na fase APK (fora deste plano).
+**User decisions (already made):** PWA local-first com caminho para APK via Capacitor · perfil por fonte de renda (`fixa`/`variavel`/`eventual`) · escopo v1 = núcleo + financiamentos + insights por regras (13º/férias e fatura de cartão ficam para v2) · visual próprio inspirado nas referências (drawer, seletor de mês, FAB, anel) · ideias do Kontto aprovadas em 2026-10-23: onboarding em 3 perguntas com objetivos, checklist "Vamos começar", cartão de privacidade, restaurar backup na abertura, e interpretador de notificação bancária no motor (Task 14). A captura nativa de notificações fica na fase APK (fora deste plano). Motor v1.1 (spec §12, decisões do dono de 2026-10-23): financiamento é um contrato cadastrado pelo carnê (taxa calculada), compra parcelada, contas com cheque especial, reserva, transferência e ajuste, custo essencial com lançados e futuros, "Comprometido nos próximos meses" e armazenamento persistente; as telas das Tasks 8–13 usam essas APIs.
 
-**Desvio do spec (registrado):** no drawer, **Orçamento** e **Gráficos** ficam para a v1.1; **Reserva** vira um cartão dentro da tela Insights. O restante do spec §7 está coberto.
+**Desvio do spec (registrado):** no drawer, **Orçamento** e **Gráficos** ficam para a v1.1; **Reserva** vira um cartão (`CartaoReserva`) no Resumo e na tela Insights. O restante do spec §7 está coberto.
 
 ## File Structure
 
@@ -55,8 +55,8 @@ app/
     ui/
       tema.css            tokens
       componentes/        Cartao, Moldura, SobraRing, SeletorMes, Drawer, Fab, Icone
-      telas/              Resumo, LancamentoRapido, Lancamentos, Contas, Dividas, DividaDetalhe,
-                          Insights, Fontes, Categorias, Backup, Onboarding
+      telas/              Resumo, Compromissos, LancamentoRapido, Lancamentos, Contas, Dividas, DividaDetalhe,
+                          FormPagamento, Insights, Fontes, Categorias, Backup, Onboarding
       hooks/useDados.ts
 ```
 
@@ -2130,13 +2130,15 @@ git add app/src/data && git commit -m "feat(data): dexie, repositorio, seed de c
 **Goal:** Tokens visuais, componentes `Moldura`/`Cartao`/`SeletorMes`/`Fab`/`Drawer`, rotas e hook de dados.
 
 **Files:**
-- Create: `app/src/ui/tema.css`, `app/src/ui/componentes/Moldura.tsx`, `SeletorMes.tsx`, `Fab.tsx`, `Drawer.tsx`, `app/src/ui/hooks/useDados.ts`, `app/src/ui/hooks/DadosContext.tsx`
+- Create: `app/src/ui/tema.css`, `app/src/ui/rotulos.ts`, `app/src/ui/componentes/Moldura.tsx`, `SeletorMes.tsx`, `Fab.tsx`, `Drawer.tsx`, `app/src/ui/hooks/useDados.ts`, `app/src/ui/hooks/DadosContext.tsx`
 - Modify: `app/src/index.css`, `app/src/main.tsx`, `app/src/App.tsx`, `app/index.html`
 
 **Acceptance Criteria:**
 - [ ] App abre com cabeçalho (menu, seletor de mês) e FAB; menu abre o drawer com as entradas do spec §7 (exceto Orçamento/Gráficos).
 - [ ] Tema claro e escuro seguem `prefers-color-scheme` com os hex do spec §8.
 - [ ] `npm run build` passa; sem erros no console ao abrir.
+- [ ] O `Shell` chama `pedirPersistencia()` (`data/armazenamento.ts`) uma vez na abertura e guarda o `EstadoArmazenamento` (`'persistente' | 'nao_persistente' | 'indisponivel'`) no contexto (`armazenamento`), para a tela de Backup (Task 13).
+- [ ] Categorias com `sistema: true` (transferência, ajuste) ficam fora de toda grade e tela de gestão: as telas filtram com `categoriasDaGrade` (nomes em listas continuam vindo da lista completa `categorias`). `semearCategorias()` na abertura também recria as de sistema em bancos que já tinham categorias.
 
 **Verify:** `cd app && npm run build` → sucesso; abrir `npm run dev` e conferir o shell no navegador (390×844)
 
@@ -2235,13 +2237,33 @@ export function Moldura({ children, className = '' }: { children: ReactNode; cla
 }
 ```
 
-`SeletorMes.tsx`:
+`app/src/ui/rotulos.ts` (rótulos compartilhados entre as telas):
+
+```ts
+import type { Categoria, Mes } from '../domain/tipos'
+
+export const NOMES_MES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+/** 'YYYY-MM' → 'jun/27'. */
+export function rotuloMes(mes: Mes): string {
+  const [a, m] = mes.split('-').map(Number)
+  return `${NOMES_MES[m - 1].slice(0, 3).toLowerCase()}/${String(a).slice(2)}`
+}
+
+/**
+ * Itens de `projetarCompromissos` usam `descricao ?? observacao ?? categoriaId`: quando o lançamento não tem
+ * descrição, `descricao` vem como o id da categoria. Mostre sempre o NOME da categoria.
+ */
+export const nomeCompromisso = (descricao: string, categorias: Categoria[]): string =>
+  categorias.find((c) => c.id === descricao)?.nome ?? descricao
+```
+
+`SeletorMes.tsx` (usa `NOMES_MES` de `rotulos.ts`):
 
 ```tsx
 import { CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { mesAnterior } from '../../domain/meses'
-
-const NOMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+import { NOMES_MES as NOMES } from '../rotulos'
 
 export function SeletorMes({ mes, onChange }: { mes: string; onChange: (m: string) => void }) {
   const [ano, m] = mes.split('-').map(Number)
@@ -2324,11 +2346,14 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
 
 - [ ] **Step 3: Hook de dados e shell**
 
-`useDados.ts` (lê o banco; chamado **uma única vez**, no `Shell`):
+`useDados.ts` (lê o banco; `useDadosAoVivo` é chamado **uma única vez**, no `Shell`; o arquivo também reexporta `useDados` do contexto, para as telas importarem tudo de `../hooks/useDados`, e traz o filtro das categorias da grade):
 
 ```ts
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../data/db'
+import type { Categoria, TipoLancamento } from '../../domain/tipos'
+
+export { useDados } from './DadosContext' // DadosContext só importa o TIPO daqui: sem ciclo em tempo de execução
 
 export function useDadosAoVivo() {
   const contas = useLiveQuery(() => db.contas.toArray())
@@ -2344,15 +2369,20 @@ export function useDadosAoVivo() {
     lancamentos: lancamentos ?? [], financiamentos: financiamentos ?? [], planos: planos ?? [],
   }
 }
+
+/** Categorias da grade de lançamento e das telas de gestão: as de sistema (transferência, ajuste) nunca aparecem. */
+export const categoriasDaGrade = (categorias: Categoria[], tipo?: TipoLancamento): Categoria[] =>
+  categorias.filter((c) => !c.sistema && (tipo === undefined || c.tipo === tipo))
 ```
 
-`DadosContext.tsx` — as telas leem os dados por aqui (`useDados()`), nunca montam `useLiveQuery` própria:
+`DadosContext.tsx` — as telas leem os dados por aqui (`useDados()`), nunca montam `useLiveQuery` própria. O contexto também carrega o estado do armazenamento persistente (`undefined` até a resposta do navegador):
 
 ```tsx
 import { createContext, useContext } from 'react'
+import type { EstadoArmazenamento } from '../../data/armazenamento'
 import type { useDadosAoVivo } from './useDados'
 
-export type Dados = ReturnType<typeof useDadosAoVivo>
+export type Dados = ReturnType<typeof useDadosAoVivo> & { armazenamento?: EstadoArmazenamento }
 export const DadosContext = createContext<Dados | null>(null)
 
 export function useDados(): Dados {
@@ -2377,15 +2407,19 @@ import { semearCategorias } from './data/seed'
 import { db } from './data/db'
 import { gerarRecorrentes } from './domain/recorrencia'
 import { hojeLocal, mesDe } from './domain/meses'
+import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
   const [aberto, setAberto] = useState(false)
   const [mes, setMes] = useState(mesDe(hojeLocal()))
   const [lancando, setLancando] = useState(false)
   const dados = useDadosAoVivo() // única leitura do banco; as telas recebem por DadosContext
+  const [armazenamento, setArmazenamento] = useState<EstadoArmazenamento>()
   const nav = useNavigate()
 
   useEffect(() => { semearCategorias() }, [])
+  // Pede armazenamento persistente uma vez; o estado vai pelo contexto para a tela de Backup.
+  useEffect(() => { void pedirPersistencia().then(setArmazenamento) }, [])
   useEffect(() => {
     if (!dados.pronto) return
     const { copias, modelos } = gerarRecorrentes(dados.lancamentos, hojeLocal())
@@ -2398,7 +2432,7 @@ function Shell() {
   if (!dados.pronto) return null
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (
-    <DadosContext.Provider value={dados}>
+    <DadosContext.Provider value={{ ...dados, armazenamento }}>
     <div className="mx-auto max-w-md min-h-[100dvh] px-4 pb-28">
       <header className="flex items-center justify-between pt-4 pb-3">
         <button aria-label="Abrir menu" className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
@@ -2424,7 +2458,7 @@ export default function App() {
 }
 ```
 
-(Ao editar um lançamento-modelo recorrente na UI, preserve o `geradoAte` existente: salve `{ ...modelo, ...edicoes }`, nunca um objeto reconstruído sem o campo.)
+(Ao editar um lançamento-modelo recorrente na UI, preserve o `geradoAte` existente: salve `{ ...modelo, ...edicoes }`, nunca um objeto reconstruído sem o campo. Modelos e cópias são persistidos juntos, em uma transação com `bulkPut`, como o JSDoc de `gerarRecorrentes` pede. Reativar/estender uma recorrência encerrada é tratado na Task 10.)
 
 (`lancando` e `nav` são conectados na Task 10 e Task 9; manter como está até lá.)
 
@@ -2447,18 +2481,20 @@ git add -A && git commit -m "feat(ui): tema, componentes base, drawer e shell"
 **Goal:** Home com seletor de mês, anel da sobra (assinatura), trio Inicial/Saldo/Previsto, pendências com saldo seguro, visão geral, insights e últimos lançamentos.
 
 **Files:**
-- Create: `app/src/ui/componentes/SobraRing.tsx`, `app/src/ui/telas/Resumo.tsx`, `app/src/ui/hooks/useResumo.ts`, `app/src/ui/componentes/ChecklistInicial.tsx`, `app/src/ui/hooks/usePreferencias.ts`, `app/src/ui/telas/ordemCartoes.ts`, `app/src/domain/categorias.ts`, `app/src/domain/reserva.ts`
+- Create: `app/src/ui/componentes/SobraRing.tsx`, `app/src/ui/telas/Resumo.tsx`, `app/src/ui/telas/Compromissos.tsx`, `app/src/ui/hooks/useResumo.ts`, `app/src/ui/componentes/ChecklistInicial.tsx`, `app/src/ui/componentes/CartaoReserva.tsx`, `app/src/ui/hooks/usePreferencias.ts`, `app/src/ui/telas/ordemCartoes.ts`, `app/src/domain/categorias.ts`, `app/src/domain/reserva.ts`
 - Test: `app/src/ui/telas/ordemCartoes.test.ts`, `app/src/domain/categorias.test.ts`, `app/src/domain/reserva.test.ts`
-- Modify: `app/src/App.tsx` (rota `/`, passa `mes`)
+- Modify: `app/src/App.tsx` (rotas `/` e `/compromissos`, passa `mes`)
 
 **Acceptance Criteria:**
 - [ ] Anel mostra arco verde (sobra otimizada), arco azul-petróleo (aporte) e trilho; sobra normal ≤ 0 mostra anel coral com valor negativo.
 - [ ] Valores vêm de `resumoMes`; `Saldo` é o do fim do mês visualizado. Saldo seguro e pendências refletem lançamentos `pendente` **e as parcelas de financiamento ainda não pagas** (`parcelasPendentes` + `parcelasAtrasadas`, linha "Parcelas a pagar").
-- [ ] Até 3 insights aparecem com título e detalhe; vazio mostra "Sem alertas este mês".
+- [ ] Até 3 insights aparecem com título e detalhe; vazio mostra "Sem alertas este mês". Os insights de conta negativa (`conta_negativa`, `conta_ficara_negativa`) aparecem em destaque **no topo da tela**, acima do checklist e dos cartões.
 - [ ] Sem dados, mostra estado vazio com convite "Registre seu primeiro lançamento".
 - [ ] Cartão "Vamos começar" (checklist de 4 passos: conta, primeiro gasto, renda, financiamento) aparece enquanto houver passo pendente e não tiver sido fechado; "Não tenho financiamento" conclui o 4º passo.
-- [ ] Ordem e presença dos cartões seguem os objetivos do onboarding (`ordemCartoes`): `contas_em_dia` coloca Pendências primeiro; `destino` adiciona "Para onde foi o dinheiro" (top 3 categorias); `meta` adiciona o cartão de Reserva.
-- [ ] `topCategorias` e `statusReserva` têm testes e valores conferidos à mão.
+- [ ] Cartão "Comprometido nos próximos meses": 3 meses a partir do mês visto, com o total de cada um (`projetarCompromissos(...).meses`) e os próximos términos ("óculos termina em jun/27", de `.terminos`); o link "Ver 6 meses" abre a tela `/compromissos` (6 meses, por tipo, com a lista de itens). Item cuja `descricao` cai no id da categoria é exibido com o NOME da categoria (`nomeCompromisso`).
+- [ ] Cartão de Reserva (`CartaoReserva`): `saldoReserva` ÷ `custoEssencialReferencia` pelo `statusReserva`, com a meta de `reservaAlvoMeses`; se `usandoTodas`, mostra a dica para marcar a conta que é a reserva.
+- [ ] Ordem e presença dos cartões seguem os objetivos do onboarding (`ordemCartoes`): `contas_em_dia` coloca Pendências primeiro; `destino` adiciona "Para onde foi o dinheiro" (top 3 categorias); `meta` adiciona o cartão de Reserva; "Comprometido" entra sempre, depois de Pendências.
+- [ ] `topCategorias` (ignora transferências e ajustes) e `statusReserva` têm testes e valores conferidos à mão.
 
 **Verify:** `cd app && npm run build` e conferência visual no navegador com dados de teste (criar 3–4 lançamentos pelo console: `indexedDB` ou pela Task 10)
 
@@ -2513,14 +2549,23 @@ export function SobraRing({ normal, otimizada, aporte }: { normal: Centavos; oti
 }
 ```
 
-- [ ] **Step 2: `useResumo.ts`**
+- [ ] **Step 2: `useResumo.ts`** — junta `resumoMes`, insights, projeção de compromissos, reserva e situação das contas (as telas Resumo, Compromissos, Insights e Dívidas leem daqui)
 
 ```ts
 import { useMemo } from 'react'
+import { saldoReserva } from '../../domain/contas'
+import { custoEssencialReferencia } from '../../domain/essencial'
 import { resumoMes } from '../../domain/fluxo'
-import { gerarInsights } from '../../domain/insights'
+import { gerarInsights, type Insight } from '../../domain/insights'
+import { hojeLocal, mesDe } from '../../domain/meses'
+import { projetarCompromissos } from '../../domain/projecao'
+import { reservaAlvoMeses } from '../../domain/renda'
+import { statusReserva } from '../../domain/reserva'
 import type { Mes } from '../../domain/tipos'
 import { useDados } from './useDados'
+
+const ehConta = (i: Insight) => i.tipo === 'conta_negativa' || i.tipo === 'conta_ficara_negativa'
+const alertaPrimeiro = (a: Insight, b: Insight) => Number(b.severidade === 'alerta') - Number(a.severidade === 'alerta')
 
 export function useResumo(mes: Mes) {
   const d = useDados() // vem do DadosContext (provido no Shell)
@@ -2529,8 +2574,24 @@ export function useResumo(mes: Mes) {
     const resumo = resumoMes({
       mes, contas: d.contas, lancamentos: d.lancamentos, financiamentos: d.financiamentos, aporteExtra: aporte,
     })
-    const insights = gerarInsights({ mes, ...d })
-    return { ...d, aporte, resumo, insights }
+    const todos = gerarInsights({ mes, ...d })
+    const alertasConta = todos.filter(ehConta) // vão para o topo do Resumo
+    const insights = todos.filter((i) => !ehConta(i)).sort(alertaPrimeiro) // cartão "Insights" do Resumo
+    const todosInsights = [...alertasConta, ...insights] // tela Insights: contas negativas, alertas, informativos
+
+    // 6 meses a partir do mês visto; o Resumo mostra os 3 primeiros, a tela /compromissos todos.
+    const compromissos = projetarCompromissos({ lancamentos: d.lancamentos, financiamentos: d.financiamentos }, mes, 6)
+
+    // Reserva: saldo ATUAL das contas de reserva e custo essencial de referência a partir do mês de HOJE.
+    const { saldo, usandoTodas } = saldoReserva(d.contas, d.lancamentos)
+    const custo = custoEssencialReferencia(
+      { lancamentos: d.lancamentos, categorias: d.categorias, financiamentos: d.financiamentos },
+      mesDe(hojeLocal()),
+    )
+    const alvo = reservaAlvoMeses(d.fontes)
+    const reserva = { saldo, usandoTodas, custo, alvo, ...statusReserva(saldo, custo, alvo) }
+
+    return { ...d, aporte, resumo, insights, alertasConta, todosInsights, compromissos, reserva }
   }, [mes, d.contas, d.lancamentos, d.financiamentos, d.planos, d.fontes, d.categorias]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 ```
@@ -2556,7 +2617,7 @@ const Linha = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: st
 )
 
 export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancamento: () => void }) {
-  const { resumo: r, aporte, insights, lancamentos, categorias } = useResumo(mes)
+  const { resumo: r, aporte, insights, alertasConta, compromissos, reserva, lancamentos, categorias } = useResumo(mes)
   const doMes = lancamentos.filter((l) => mesDe(l.data) === mes)
   const nomeCat = (id: string) => categorias.find((c) => c.id === id)?.nome ?? ''
   const ultimos = [...doMes].sort((a, b) => b.data.localeCompare(a.data)).slice(0, 5)
@@ -2621,7 +2682,10 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
           {ultimos.map((l) => (
             <li key={l.id} className="flex items-center justify-between py-3">
               <div>
-                <div>{nomeCat(l.categoriaId)}</div>
+                <div>
+                  {l.descricao ?? nomeCat(l.categoriaId)}
+                  {l.parcelamento && <span className="ml-2 valor text-xs text-suave">{l.parcelamento.numero}/{l.parcelamento.total}</span>}
+                </div>
                 <div className="text-xs text-suave">{l.data.slice(8)}/{l.data.slice(5, 7)}{l.status === 'pendente' ? ' · pendente' : ''}</div>
               </div>
               <span className={`valor ${l.tipo === 'entrada' ? 'text-positivo' : 'text-negativo'}`}>
@@ -2640,14 +2704,15 @@ Em `App.tsx`, trocar o `Routes` por `<Route path="/" element={<Resumo mes={mes} 
 
 - [ ] **Step 3b: Funções puras (com teste), preferências, checklist e ordem dos cartões**
 
-`domain/categorias.ts`:
+`domain/categorias.ts` (transferências e ajustes mexem no saldo, nunca em gasto por categoria):
 
 ```ts
+import { ehMovimentoInterno } from './fluxo'
 import { mesDe } from './meses'
 import type { Centavos, Lancamento, Mes } from './tipos'
 
 export function topCategorias(lancs: Lancamento[], mes: Mes, n: number) {
-  const saidas = lancs.filter((l) => l.tipo === 'saida' && mesDe(l.data) === mes)
+  const saidas = lancs.filter((l) => l.tipo === 'saida' && !ehMovimentoInterno(l) && mesDe(l.data) === mes)
   const total = saidas.reduce((s, l) => s + l.valor, 0)
   if (total === 0) return []
   const por = new Map<string, Centavos>()
@@ -2681,6 +2746,13 @@ describe('topCategorias', () => {
   })
   it('respeita o limite n', () => expect(topCategorias(ls, '2026-10', 1)).toHaveLength(1))
   it('mês sem saídas devolve lista vazia', () => expect(topCategorias(ls, '2026-11', 3)).toEqual([]))
+  it('ignora transferência e ajuste', () => {
+    const internos: Lancamento[] = [
+      { ...s('transferencia', 50000), especie: 'transferencia' },
+      { ...s('ajuste', 5000), especie: 'ajuste' },
+    ]
+    expect(topCategorias([...ls, ...internos], '2026-10', 5)).toEqual(topCategorias(ls, '2026-10', 5))
+  })
 })
 ```
 
@@ -2741,13 +2813,13 @@ export const usePrefs = () =>
 ```ts
 import type { Objetivo } from '../hooks/usePreferencias'
 
-export type Cartao = 'sobra' | 'pendencias' | 'visaoGeral' | 'destino' | 'reserva' | 'insights' | 'ultimos'
+export type Cartao = 'sobra' | 'pendencias' | 'compromissos' | 'visaoGeral' | 'destino' | 'reserva' | 'insights' | 'ultimos'
 
 export function ordemCartoes(obj: Objetivo[]): Cartao[] {
   const extras: Cartao[] = []
   if (obj.includes('destino')) extras.push('destino')
   if (obj.includes('meta')) extras.push('reserva')
-  const lista: Cartao[] = ['sobra', ...extras, 'pendencias', 'visaoGeral', 'insights', 'ultimos']
+  const lista: Cartao[] = ['sobra', ...extras, 'pendencias', 'compromissos', 'visaoGeral', 'insights', 'ultimos']
   return obj.includes('contas_em_dia') ? ['pendencias', ...lista.filter((c) => c !== 'pendencias')] : lista
 }
 ```
@@ -2759,11 +2831,13 @@ import { describe, it, expect } from 'vitest'
 import { ordemCartoes } from './ordemCartoes'
 
 describe('ordemCartoes', () => {
-  it('padrão', () => expect(ordemCartoes([])).toEqual(['sobra', 'pendencias', 'visaoGeral', 'insights', 'ultimos']))
+  it('padrão', () =>
+    expect(ordemCartoes([])).toEqual(['sobra', 'pendencias', 'compromissos', 'visaoGeral', 'insights', 'ultimos']))
   it('contas_em_dia põe pendências primeiro', () => expect(ordemCartoes(['contas_em_dia'])[0]).toBe('pendencias'))
   it('destino e meta entram depois da sobra', () =>
     expect(ordemCartoes(['destino', 'meta']).slice(0, 3)).toEqual(['sobra', 'destino', 'reserva']))
   it('nao_estourar mantém o padrão', () => expect(ordemCartoes(['nao_estourar'])).toEqual(ordemCartoes([])))
+  it('compromissos aparece sempre', () => expect(ordemCartoes(['destino', 'meta', 'contas_em_dia'])).toContain('compromissos'))
 })
 ```
 
@@ -2818,10 +2892,132 @@ export function ChecklistInicial({ abrirLancamento }: { abrirLancamento: () => v
 }
 ```
 
+`ui/componentes/CartaoReserva.tsx` (usado no Resumo e na tela Insights; o objeto vem de `useResumo().reserva`):
+
+```tsx
+import { Link } from 'react-router-dom'
+import { Moldura } from './Moldura'
+import { formatarBRL, formatarNumero } from '../../domain/dinheiro'
+import type { Centavos } from '../../domain/tipos'
+
+export interface DadosReserva { saldo: Centavos; usandoTodas: boolean; custo: Centavos; alvo: number; cobertos: number; progresso: number }
+
+export function CartaoReserva({ reserva: r, verMais = false }: { reserva: DadosReserva; verMais?: boolean }) {
+  return (
+    <Moldura>
+      <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Reserva</h3>
+      <p className="mt-2 valor text-2xl">{formatarNumero(r.cobertos)} <span className="text-base text-suave">de {r.alvo} meses</span></p>
+      <div className="mt-3 h-2 rounded-full bg-[var(--linha)]" role="progressbar" aria-valuenow={Math.round(r.progresso)} aria-valuemin={0} aria-valuemax={100}>
+        <div className="h-2 rounded-full bg-positivo" style={{ width: `${r.progresso}%` }} />
+      </div>
+      <p className="mt-2 text-sm text-suave">
+        Saldo da reserva {formatarBRL(r.saldo)} · custo essencial de referência {formatarBRL(r.custo)} por mês.
+        A meta é {r.alvo} meses porque {r.alvo === 12 ? 'sua renda é variável' : 'sua renda é predominantemente fixa'}.
+      </p>
+      {r.usandoTodas && (
+        <p className="mt-2 text-sm text-suave">
+          Usando o saldo de todas as contas. <Link to="/contas" className="font-semibold text-marca">Marque a conta que é sua reserva</Link> para o cálculo ficar exato.
+        </p>
+      )}
+      {verMais && <Link to="/insights" className="mt-3 inline-block font-semibold text-marca">Ver insights</Link>}
+    </Moldura>
+  )
+}
+```
+
 Em `Resumo.tsx`: montar um `Record<Cartao, ReactNode>` com os cartões já escritos no Step 3, mais:
 - `destino`: `<Moldura>` "Para onde foi o dinheiro" listando `topCategorias(lancamentos, mes, 3)` com nome da categoria, `%` e `formatarBRL(total)` (saída em coral com sinal −).
-- `reserva`: `<Moldura>` com `statusReserva(saldoContas(contas, lancamentos), custoEssencial(lancamentos, categorias, parcelas, mes, financiamentos.map((f) => f.id)), reservaAlvoMeses(fontes))` (reserva usa o saldo **atual**, sem `ate`), texto "X de N meses" e `<Link to="/insights">`.
-Renderizar `ordemCartoes(usePrefs().objetivos).map((c) => <Fragment key={c}>{cartoes[c]}</Fragment>)` e colocar `<ChecklistInicial abrirLancamento={abrirLancamento} />` no topo. O estado vazio (sem lançamentos) passa a mostrar o checklist em vez do cartão simples.
+- `reserva`: `<CartaoReserva reserva={reserva} verMais />`.
+- `compromissos`: cartão "Comprometido nos próximos meses" (3 meses, términos e link para a tela de 6 meses):
+
+```tsx
+compromissos: (
+  <Moldura>
+    <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Comprometido nos próximos meses</h3>
+    {compromissos.meses.slice(0, 3).every((m) => m.total === 0) && compromissos.terminos.length === 0 ? (
+      <p className="mt-2 text-suave">Nada programado.</p>
+    ) : (
+      <>
+        <ul className="mt-2 divide-y divide-[var(--linha)]">
+          {compromissos.meses.slice(0, 3).map((m) => (
+            <li key={m.mes} className="flex items-baseline justify-between py-2">
+              <span>{rotuloMes(m.mes)}</span>
+              <span className="valor text-divida">− {formatarBRL(m.total)}</span>
+            </li>
+          ))}
+        </ul>
+        {compromissos.terminos.slice(0, 3).map((t) => (
+          <p key={`${t.origem}-${t.descricao}-${t.mes}`} className="mt-1 text-sm text-suave">
+            {nomeCompromisso(t.descricao, categorias)} termina em {rotuloMes(t.mes)}
+          </p>
+        ))}
+      </>
+    )}
+    <Link to="/compromissos" className="mt-3 inline-block font-semibold text-marca">Ver 6 meses</Link>
+  </Moldura>
+),
+```
+
+(imports extras em `Resumo.tsx`: `CartaoReserva`, `rotuloMes` e `nomeCompromisso` de `../rotulos`, `topCategorias`). No topo do `return` (antes do checklist e dos cartões; também no estado vazio, pois um saldo inicial negativo já gera alerta), os alertas de conta negativa:
+
+```tsx
+{alertasConta.map((i) => (
+  <div key={i.id} role="alert" className="rounded-2xl bg-[var(--casca)] p-4 ring-1 ring-negativo">
+    <div className="font-semibold text-negativo">{i.titulo}</div>
+    <div className="text-sm text-suave">{i.detalhe}</div>
+  </div>
+))}
+```
+
+Renderizar `ordemCartoes(usePrefs().objetivos).map((c) => <Fragment key={c}>{cartoes[c]}</Fragment>)` e colocar `<ChecklistInicial abrirLancamento={abrirLancamento} />` logo abaixo dos alertas. O estado vazio (sem lançamentos) passa a mostrar o checklist em vez do cartão simples.
+
+`ui/telas/Compromissos.tsx` (rota `/compromissos`, aberta pelo card; 6 meses por tipo, itens e términos):
+
+```tsx
+import { Moldura } from '../componentes/Moldura'
+import { useResumo } from '../hooks/useResumo'
+import { formatarBRL } from '../../domain/dinheiro'
+import { nomeCompromisso, rotuloMes } from '../rotulos'
+import type { Mes } from '../../domain/tipos'
+
+const ROTULO = { financiamentos: 'Financiamentos', parcelados: 'Compras parceladas', recorrencias: 'Recorrentes', outros: 'Outros pendentes' } as const
+
+export default function Compromissos({ mes }: { mes: Mes }) {
+  const { compromissos, categorias } = useResumo(mes)
+  return (
+    <div className="grid gap-4">
+      {compromissos.meses.map((m) => (
+        <Moldura key={m.mes}>
+          <div className="flex items-baseline justify-between">
+            <h3 className="font-semibold">{rotuloMes(m.mes)}</h3>
+            <span className="valor text-lg text-divida">− {formatarBRL(m.total)}</span>
+          </div>
+          {(Object.keys(ROTULO) as (keyof typeof ROTULO)[]).filter((k) => m[k] > 0).map((k) => (
+            <div key={k} className="mt-1 flex items-baseline justify-between text-sm"><span className="text-suave">{ROTULO[k]}</span><span className="valor">{formatarBRL(m[k])}</span></div>
+          ))}
+          <ul className="mt-3 divide-y divide-[var(--linha)] text-sm">
+            {m.itens.map((i, k) => (
+              // `descricao` pode ser o id da categoria (lançamento sem descrição): mostrar o NOME.
+              <li key={k} className="flex justify-between py-2"><span>{nomeCompromisso(i.descricao, categorias)}</span><span className="valor">{formatarBRL(i.valor)}</span></li>
+            ))}
+          </ul>
+        </Moldura>
+      ))}
+      <Moldura>
+        <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Quando termina</h3>
+        {compromissos.terminos.length === 0 && <p className="mt-2 text-suave">Nenhum compromisso com data de término.</p>}
+        <ul className="mt-2 grid gap-2 text-sm">
+          {compromissos.terminos.map((t) => (
+            <li key={`${t.origem}-${t.descricao}-${t.mes}`}>{nomeCompromisso(t.descricao, categorias)} termina em {rotuloMes(t.mes)} · última de {formatarBRL(t.valor)}</li>
+          ))}
+        </ul>
+      </Moldura>
+    </div>
+  )
+}
+```
+
+Em `App.tsx`, adicionar também a rota `/compromissos` → `<Compromissos mes={mes} />` (sem item no drawer: a tela abre pelo card do Resumo).
 
 Rodar: `npx vitest run src/domain/categorias.test.ts src/domain/reserva.test.ts src/ui/telas/ordemCartoes.test.ts` → PASS. Commit: `feat(ui): checklist inicial, cartoes por objetivo e funcoes de apoio`.
 
@@ -2847,10 +3043,12 @@ git add -A && git commit -m "feat(ui): tela Resumo com anel da sobra"
 
 **Acceptance Criteria:**
 - [ ] Abas Saída | Entrada; teclado numérico abre com foco no valor; digitar `1250` mostra `R$ 12,50`.
-- [ ] Grade de categorias do tipo escolhido, ordenadas por uso; tocar numa categoria **salva** (valor > 0) e fecha; data padrão = hoje.
-- [ ] "Mais opções": conta, data, natureza, fonte (entrada), observação, pendente, repete todo mês e, em saídas, seletor **"Pagamento de parcela"** (lista os financiamentos; grava `financiamentoId`; sem escolha, o campo é omitido — nunca `null`).
-- [ ] Na lista, todo lançamento `pendente` (inclusive cada cópia recorrente, que nasce pendente) tem o botão **"Marcar como pago"**, que salva `{ ...l, status: 'pago' }`.
-- [ ] Lista de lançamentos do mês com filtro por tipo e exclusão (botão de lixeira com confirmação).
+- [ ] Campo **descrição** visível sob o valor (opcional; gravado em `descricao` só quando preenchido). Grade de categorias do tipo escolhido (`categoriasDaGrade`: categorias de sistema nunca aparecem), ordenadas por uso; tocar numa categoria **salva** (valor > 0) e fecha; data padrão = hoje (`hojeLocal()`).
+- [ ] "Mais opções": conta, data, natureza, fonte (entrada), observação, pendente, repete todo mês (com "Termina em" opcional → `recorrenciaAte`) e, em saídas, o seletor **"Tipo de saída"**: *Comum*, *Parcelado* ou *Pagamento de financiamento*. Campos opcionais ficam omitidos quando vazios — nunca `null`.
+- [ ] **Parcelado**: o valor digitado é o da parcela; informa total de parcelas (≥ 2), qual é a parcela deste mês e a data dela; mostra a prévia ("Faltam 9 parcelas · R$ 450,00 · última em …", de `resumoParcelamento`) e grava o grupo com `criarParcelamento` + `bulkPut` (da parcela atual até a última; a atual com o status escolhido, as futuras pendentes). Erros do motor aparecem em `alert`.
+- [ ] **Pagamento de financiamento**: escolhe o contrato e se é *Parcela* ou *Antecipação* → grava `financiamentoId` + `pagamentoFinanciamento`; em "Parcela", o valor vem preenchido com a parcela do contrato (`estadoFinanciamento(f, lancamentos).restantes[0].parcela`) e avisa quando o valor digitado difere (a parcela avança exatamente uma; o excesso conta como despesa).
+- [ ] Na lista, todo lançamento `pendente` (inclusive cada cópia recorrente, que nasce pendente) tem o botão **"Marcar como pago"**, que salva `{ ...l, status: 'pago' }`; o botão **"Cancelar recorrência"** (no modelo e nas cópias de uma recorrência ativa) usa `cancelarRecorrencia(modelo, mês atual)`; parcelados mostram **"4/12"**; a linha mostra `descricao` quando existe (a categoria vai para o texto secundário).
+- [ ] Lista de lançamentos do mês com filtro por tipo e exclusão (botão de lixeira com confirmação; excluir uma transferência apaga as duas pontas).
 - [ ] Sem fontes cadastradas, o app mostra o Onboarding e, ao concluir, cria fontes e uma conta.
 - [ ] Onboarding em 3 perguntas: (1) o que resolver primeiro (seleção múltipla, grava `objetivos` via `salvarPrefs`), (2) fontes de renda, (3) saldo atual; tela inicial "Controle seus gastos. Fácil assim." com cartão de privacidade e botão "Já uso, restaurar backup" que importa um JSON.
 
@@ -2869,51 +3067,96 @@ export function Icone({ nome, size = 24 }: { nome: string; size?: number }) {
 }
 ```
 
-- [ ] **Step 2: `LancamentoRapido.tsx`** (folha inferior; salva ao tocar a categoria)
+- [ ] **Step 2: `LancamentoRapido.tsx`** (folha inferior; salva ao tocar a categoria). Além do fluxo rápido, "Mais opções" traz o tipo de saída: **comum**, **parcelado** (`criarParcelamento`) ou **pagamento de financiamento** (`financiamentoId` + `pagamentoFinanciamento`). Campos opcionais entram só quando preenchidos (spread condicional); nunca `null`.
 
 ```tsx
 import { useMemo, useRef, useState } from 'react'
 import { Icone } from '../componentes/Icone'
-import { useDados } from '../hooks/useDados'
+import { categoriasDaGrade, useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
+import { db } from '../../data/db'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
-import { parcelaDoMes } from '../../domain/fluxo'
-import { hojeLocal } from '../../domain/meses'
-import type { Categoria, Lancamento, TipoLancamento } from '../../domain/tipos'
+import { estadoFinanciamento } from '../../domain/fluxo'
+import { hojeLocal, mesDe } from '../../domain/meses'
+import { criarParcelamento, resumoParcelamento } from '../../domain/parcelamento'
+import { rotuloMes } from '../rotulos'
+import type { Categoria, Lancamento, PagamentoFinanciamento, TipoLancamento } from '../../domain/tipos'
 
 export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
   const d = useDados()
   const [tipo, setTipo] = useState<TipoLancamento>('saida')
   const [digitos, setDigitos] = useState('')
+  const [descricao, setDescricao] = useState('')
   const [mais, setMais] = useState(false)
+  const [modo, setModo] = useState<'comum' | 'parcelado' | 'financiamento'>('comum')
   const [data, setData] = useState(hojeLocal())
   const [obs, setObs] = useState('')
   const [pendente, setPendente] = useState(false)
   const [repete, setRepete] = useState(false)
+  const [ate, setAte] = useState('') // 'YYYY-MM' (último mês da recorrência), opcional
   const [contaId, setContaId] = useState('')
   const [fonteId, setFonteId] = useState('')
-  const [financiamentoId, setFinanciamentoId] = useState('')
+  const [totalParc, setTotalParc] = useState('') // parcelado: total de parcelas
+  const [parcAtual, setParcAtual] = useState('1') // parcelado: qual é a parcela deste mês
+  const [financId, setFinancId] = useState('')
+  const [pagTipo, setPagTipo] = useState<PagamentoFinanciamento>('parcela')
   const [natureza, setNatureza] = useState<'auto' | 'fixo' | 'variavel'>('auto')
   const valor = centavosDeDigitos(digitos)
   const campo = useRef<HTMLInputElement>(null)
+  const efetivo = tipo === 'saida' ? modo : 'comum' // entrada nunca é parcelada nem pagamento de contrato
 
+  // Categorias de sistema (transferência, ajuste) nunca entram na grade.
   const categorias = useMemo(() => {
     const usos = new Map<string, number>()
     d.lancamentos.forEach((l) => usos.set(l.categoriaId, (usos.get(l.categoriaId) ?? 0) + 1))
-    return d.categorias.filter((c) => c.tipo === tipo).sort((a, b) => (usos.get(b.id) ?? 0) - (usos.get(a.id) ?? 0))
+    return categoriasDaGrade(d.categorias, tipo).sort((a, b) => (usos.get(b.id) ?? 0) - (usos.get(a.id) ?? 0))
   }, [d.categorias, d.lancamentos, tipo])
+
+  // Parcela do contrato que um pagamento do tipo "parcela" consome (a próxima em aberto).
+  const financ = d.financiamentos.find((f) => f.id === financId)
+  const proxima = financ ? estadoFinanciamento(financ, d.lancamentos).restantes[0] : undefined
+  const difere = efetivo === 'financiamento' && pagTipo === 'parcela' && proxima !== undefined && valor > 0 && valor !== proxima.parcela
+
+  // Prévia do parcelado: quantas faltam, quanto falta pagar e o mês da última.
+  const previa = useMemo(() => {
+    if (efetivo !== 'parcelado' || valor <= 0) return null
+    try {
+      return resumoParcelamento(criarParcelamento({
+        grupoId: 'previa', valorParcela: valor, total: Number(totalParc), parcelaAtual: Number(parcAtual),
+        dataParcelaAtual: data, statusAtual: pendente ? 'pendente' : 'pago',
+        base: { tipo: 'saida', categoriaId: '', natureza: 'variavel', contaId: '' },
+      }))
+    } catch { return null } // total/parcela atual inválidos: sem prévia
+  }, [efetivo, valor, totalParc, parcAtual, data, pendente])
 
   async function salvar(c: Categoria) {
     if (valor <= 0) { campo.current?.focus(); return }
-    const l: Lancamento = {
-      id: novoId(), valor, data, tipo, categoriaId: c.id,
-      natureza: natureza === 'auto' ? c.natureza : natureza,
+    const desc = descricao.trim()
+    const base = {
+      tipo, categoriaId: c.id, natureza: natureza === 'auto' ? c.natureza : natureza,
       contaId: contaId || d.contas[0]?.id || '',
-      fonteId: tipo === 'entrada' ? fonteId || d.fontes[0]?.id : undefined,
-      observacao: obs || undefined,
-      financiamentoId: tipo === 'saida' && financiamentoId ? financiamentoId : undefined,
-      status: pendente ? 'pendente' : 'pago',
-      recorrencia: repete ? 'mensal' : undefined,
+      ...(desc ? { descricao: desc } : {}),
+      ...(obs.trim() ? { observacao: obs.trim() } : {}),
+    }
+    if (efetivo === 'parcelado') {
+      try {
+        // grupo inteiro (parcela atual até a última) numa operação só; ids `${grupoId}:${n}`
+        await db.lancamentos.bulkPut(criarParcelamento({
+          grupoId: novoId(), valorParcela: valor, total: Number(totalParc), parcelaAtual: Number(parcAtual),
+          dataParcelaAtual: data, statusAtual: pendente ? 'pendente' : 'pago', base,
+        }))
+      } catch (e) { alert((e as Error).message); return }
+      fechar()
+      return
+    }
+    if (efetivo === 'financiamento' && !financId) { alert('Escolha o financiamento.'); return }
+    if (repete && ate && ate < mesDe(data)) { alert('O fim da recorrência deve ser depois da data do lançamento.'); return }
+    const fonte = fonteId || d.fontes[0]?.id
+    const l: Lancamento = {
+      ...base, id: novoId(), valor, data, status: pendente ? 'pendente' : 'pago',
+      ...(tipo === 'entrada' && fonte ? { fonteId: fonte } : {}),
+      ...(efetivo === 'financiamento' ? { financiamentoId: financId, pagamentoFinanciamento: pagTipo } : {}),
+      ...(repete && efetivo === 'comum' ? { recorrencia: 'mensal' as const, ...(ate ? { recorrenciaAte: ate } : {}) } : {}),
     }
     await repo.lancamentos.salvar(l)
     fechar()
@@ -2938,9 +3181,13 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
             onChange={(e) => setDigitos(e.target.value.replace(/\D/g, '').slice(0, 10))}
             className="absolute opacity-0 pointer-events-none" aria-label="Valor em centavos" />
           <span onClick={() => campo.current?.focus()} className="valor block text-4xl font-medium">{formatarBRL(valor)}</span>
+          {efetivo === 'parcelado' && <span className="text-xs text-suave">valor de cada parcela</span>}
         </label>
 
-        <div className="mt-5 grid grid-cols-4 gap-2">
+        <input value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Descrição (opcional)" aria-label="Descrição"
+          className="mt-4 min-h-11 w-full rounded-xl bg-[var(--casca)] px-3 text-sm" />
+
+        <div className="mt-4 grid grid-cols-4 gap-2">
           {categorias.map((c) => (
             <button key={c.id} onClick={() => salvar(c)}
               className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--casca)] p-2 text-center text-[11px] leading-tight active:scale-95 transition-transform duration-300 ease-[var(--ease)]">
@@ -2955,7 +3202,63 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
         </button>
         {mais && (
           <div className="mt-2 grid gap-3 text-sm">
-            <label className="grid gap-1">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
+            {tipo === 'saida' && (
+              <label className="grid gap-1">Tipo de saída
+                <select value={modo} onChange={(e) => setModo(e.target.value as typeof modo)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+                  <option value="comum">Comum</option>
+                  <option value="parcelado">Parcelado</option>
+                  {d.financiamentos.length > 0 && <option value="financiamento">Pagamento de financiamento</option>}
+                </select>
+              </label>
+            )}
+            {efetivo === 'parcelado' && (
+              <>
+                <label className="grid gap-1">Total de parcelas
+                  <input inputMode="numeric" value={totalParc} onChange={(e) => setTotalParc(e.target.value.replace(/\D/g, ''))} placeholder="12" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+                </label>
+                <label className="grid gap-1">Qual é a parcela deste mês?
+                  <input inputMode="numeric" value={parcAtual} onChange={(e) => setParcAtual(e.target.value.replace(/\D/g, ''))} placeholder="1" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+                </label>
+                {previa && (
+                  <p className="text-suave">
+                    Faltam {previa.restantes} parcelas · {formatarBRL(previa.valorRestante)} · última em {previa.ultimaData ? rotuloMes(mesDe(previa.ultimaData)) : ''}
+                  </p>
+                )}
+              </>
+            )}
+            {efetivo === 'financiamento' && (
+              <>
+                <label className="grid gap-1">Financiamento
+                  <select value={financId}
+                    onChange={(e) => {
+                      setFinancId(e.target.value)
+                      const f = d.financiamentos.find((x) => x.id === e.target.value)
+                      const prox = f && estadoFinanciamento(f, d.lancamentos).restantes[0]
+                      if (prox && pagTipo === 'parcela' && valor === 0) setDigitos(String(prox.parcela))
+                    }}
+                    className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+                    <option value="">Escolha…</option>
+                    {d.financiamentos.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                  </select>
+                </label>
+                <div role="radiogroup" className="grid grid-cols-2 rounded-full bg-[var(--casca)] p-1">
+                  {(['parcela', 'antecipacao'] as const).map((p) => (
+                    <button key={p} role="radio" aria-checked={pagTipo === p} onClick={() => setPagTipo(p)}
+                      className={`min-h-11 rounded-full font-semibold ${pagTipo === p ? 'bg-[var(--superficie)]' : 'text-suave'}`}>
+                      {p === 'parcela' ? 'Parcela' : 'Antecipação'}
+                    </button>
+                  ))}
+                </div>
+                {pagTipo === 'parcela' && proxima && <p className="text-suave">Parcela do contrato: {formatarBRL(proxima.parcela)}</p>}
+                {difere && proxima && (
+                  <p role="alert" className="text-alerta">
+                    Pagar uma parcela sempre avança exatamente uma parcela do contrato.{' '}
+                    {valor > proxima.parcela ? `A diferença de ${formatarBRL(valor - proxima.parcela)} conta como despesa comum.` : 'O contrato dá a parcela por paga mesmo com valor menor.'}
+                  </p>
+                )}
+              </>
+            )}
+            <label className="grid gap-1">{efetivo === 'parcelado' ? 'Data desta parcela' : 'Data'}<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
             <label className="grid gap-1">Conta
               <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
                 {d.contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
@@ -2968,28 +3271,23 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
                 </select>
               </label>
             )}
-            {tipo === 'saida' && d.financiamentos.length > 0 && (
-              <label className="grid gap-1">Pagamento de parcela
-                <select value={financiamentoId}
-                  onChange={(e) => {
-                    const f = d.financiamentos.find((x) => x.id === e.target.value)
-                    setFinanciamentoId(e.target.value)
-                    if (f && valor === 0) setDigitos(String(parcelaDoMes(f)))
-                  }}
-                  className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
-                  <option value="">Não é parcela</option>
-                  {d.financiamentos.map((f) => <option key={f.id} value={f.id}>{f.nome} · {formatarBRL(parcelaDoMes(f))}</option>)}
-                </select>
-              </label>
-            )}
             <label className="grid gap-1">Natureza
               <select value={natureza} onChange={(e) => setNatureza(e.target.value as typeof natureza)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
                 <option value="auto">Padrão da categoria</option><option value="fixo">Fixo</option><option value="variavel">Variável</option>
               </select>
             </label>
             <label className="grid gap-1">Observação<input value={obs} onChange={(e) => setObs(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
-            <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={pendente} onChange={(e) => setPendente(e.target.checked)} className="size-5" />Ainda não foi pago/recebido</label>
-            <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={repete} onChange={(e) => setRepete(e.target.checked)} className="size-5" />Repete todo mês</label>
+            <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={pendente} onChange={(e) => setPendente(e.target.checked)} className="size-5" />{efetivo === 'parcelado' ? 'Esta parcela ainda não foi paga' : 'Ainda não foi pago/recebido'}</label>
+            {efetivo === 'comum' && (
+              <>
+                <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={repete} onChange={(e) => setRepete(e.target.checked)} className="size-5" />Repete todo mês</label>
+                {repete && (
+                  <label className="grid gap-1">Termina em (opcional)
+                    <input type="month" value={ate} onChange={(e) => setAte(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+                  </label>
+                )}
+              </>
+            )}
           </div>
         )}
         <p className="mt-3 text-center text-xs text-suave">Digite o valor e toque na categoria para salvar.</p>
@@ -2999,7 +3297,9 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
 }
 ```
 
-- [ ] **Step 3: `Lancamentos.tsx`** — lista do mês com filtro e exclusão
+Notas: (1) `bulkPut` do grupo inteiro é uma operação atômica; as parcelas anteriores à adoção do app não são criadas. (2) O pagamento de financiamento é uma saída comum com `financiamentoId`: ele **substitui** a parcela no fluxo (não conta em dobro); o que passar do valor da parcela do contrato conta como despesa comum.
+
+- [ ] **Step 3: `Lancamentos.tsx`** — lista do mês com filtro, "Marcar como pago", parcelado "4/12", cancelar recorrência e exclusão
 
 ```tsx
 import { useState } from 'react'
@@ -3007,16 +3307,35 @@ import { Trash } from '@phosphor-icons/react'
 import { Moldura } from '../componentes/Moldura'
 import { useDados } from '../hooks/useDados'
 import { repo } from '../../data/repo'
+import { db } from '../../data/db'
 import { formatarBRL } from '../../domain/dinheiro'
-import { mesDe } from '../../domain/meses'
+import { hojeLocal, mesDe } from '../../domain/meses'
+import { cancelarRecorrencia } from '../../domain/recorrencia'
+import { rotuloMes } from '../rotulos'
+import type { Lancamento } from '../../domain/tipos'
 
 export default function Lancamentos({ mes }: { mes: string }) {
   const d = useDados()
   const [filtro, setFiltro] = useState<'todos' | 'entrada' | 'saida'>('todos')
+  const mesAtual = mesDe(hojeLocal())
   const nome = (id: string) => d.categorias.find((c) => c.id === id)?.nome ?? ''
   const itens = d.lancamentos
     .filter((l) => mesDe(l.data) === mes && (filtro === 'todos' || l.tipo === filtro))
     .sort((a, b) => b.data.localeCompare(a.data))
+
+  // O modelo da recorrência: o próprio lançamento (modelo) ou aquele de que a cópia nasceu (`origemId`).
+  const modeloDe = (l: Lancamento) =>
+    l.recorrencia === 'mensal' ? l : d.lancamentos.find((m) => m.id === l.origemId && m.recorrencia === 'mensal')
+  const ativo = (m?: Lancamento) => m !== undefined && (m.recorrenciaAte === undefined || m.recorrenciaAte > mesAtual)
+
+  // `{ ...modelo, recorrenciaAte }` (dentro de cancelarRecorrencia) preserva o `geradoAte` do modelo.
+  const cancelar = (m: Lancamento) => repo.lancamentos.salvar(cancelarRecorrencia(m, mesAtual))
+
+  async function excluir(l: Lancamento) {
+    if (!confirm(l.transferenciaId ? 'Excluir esta transferência (as duas pontas)?' : 'Excluir este lançamento?')) return
+    if (l.transferenciaId) await db.lancamentos.where('transferenciaId').equals(l.transferenciaId).delete()
+    else await repo.lancamentos.remover(l.id)
+  }
 
   return (
     <div className="grid gap-4">
@@ -3031,35 +3350,55 @@ export default function Lancamentos({ mes }: { mes: string }) {
       <Moldura>
         {itens.length === 0 && <p className="text-suave">Nenhum lançamento neste mês.</p>}
         <ul className="divide-y divide-[var(--linha)]">
-          {itens.map((l) => (
-            <li key={l.id} className="flex items-center justify-between gap-3 py-3">
-              <div className="min-w-0">
-                <div className="truncate">{nome(l.categoriaId)}</div>
-                <div className="text-xs text-suave">
-                  {l.data.slice(8)}/{l.data.slice(5, 7)} · {l.natureza}{l.status === 'pendente' ? ' · pendente' : ''}{l.observacao ? ` · ${l.observacao}` : ''}
+          {itens.map((l) => {
+            const modelo = modeloDe(l)
+            const fin = d.financiamentos.find((f) => f.id === l.financiamentoId)
+            return (
+              <li key={l.id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3">
+                <div className="min-w-0">
+                  <div className="truncate">
+                    {l.descricao ?? nome(l.categoriaId)}
+                    {l.parcelamento && <span className="ml-2 valor text-xs text-suave">{l.parcelamento.numero}/{l.parcelamento.total}</span>}
+                  </div>
+                  <div className="text-xs text-suave">
+                    {l.data.slice(8)}/{l.data.slice(5, 7)}{l.descricao ? ` · ${nome(l.categoriaId)}` : ''} · {l.natureza}
+                    {l.status === 'pendente' ? ' · pendente' : ''}
+                    {fin ? ` · ${l.pagamentoFinanciamento === 'antecipacao' ? 'antecipação' : 'parcela'} de ${fin.nome}` : ''}
+                    {modelo?.recorrenciaAte ? ` · recorrência até ${rotuloMes(modelo.recorrenciaAte)}` : ''}
+                    {l.observacao ? ` · ${l.observacao}` : ''}
+                  </div>
                 </div>
-              </div>
-              <span className={`valor ${l.tipo === 'entrada' ? 'text-positivo' : 'text-negativo'}`}>
-                {l.tipo === 'entrada' ? '+' : '−'} {formatarBRL(l.valor)}
-              </span>
-              {l.status === 'pendente' && (
-                <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-marca"
-                  onClick={() => repo.lancamentos.salvar({ ...l, status: 'pago' })}>
-                  Marcar como pago
+                <span className={`valor ${l.tipo === 'entrada' ? 'text-positivo' : 'text-negativo'}`}>
+                  {l.tipo === 'entrada' ? '+' : '−'} {formatarBRL(l.valor)}
+                </span>
+                {l.status === 'pendente' && (
+                  <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-marca"
+                    onClick={() => repo.lancamentos.salvar({ ...l, status: 'pago' })}>
+                    Marcar como pago
+                  </button>
+                )}
+                {modelo && ativo(modelo) && (
+                  <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-suave" onClick={() => cancelar(modelo)}>
+                    Cancelar recorrência
+                  </button>
+                )}
+                <button aria-label="Excluir lançamento" className="size-11 grid place-items-center text-suave" onClick={() => excluir(l)}>
+                  <Trash size={20} weight="light" />
                 </button>
-              )}
-              <button aria-label="Excluir lançamento" className="size-11 grid place-items-center text-suave"
-                onClick={() => { if (confirm('Excluir este lançamento?')) repo.lancamentos.remover(l.id) }}>
-                <Trash size={20} weight="light" />
-              </button>
-            </li>
-          ))}
+              </li>
+            )
+          })}
         </ul>
       </Moldura>
     </div>
   )
 }
 ```
+
+Notas sobre recorrência:
+- "Cancelar recorrência" encerra no mês atual (`cancelarRecorrencia(modelo, mês atual)`): o modelo não gera mais cópias depois dele e nada já lançado é apagado.
+- Editar um modelo preserva o `geradoAte` (salve `{ ...modelo, ...edicoes }`).
+- Futuro "reativar/estender": ao remover ou aumentar `recorrenciaAte`, **resetar `geradoAte` para o `recorrenciaAte` antigo** (`{ ...modelo, recorrenciaAte: novo, geradoAte: modelo.recorrenciaAte }`). O gerador avança `geradoAte` até o mês de hoje mesmo depois do fim; sem o reset, os meses entre o fim antigo e `geradoAte` seriam pulados.
 
 - [ ] **Step 4: `EtapaRenda.tsx`** — perguntas 2 e 3 do onboarding: escolhe fontes por exemplo e cria conta (o `Onboarding.tsx` que orquestra as etapas está no Step 4b)
 
@@ -3219,7 +3558,7 @@ Commit junto com o Step 6 (o FAB e as rotas ainda não existem no onboarding: ma
 
 - [ ] **Step 6: Verificar e commitar**
 
-Run: `npm run build` → sucesso. No navegador: onboarding → criar saída de R$ 12,50 em Mercado (valor + 1 toque) → aparece no Resumo e em Lançamentos; marcar "pendente" altera Saldo seguro.
+Run: `npm run build` → sucesso. No navegador: onboarding → criar saída de R$ 12,50 em Mercado (valor + 1 toque) → aparece no Resumo e em Lançamentos; marcar "pendente" altera Saldo seguro. Parcelado: "Mais opções" → Parcelado, R$ 50,00 × 12, parcela atual 4 → criam-se 9 lançamentos (4/12 a 12/12), a lista mostra "4/12" e a prévia mostra "Faltam 9 parcelas · R$ 450,00 · última em …". Pagamento de financiamento: escolher o contrato e "Parcela" → valor pré-preenchido com a parcela do contrato, aviso se for diferente. Transferência e ajuste (Task 11) nunca aparecem na grade de categorias.
 
 ```bash
 git add -A && git commit -m "feat(ui): lancamento rapido, lista de lancamentos e onboarding"
@@ -3232,13 +3571,17 @@ git add -A && git commit -m "feat(ui): lancamento rapido, lista de lancamentos e
 **Goal:** Telas de gestão de contas (banco/caixa), fontes de renda e categorias.
 
 **Files:**
-- Create: `app/src/ui/telas/Contas.tsx`, `Fontes.tsx`, `Categorias.tsx`, `app/src/ui/componentes/FormRapido.tsx`
+- Create: `app/src/ui/telas/Contas.tsx`, `Fontes.tsx`, `Categorias.tsx`, `app/src/ui/componentes/FormRapido.tsx`, `app/src/ui/componentes/CampoValor.tsx`
 - Modify: `app/src/App.tsx` (rotas `/contas`, `/fontes`, `/categorias`)
 
 **Acceptance Criteria:**
-- [ ] Contas: lista com saldo **atual** por conta (`saldoContas` sem `ate`; não é o saldo do mês visto), adicionar, editar nome/saldo inicial, remover (bloqueia se houver lançamentos na conta, com mensagem).
+- [ ] Contas: lista com o saldo por conta vindo de `situacaoContas(contas, lancamentos, mêsAtual).saldo` (pagos até o fim do mês corrente, **não** o saldo do mês visto; é o mesmo número usado em "Conferir saldo"), adicionar, editar nome/tipo/saldo inicial, remover (bloqueia se houver lançamentos na conta, inclusive transferências e ajustes, com mensagem).
+- [ ] Saldo inicial **com sinal**: botão ± ao lado do campo (`CampoValor`); o saldo pode ser negativo. Campos opcionais **limite** e **taxa do cheque especial** (% ao mês) e a caixa **"Esta é minha reserva"**; vazios ficam omitidos (nunca `null`). Sem nenhuma conta marcada, a tela avisa que a reserva usa todas.
+- [ ] Cartão da conta: badge **"Conta negativa"** com o juro estimado do mês (`jurosEstimadoMes`, quando há taxa), aviso de "vai ficar negativa até o fim do mês" (`ficaraNegativa`, com o `previsto`) e **limite disponível** (`limiteDisponivel`, quando há limite).
+- [ ] **Conferir saldo**: o usuário informa o saldo real (com sinal), vê a diferença e, ao salvar, `criarAjuste({ saldoApp: situacaoContas(...).saldo, saldoReal, ... })` lança o ajuste (`null` = já confere, nada é gravado).
+- [ ] **Transferir**: escolhe a conta de destino, valor e descrição opcional; `criarTransferencia` e as duas pontas gravadas juntas (`bulkPut`). Erros do motor (mesma conta, valor zero) aparecem em `alert`.
 - [ ] Fontes: lista com tipo e valor esperado; adicionar/editar/remover.
-- [ ] Categorias: lista por tipo; adicionar com nome, ícone (escolha entre 12 ícones), natureza e "essencial"; remover bloqueado se em uso.
+- [ ] Categorias: lista por tipo (sem as de sistema: transferência e ajuste não aparecem nem podem ser editadas); adicionar com nome, ícone (escolha entre 12 ícones), natureza e "essencial"; remover bloqueado se em uso.
 
 **Verify:** `cd app && npm run build`; no navegador: adicionar conta "Caixa", ver saldo; criar categoria "Pet" essencial e usá-la no lançamento rápido
 
@@ -3268,50 +3611,171 @@ export function FormRapido({ titulo, onSalvar, onCancelar, children }: {
 }
 ```
 
-- [ ] **Step 2: `Contas.tsx`**
+- [ ] **Step 1b: `CampoValor.tsx`** — valor em dígitos (centavos) com botão de sinal ±, para saldo inicial e saldo real (saldo pode ser negativo)
+
+```tsx
+import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
+
+/** Dígitos + sinal → centavos (sem -0). */
+export const comSinal = (digitos: string, negativo: boolean) => {
+  const v = centavosDeDigitos(digitos)
+  return negativo && v > 0 ? -v : v
+}
+
+export function CampoValor({ rotulo, digitos, onDigitos, negativo, onNegativo }: {
+  rotulo: string; digitos: string; onDigitos: (d: string) => void; negativo: boolean; onNegativo: (n: boolean) => void
+}) {
+  return (
+    <div className="grid gap-1 text-sm">
+      <span>{rotulo}</span>
+      <div className="flex gap-2">
+        <button type="button" aria-pressed={negativo} aria-label={negativo ? 'Valor negativo (tocar para positivo)' : 'Valor positivo (tocar para negativo)'}
+          onClick={() => onNegativo(!negativo)} className="size-11 shrink-0 rounded-xl bg-[var(--casca)] text-lg font-semibold">
+          {negativo ? '−' : '+'}
+        </button>
+        <input inputMode="numeric" aria-label={rotulo} value={digitos} onChange={(e) => onDigitos(e.target.value.replace(/\D/g, ''))}
+          className="valor min-h-11 w-full rounded-xl bg-[var(--casca)] px-3" />
+      </div>
+      <span className="text-suave">{formatarBRL(comSinal(digitos, negativo))}</span>
+    </div>
+  )
+}
+```
+
+- [ ] **Step 2: `Contas.tsx`** — saldo (do mês corrente, o mesmo número usado em "Conferir saldo"), cheque especial, reserva, conferir saldo, transferir
 
 ```tsx
 import { useState } from 'react'
 import { Moldura } from '../componentes/Moldura'
 import { FormRapido } from '../componentes/FormRapido'
+import { CampoValor, comSinal } from '../componentes/CampoValor'
 import { useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
-import { saldoContas } from '../../domain/fluxo'
-import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
+import { db } from '../../data/db'
+import { criarAjuste, criarTransferencia, saldoReserva, situacaoContas } from '../../domain/contas'
+import { centavosDeDigitos, formatarBRL, formatarNumero } from '../../domain/dinheiro'
+import { hojeLocal, mesDe } from '../../domain/meses'
 import type { Conta } from '../../domain/tipos'
 
 export default function Contas() {
   const d = useDados()
+  const mesAtual = mesDe(hojeLocal())
+  const situacao = new Map(situacaoContas(d.contas, d.lancamentos, mesAtual).map((s) => [s.contaId, s]))
+  const reserva = saldoReserva(d.contas, d.lancamentos)
+
+  // cadastro/edição
   const [edit, setEdit] = useState<Conta | null>(null)
   const [saldo, setSaldo] = useState('')
+  const [neg, setNeg] = useState(false)
+  const [limite, setLimite] = useState('') // dígitos = centavos; vazio = sem limite
+  const [taxa, setTaxa] = useState('') // % ao mês (ex. "8"); vazio = sem taxa
+  // conferir saldo e transferir
+  const [conferir, setConferir] = useState<Conta | null>(null)
+  const [real, setReal] = useState('')
+  const [negReal, setNegReal] = useState(false)
+  const [transf, setTransf] = useState<Conta | null>(null)
+  const [destinoId, setDestinoId] = useState('')
+  const [valorTr, setValorTr] = useState('')
+  const [descTr, setDescTr] = useState('')
 
-  const abrir = (c: Conta) => { setEdit(c); setSaldo(String(c.saldoInicial)) }
+  const abrir = (c: Conta) => {
+    setEdit(c)
+    setSaldo(String(Math.abs(c.saldoInicial))); setNeg(c.saldoInicial < 0)
+    setLimite(c.limiteChequeEspecial === undefined ? '' : String(c.limiteChequeEspecial))
+    setTaxa(c.taxaChequeEspecial === undefined ? '' : formatarNumero(c.taxaChequeEspecial * 100, 2))
+  }
   const novo = () => abrir({ id: novoId(), nome: '', tipo: 'banco', saldoInicial: 0 })
+
   async function salvar() {
     if (!edit || !edit.nome.trim()) return
-    await repo.contas.salvar({ ...edit, nome: edit.nome.trim(), saldoInicial: centavosDeDigitos(saldo) })
+    const taxaNum = taxa.trim() === '' ? undefined : Number(taxa.replace(',', '.')) / 100
+    if (taxaNum !== undefined && !(Number.isFinite(taxaNum) && taxaNum >= 0)) { alert('Taxa do cheque especial inválida.'); return }
+    const lim = centavosDeDigitos(limite)
+    // Opcionais entram só quando preenchidos (nunca null/undefined gravado à força).
+    const { limiteChequeEspecial: _l, taxaChequeEspecial: _t, reserva: _r, ...base } = edit
+    await repo.contas.salvar({
+      ...base, nome: edit.nome.trim(), saldoInicial: comSinal(saldo, neg),
+      ...(lim > 0 ? { limiteChequeEspecial: lim } : {}),
+      ...(taxaNum !== undefined ? { taxaChequeEspecial: taxaNum } : {}),
+      ...(edit.reserva ? { reserva: true } : {}),
+    })
     setEdit(null)
   }
+
   async function remover(c: Conta) {
-    if (d.lancamentos.some((l) => l.contaId === c.id)) { alert('Esta conta tem lançamentos. Mova ou exclua-os antes.'); return }
+    if (d.lancamentos.some((l) => l.contaId === c.id)) { alert('Esta conta tem lançamentos (inclusive transferências e ajustes). Mova ou exclua-os antes.'); return }
     if (confirm(`Remover ${c.nome}?`)) await repo.contas.remover(c.id)
+  }
+
+  // Conferir saldo: o saldo do app é o de `situacaoContas` (o mesmo exibido no cartão); a diferença vira um ajuste.
+  async function salvarConferencia() {
+    if (!conferir) return
+    const saldoApp = situacao.get(conferir.id)?.saldo ?? 0
+    const ajuste = criarAjuste({ id: novoId(), contaId: conferir.id, saldoApp, saldoReal: comSinal(real, negReal), data: hojeLocal() })
+    if (ajuste) await repo.lancamentos.salvar(ajuste)
+    else alert('O saldo já confere.')
+    setConferir(null)
+  }
+
+  async function salvarTransferencia() {
+    if (!transf) return
+    try {
+      const par = criarTransferencia({
+        id: novoId(), contaOrigemId: transf.id, contaDestinoId: destinoId, valor: centavosDeDigitos(valorTr), data: hojeLocal(),
+        ...(descTr.trim() ? { descricao: descTr.trim() } : {}),
+      })
+      await db.lancamentos.bulkPut(par) // saída e entrada juntas
+      setTransf(null)
+    } catch (e) { alert((e as Error).message) } // mesma conta ou valor zero
   }
 
   return (
     <div className="grid gap-4">
-      {d.contas.map((c) => (
-        <Moldura key={c.id}>
-          <div className="flex items-center justify-between">
-            <div><div className="font-semibold">{c.nome}</div><div className="text-xs text-suave">{c.tipo}</div></div>
-            <div className="valor text-lg">{formatarBRL(saldoContas([c], d.lancamentos.filter((l) => l.contaId === c.id)))}</div>
-          </div>
-          <div className="mt-3 flex gap-2 text-sm font-semibold">
-            <button className="min-h-11 px-3 text-marca" onClick={() => abrir(c)}>Editar</button>
-            <button className="min-h-11 px-3 text-negativo" onClick={() => remover(c)}>Remover</button>
-          </div>
-        </Moldura>
-      ))}
+      {reserva.usandoTodas && d.contas.length > 0 && (
+        <p className="px-1 text-sm text-suave">Nenhuma conta marcada como reserva: a reserva usa todas as contas. Edite uma conta e marque "Esta é minha reserva".</p>
+      )}
+      {d.contas.map((c) => {
+        const s = situacao.get(c.id)
+        return (
+          <Moldura key={c.id}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold">{c.nome}</div>
+                <div className="text-xs text-suave">{c.tipo}{c.reserva ? ' · reserva' : ''}</div>
+              </div>
+              <div className={`valor text-lg ${s?.negativa ? 'text-negativo' : ''}`}>{formatarBRL(s?.saldo ?? 0)}</div>
+            </div>
+            {s?.negativa && (
+              <p role="status" className="mt-2 rounded-xl bg-[var(--casca)] px-3 py-2 text-sm text-negativo">
+                Conta negativa{s.jurosEstimadoMes > 0 ? ` · juro estimado de ${formatarBRL(s.jurosEstimadoMes)} no mês` : ''}
+              </p>
+            )}
+            {s?.ficaraNegativa && (
+              <p role="status" className="mt-2 rounded-xl bg-[var(--casca)] px-3 py-2 text-sm text-alerta">
+                Vai ficar negativa até o fim do mês (previsto {formatarBRL(s.previsto)})
+              </p>
+            )}
+            {s?.limiteDisponivel !== undefined && (
+              <p className="mt-2 text-sm text-suave">
+                Limite disponível: <span className={`valor ${s.limiteDisponivel < 0 ? 'text-negativo' : ''}`}>{formatarBRL(s.limiteDisponivel)}</span>
+              </p>
+            )}
+            <div className="mt-3 flex flex-wrap gap-2 text-sm font-semibold">
+              <button className="min-h-11 px-3 text-marca" onClick={() => abrir(c)}>Editar</button>
+              <button className="min-h-11 px-3 text-marca" onClick={() => { setConferir(c); setReal(''); setNegReal(false) }}>Conferir saldo</button>
+              {d.contas.length > 1 && (
+                <button className="min-h-11 px-3 text-marca"
+                  onClick={() => { setTransf(c); setDestinoId(d.contas.find((x) => x.id !== c.id)?.id ?? ''); setValorTr(''); setDescTr('') }}>
+                  Transferir
+                </button>
+              )}
+              <button className="min-h-11 px-3 text-negativo" onClick={() => remover(c)}>Remover</button>
+            </div>
+          </Moldura>
+        )
+      })}
       <button onClick={novo} className="min-h-12 rounded-full bg-marca font-semibold text-[var(--papel)]">Adicionar conta</button>
+
       {edit && (
         <FormRapido titulo="Conta" onSalvar={salvar} onCancelar={() => setEdit(null)}>
           <label className="grid gap-1 text-sm">Nome<input value={edit.nome} onChange={(e) => setEdit({ ...edit, nome: e.target.value })} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
@@ -3320,10 +3784,42 @@ export default function Contas() {
               <option value="banco">Banco</option><option value="caixa">Caixa</option><option value="carteira">Carteira</option>
             </select>
           </label>
-          <label className="grid gap-1 text-sm">Saldo inicial
-            <input inputMode="numeric" value={saldo} onChange={(e) => setSaldo(e.target.value.replace(/\D/g, ''))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
-            <span className="text-suave">{formatarBRL(centavosDeDigitos(saldo))}</span>
+          <CampoValor rotulo="Saldo inicial" digitos={saldo} onDigitos={setSaldo} negativo={neg} onNegativo={setNeg} />
+          <label className="grid gap-1 text-sm">Limite do cheque especial (opcional)
+            <input inputMode="numeric" value={limite} onChange={(e) => setLimite(e.target.value.replace(/\D/g, ''))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+            <span className="text-suave">{formatarBRL(centavosDeDigitos(limite))}</span>
           </label>
+          <label className="grid gap-1 text-sm">Taxa do cheque especial, % ao mês (opcional)
+            <input inputMode="decimal" value={taxa} onChange={(e) => setTaxa(e.target.value)} placeholder="ex.: 8" className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+          </label>
+          <label className="flex min-h-11 items-center gap-3 text-sm">
+            <input type="checkbox" className="size-5" checked={edit.reserva === true} onChange={(e) => setEdit({ ...edit, reserva: e.target.checked })} />
+            Esta é minha reserva
+          </label>
+        </FormRapido>
+      )}
+
+      {conferir && (
+        <FormRapido titulo={`Conferir saldo · ${conferir.nome}`} onSalvar={salvarConferencia} onCancelar={() => setConferir(null)}>
+          <p className="text-sm text-suave">Saldo no app: <span className="valor">{formatarBRL(situacao.get(conferir.id)?.saldo ?? 0)}</span></p>
+          <CampoValor rotulo="Saldo real no banco" digitos={real} onDigitos={setReal} negativo={negReal} onNegativo={setNegReal} />
+          <p className="text-sm">Diferença: <span className="valor">{formatarBRL(comSinal(real, negReal) - (situacao.get(conferir.id)?.saldo ?? 0))}</span>. Salvar lança um ajuste de saldo para igualar.</p>
+        </FormRapido>
+      )}
+
+      {transf && (
+        <FormRapido titulo={`Transferir de ${transf.nome}`} onSalvar={salvarTransferencia} onCancelar={() => setTransf(null)}>
+          <label className="grid gap-1 text-sm">Para a conta
+            <select value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+              {d.contas.filter((x) => x.id !== transf.id).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm">Valor
+            <input inputMode="numeric" value={valorTr} onChange={(e) => setValorTr(e.target.value.replace(/\D/g, ''))} className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+            <span className="text-suave">{formatarBRL(centavosDeDigitos(valorTr))}</span>
+          </label>
+          <label className="grid gap-1 text-sm">Descrição (opcional)<input value={descTr} onChange={(e) => setDescTr(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
+          <p className="text-xs text-suave">Transferência e ajuste mexem só no saldo das contas; nunca entram em receita, despesa ou sobra.</p>
         </FormRapido>
       )}
     </div>
@@ -3346,7 +3842,7 @@ async function salvar() {
 }
 ```
 
-- [ ] **Step 4: `Categorias.tsx`** — lista agrupada por tipo (Saídas / Entradas); formulário com nome, ícone (grade com `['House','ForkKnife','ShoppingCart','GasPump','Bus','Heartbeat','Lightning','GraduationCap','FilmSlate','Bag','PawPrint','Gift']` usando `Icone`), natureza padrão, e checkbox "Essencial (entra no custo de vida)". Salvar:
+- [ ] **Step 4: `Categorias.tsx`** — lista agrupada por tipo (Saídas / Entradas) usando `categoriasDaGrade(d.categorias, tipo)` (as de sistema nunca aparecem); formulário com nome, ícone (grade com `['House','ForkKnife','ShoppingCart','GasPump','Bus','Heartbeat','Lightning','GraduationCap','FilmSlate','Bag','PawPrint','Gift']` usando `Icone`), natureza padrão, e checkbox "Essencial (entra no custo de vida)". Categoria nova nunca recebe `sistema`. Salvar:
 
 ```tsx
 await repo.categorias.salvar({
@@ -3370,35 +3866,66 @@ git add -A && git commit -m "feat(ui): contas, fontes de renda e categorias"
 
 ### Task 12: Dívidas e simulador de amortização
 
-**Goal:** Cadastro de financiamentos e simulador lado a lado (atual × com aporte) com opção reduzir prazo/parcela e plano salvo.
+**Goal:** Cadastro de financiamentos pelo carnê (taxa calculada), detalhe com o estado do contrato (total, pago, juros pagos e a pagar, saldo devedor, quitar hoje, desconto, antecipar as últimas N), registro de pagamento ligado ao contrato e simulador de aporte lado a lado partindo do estado atual.
 
 **Files:**
-- Create: `app/src/ui/telas/Dividas.tsx`, `app/src/ui/telas/DividaDetalhe.tsx`
-- Modify: `app/src/App.tsx` (rotas `/dividas`, `/dividas/:id`)
+- Create: `app/src/ui/telas/Dividas.tsx`, `app/src/ui/telas/DividaDetalhe.tsx`, `app/src/ui/telas/FormPagamento.tsx`
+- Modify: `app/src/App.tsx` (rotas `/dividas` e `/dividas/:id`, ambas recebem `mes`)
 
 **Acceptance Criteria:**
-- [ ] Lista mostra saldo devedor, parcela do mês (`parcelaDoMes`), prazo restante e sistema.
-- [ ] Formulário: nome, saldo devedor, taxa mensal (% ao mês, ex. `1,5`), prazo restante, SAC/Price, dia do vencimento. Antes de salvar chama `validarFinanciamento` e mostra os erros em pt-BR; taxa/prazo inválidos (texto vazio, NaN) nunca são gravados.
-- [ ] Detalhe: campo de aporte e escolha reduzir prazo/parcela; mostra lado a lado prazo, parcela inicial, juros totais e **economia de juros** + meses economizados; botão "Salvar como plano" grava `PlanoAmortizacao` (substitui o existente do financiamento).
-- [ ] Sugestão de aporte: botão "Usar sobra do mês" preenche o aporte com a sobra livre para este financiamento = `sobraOtimizada` + o plano deste próprio financiamento (ou seja, sobra normal menos os planos dos outros), se > 0.
-- [ ] Remover financiamento também trata os lançamentos vinculados: pendentes vinculados são excluídos, pagos são desvinculados (viram saídas comuns), planos são removidos — tudo em uma transação.
-- [ ] Os números do simulador batem com `simularAporte` (conferência: SAC 1.200,00 / 1% / 4 meses / aporte 300,00 → economia R$ 12,00 e 2 meses).
+- [ ] Lista mostra por contrato: saldo devedor (`estadoFinanciamento(...).saldoDevedor`), parcela do mês (`parcelaDoMes(f, mes, lancamentos)`), `parcelasPagas/totalParcelas`, sistema e, se `parcelasAtrasadas(estado, mes) > 0`, o aviso de parcelas atrasadas.
+- [ ] Formulário pelo carnê: nome, valor financiado, valor da parcela (Price: fixa; SAC: a 1ª), nº de parcelas, 1ª parcela (data), sistema, parcelas já pagas (padrão 0) e, opcional, a taxa que o usuário acha que é. A **taxa mensal é calculada** com `taxaImplicita` e mostrada na hora ("Taxa do carnê: 1,00% a.m."); se o usuário digitar uma taxa diferente, aviso "a taxa informada não bate com o carnê; o app usa a do carnê". Antes de salvar chama `validarContrato` (mais o nome) e mostra os erros em pt-BR; `NaN` nunca é gravado e nenhum campo opcional recebe `null`.
+- [ ] Detalhe mostra: total do contrato (`estado.totalContrato`, **não** parcela × n: a última parcela absorve o arredondamento), já pago (n/N e R$), juros pagos (`jurosPagos`), juros a pagar (`jurosAPagar`), saldo devedor (`saldoDevedor`), **quitar hoje** (= saldo devedor) e **desconto por quitar** (`descontoQuitacao`), com o aviso de estimativa (o banco pode somar IOF, seguro e tarifas).
+- [ ] Simulador "antecipar as últimas N parcelas": N inteiro ≥ 1 e ≤ parcelas restantes; usa `antecipacaoUltimas(estado, f.taxaMensal, n)` e mostra valor a pagar, nominal e desconto; botão "Registrar antecipação" cria a saída ligada com `pagamentoFinanciamento: 'antecipacao'`.
+- [ ] Botão "Pagar parcela" cria a saída ligada (`financiamentoId` + `pagamentoFinanciamento: 'parcela'`) com o valor **da parcela do contrato** (`estado.restantes[0].parcela`) pré-preenchido; se o valor digitado difere, avisa que o pagamento de parcela sempre avança exatamente uma parcela e que a diferença acima dela conta como despesa comum.
+- [ ] Simulador de aporte (atual × com aporte, reduzir prazo/parcela, "Usar sobra do mês", "Salvar como plano") parte do **estado** do contrato (saldo devedor e parcelas restantes), com `parcelaFixa`/`amortizacaoFixa` do contrato; contrato quitado não simula.
+- [ ] Remover financiamento trata os lançamentos vinculados (pendentes saem; pagos viram saídas comuns, sem `financiamentoId` nem `pagamentoFinanciamento`) e os planos, tudo em uma transação.
+- [ ] Conferência: carnê SAC, financiado R$ 1.200,00, 1ª parcela R$ 312,00, 4 parcelas, 0 pagas → taxa calculada 1,00%; aporte R$ 300,00 reduzindo prazo → economia R$ 12,00 e 2 meses (bate com `simularAporte`).
 
-**Verify:** `cd app && npm run build`; no navegador, cadastrar o financiamento de conferência e comparar com os valores acima
+**Verify:** `cd app && npm run build`; no navegador, cadastrar o carnê de conferência e comparar com os valores acima
 
 **Steps:**
 
-- [ ] **Step 1: `Dividas.tsx`** — lista + formulário de cadastro/edição (mesmo padrão de `Contas.tsx` com `FormRapido`). Taxa é digitada em % e convertida: `taxaMensal = Number(taxaTexto.replace(',', '.')) / 100`. Cada item é `Link` para `/dividas/:id`. Salvar valida antes de gravar (nunca grava `NaN`):
+- [ ] **Step 1: `Dividas.tsx`** — lista + formulário de cadastro/edição (mesmo padrão de `Contas.tsx` com `FormRapido`). Recebe `{ mes }`. Estado do formulário em texto/dígitos; a taxa nunca é digitada como obrigatória:
 
 ```tsx
-const taxaMensal = Number(taxaTexto.replace(',', '.')) / 100
-const novo = { id, nome, saldoDevedor, taxaMensal, prazoRestante, sistema, diaVencimento }
-const erros = validarFinanciamento(novo)
-if (erros.length > 0) { setErros(erros); return }
-await repo.financiamentos.salvar(novo)
+import { Link } from 'react-router-dom'
+import { estadoFinanciamento, parcelaDoMes } from '../../domain/fluxo'
+import { parcelasAtrasadas, taxaImplicita, validarContrato } from '../../domain/contrato'
+import { centavosDeDigitos, formatarBRL, formatarPct } from '../../domain/dinheiro'
+import type { Contrato, Financiamento, SistemaAmortizacao } from '../../domain/tipos'
+
+// estado do formulário: nome, valorFin/valorParc (dígitos = centavos), total, pagas (só dígitos),
+// primeira ('YYYY-MM-DD'), sistema, taxaTexto (opcional, % ao mês, ex. "1,5")
+const dadosCarne = {
+  valorFinanciado: centavosDeDigitos(valorFin),
+  valorParcela: centavosDeDigitos(valorParc),
+  totalParcelas: Number(total), // vazio/NaN: taxaImplicita e validarContrato rejeitam
+  sistema,
+}
+const implicita = taxaImplicita(dadosCarne) // number | null (null = os dados do carnê não fecham)
+const informada = taxaTexto.trim() === '' ? undefined : Number(taxaTexto.replace(',', '.')) / 100
+const taxaDifere =
+  implicita !== null && informada !== undefined && Number.isFinite(informada) && Math.abs(informada - implicita) > 0.0005
+// Na tela: implicita !== null → <p>Taxa do carnê: {formatarPct(implicita)} a.m.</p>
+// taxaDifere → <p role="alert">A taxa que você informou ({formatarPct(informada!)}) não bate com o carnê; o app usa a do carnê.</p>
+
+async function salvar() {
+  const contrato: Contrato = {
+    ...dadosCarne,
+    taxaMensal: implicita ?? 0, // com `null`, validarContrato já reporta "parcela pequena demais"
+    primeiraParcela: primeira,
+    parcelasPagasAntes: Number(pagas || '0'),
+  }
+  const erros = validarContrato(contrato)
+  if (!nome.trim()) erros.unshift('Informe o nome do financiamento.')
+  if (erros.length > 0) { setErros(erros); return }
+  await repo.financiamentos.salvar({ ...contrato, id: edit.id, nome: nome.trim() })
+  setEdit(null)
+}
 ```
 
-Remover apaga os planos e trata os lançamentos vinculados (pendentes saem; pagos viram saídas comuns, sem `financiamentoId`), em uma transação:
+Remover apaga os planos e trata os lançamentos vinculados (pendentes saem; pagos viram saídas comuns), em uma transação:
 
 ```tsx
 async function remover(f: Financiamento) {
@@ -3408,42 +3935,132 @@ async function remover(f: Financiamento) {
     await db.planos.where('financiamentoId').equals(f.id).delete()
     for (const l of d.lancamentos.filter((l) => l.financiamentoId === f.id)) {
       if (l.status === 'pendente') await db.lancamentos.delete(l.id)
-      else { const { financiamentoId: _f, ...comum } = l; await db.lancamentos.put(comum) }
+      else { const { financiamentoId: _f, pagamentoFinanciamento: _p, ...comum } = l; await db.lancamentos.put(comum) }
     }
   })
 }
 ```
 
-Cada cartão exibe: `nome`, `formatarBRL(f.saldoDevedor)`, `Parcela do mês ${formatarBRL(parcelaDoMes(f))}`, `${f.prazoRestante} meses · ${f.sistema}`, em azul-petróleo (`text-divida`) no valor da parcela.
+Cada cartão (`Link` para `/dividas/:id`) calcula `const estado = estadoFinanciamento(f, d.lancamentos)` e exibe: `nome`; `formatarBRL(estado.saldoDevedor)`; `Parcela do mês ${formatarBRL(parcelaDoMes(f, mes, d.lancamentos))}` (valor em `text-divida`); `${estado.parcelasPagas}/${f.totalParcelas} pagas · ${f.sistema}`; e, se `parcelasAtrasadas(estado, mes) > 0`, `Atrasadas: ${formatarBRL(...)}` em `text-alerta`.
 
-- [ ] **Step 2: `DividaDetalhe.tsx`**
+- [ ] **Step 2: `FormPagamento.tsx`** — folha que cria a saída ligada ao contrato (parcela ou antecipação). Não confundir com o tipo `PagamentoFinanciamento` de `domain/tipos`.
+
+```tsx
+import { useState } from 'react'
+import { FormRapido } from '../componentes/FormRapido'
+import { categoriasDaGrade, useDados } from '../hooks/useDados'
+import { repo, novoId } from '../../data/repo'
+import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
+import { hojeLocal } from '../../domain/meses'
+import type { Centavos, Financiamento, PagamentoFinanciamento } from '../../domain/tipos'
+
+export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descricao, fechar }: {
+  f: Financiamento
+  tipo: PagamentoFinanciamento
+  valorInicial: Centavos
+  parcelaContrato?: Centavos // só em 'parcela': valor da parcela do contrato
+  descricao: string
+  fechar: () => void
+}) {
+  const d = useDados()
+  const grade = categoriasDaGrade(d.categorias, 'saida')
+  const [digitos, setDigitos] = useState(String(valorInicial))
+  const [data, setData] = useState(hojeLocal())
+  const [contaId, setContaId] = useState(d.contas[0]?.id ?? '')
+  const [categoriaId, setCategoriaId] = useState((grade.find((c) => c.id === 'moradia') ?? grade[0])?.id ?? '')
+  const valor = centavosDeDigitos(digitos)
+  const difere = tipo === 'parcela' && parcelaContrato !== undefined && valor !== parcelaContrato
+
+  async function salvar() {
+    if (valor <= 0 || !contaId || !categoriaId) return
+    await repo.lancamentos.salvar({
+      id: novoId(), valor, data, tipo: 'saida', categoriaId,
+      natureza: tipo === 'parcela' ? 'fixo' : 'variavel',
+      contaId, status: 'pago', descricao,
+      financiamentoId: f.id, pagamentoFinanciamento: tipo,
+    })
+    fechar()
+  }
+
+  return (
+    <FormRapido titulo={tipo === 'parcela' ? 'Pagar parcela' : 'Registrar antecipação'} onSalvar={salvar} onCancelar={fechar}>
+      <label className="grid gap-1 text-sm">Valor pago
+        <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
+          className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" />
+        <span className="text-suave">{formatarBRL(valor)}</span>
+      </label>
+      {tipo === 'parcela' && parcelaContrato !== undefined && (
+        <p className="text-sm text-suave">Parcela do contrato: <span className="valor">{formatarBRL(parcelaContrato)}</span></p>
+      )}
+      {difere && (
+        <p role="alert" className="text-sm text-alerta">
+          Pagar uma parcela sempre avança exatamente uma parcela do contrato. {valor > (parcelaContrato ?? 0)
+            ? `A diferença de ${formatarBRL(valor - (parcelaContrato ?? 0))} conta como despesa comum.`
+            : 'O contrato dá a parcela por paga mesmo com valor menor; confira o valor do carnê.'}
+        </p>
+      )}
+      <label className="grid gap-1 text-sm">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
+      <label className="grid gap-1 text-sm">Conta
+        <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+          {d.contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+      </label>
+      <label className="grid gap-1 text-sm">Categoria
+        <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+          {grade.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>
+      </label>
+    </FormRapido>
+  )
+}
+```
+
+- [ ] **Step 3: `DividaDetalhe.tsx`**
 
 ```tsx
 import { useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Moldura } from '../componentes/Moldura'
+import { FormPagamento } from './FormPagamento'
 import { useResumo } from '../hooks/useResumo'
 import { repo, novoId } from '../../data/repo'
 import { simularAporte } from '../../domain/amortizacao'
+import { antecipacaoUltimas } from '../../domain/contrato'
 import { centavosDeDigitos, formatarBRL, formatarPct } from '../../domain/dinheiro'
+import { estadoFinanciamento } from '../../domain/fluxo'
 import type { EfeitoAporte } from '../../domain/tipos'
 
 export default function DividaDetalhe({ mes }: { mes: string }) {
   const { id } = useParams()
-  const { financiamentos, planos, resumo } = useResumo(mes)
+  const { financiamentos, planos, lancamentos, resumo } = useResumo(mes)
   const f = financiamentos.find((x) => x.id === id)
   const plano = planos.find((p) => p.financiamentoId === id)
   const [digitos, setDigitos] = useState(plano ? String(plano.aporteExtraMensal) : '')
   const [efeito, setEfeito] = useState<EfeitoAporte>(plano?.efeito ?? 'reduzir_prazo')
+  const [nTexto, setNTexto] = useState('') // "antecipar as últimas N"
+  const [pagando, setPagando] = useState<'parcela' | 'antecipacao' | null>(null)
   const aporte = centavosDeDigitos(digitos)
   // Sem flash de vazio: o Shell só renderiza as telas com os dados prontos, então `plano` já existe aqui.
   const sobraLivre = Math.max(0, resumo.sobraOtimizada + (plano?.aporteExtraMensal ?? 0))
 
+  const estado = useMemo(() => (f ? estadoFinanciamento(f, lancamentos) : undefined), [f, lancamentos])
+  // O simulador parte do estado atual: saldo devedor e parcelas restantes, com a parcela fixa do contrato.
   const sim = useMemo(
-    () => f && simularAporte({ saldo: f.saldoDevedor, taxa: f.taxaMensal, prazo: f.prazoRestante, sistema: f.sistema, aporte, efeito }),
-    [f, aporte, efeito],
+    () => f && estado && estado.restantes.length > 0
+      ? simularAporte({
+          saldo: estado.saldoDevedor, taxa: f.taxaMensal, prazo: estado.restantes.length, sistema: f.sistema, aporte, efeito,
+          parcelaFixa: f.sistema === 'PRICE' ? f.valorParcela : undefined,
+          amortizacaoFixa: f.sistema === 'SAC' ? Math.round(f.valorFinanciado / f.totalParcelas) : undefined,
+        })
+      : undefined,
+    [f, estado, aporte, efeito],
   )
-  if (!f || !sim) return <p>Financiamento não encontrado.</p>
+  if (!f || !estado) return <p>Financiamento não encontrado.</p>
+
+  const proxima = estado.restantes[0] // parcela do contrato que o próximo "Pagar parcela" consome
+  const n = Number(nTexto)
+  const ant = Number.isInteger(n) && n >= 1 && n <= estado.restantes.length ? antecipacaoUltimas(estado, f.taxaMensal, n) : null
+  const pagoContrato = estado.pagas.reduce((s, p) => s + p.parcela, 0) + estado.antecipado
 
   async function salvarPlano() {
     for (const p of planos.filter((p) => p.financiamentoId === f!.id)) await repo.planos.remover(p.id)
@@ -3451,7 +4068,10 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
       await repo.planos.salvar({ id: novoId(), financiamentoId: f!.id, aporteExtraMensal: aporte, efeito })
   }
 
-  const Col = ({ titulo, r }: { titulo: string; r: typeof sim.atual }) => (
+  const Linha = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) => (
+    <div className="flex items-baseline justify-between py-1.5"><span className="text-suave">{rotulo}</span><span className={`valor ${cor ?? ''}`}>{valor}</span></div>
+  )
+  const Col = ({ titulo, r }: { titulo: string; r: NonNullable<typeof sim>['atual'] }) => (
     <div className="grid gap-2 text-sm">
       <div className="text-[10px] uppercase tracking-[0.2em] text-suave">{titulo}</div>
       <div><div className="text-suave">Prazo</div><div className="valor">{r.prazo} meses</div></div>
@@ -3464,54 +4084,101 @@ export default function DividaDetalhe({ mes }: { mes: string }) {
     <div className="grid gap-5">
       <Moldura>
         <h2 className="text-xl font-semibold">{f.nome}</h2>
-        <p className="text-suave">Saldo {formatarBRL(f.saldoDevedor)} · {formatarPct(f.taxaMensal)} a.m. · {f.sistema}</p>
+        <p className="text-suave">{formatarPct(f.taxaMensal)} a.m. (calculada do carnê) · {f.sistema}</p>
+        <div className="mt-3 divide-y divide-[var(--linha)] text-sm">
+          <Linha rotulo="Total do contrato" valor={formatarBRL(estado.totalContrato)} />
+          <Linha rotulo={`Já pago (${estado.parcelasPagas}/${f.totalParcelas})`} valor={formatarBRL(pagoContrato)} />
+          <Linha rotulo="Juros pagos" valor={formatarBRL(estado.jurosPagos)} />
+          <Linha rotulo="Juros a pagar" valor={formatarBRL(estado.jurosAPagar)} />
+          <Linha rotulo="Saldo devedor" valor={formatarBRL(estado.saldoDevedor)} cor="text-divida" />
+          <Linha rotulo="Quitar hoje" valor={formatarBRL(estado.saldoDevedor)} />
+          <Linha rotulo="Desconto por quitar" valor={`− ${formatarBRL(estado.descontoQuitacao)}`} cor="text-positivo" />
+        </div>
+        <p className="mt-2 text-xs text-suave">Estimativa: o banco pode somar IOF, seguro e tarifas.</p>
+        {proxima ? (
+          <button onClick={() => setPagando('parcela')} className="mt-3 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">
+            Pagar parcela {proxima.numero} · {formatarBRL(proxima.parcela)}
+          </button>
+        ) : <p className="mt-3 font-semibold text-positivo">Contrato quitado.</p>}
       </Moldura>
-      <Moldura>
-        <label className="grid gap-1 text-sm">Aporte extra por mês
-          <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
-            className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="0" />
-          <span className="text-suave">{formatarBRL(aporte)}</span>
-        </label>
-        <button disabled={sobraLivre <= 0} onClick={() => setDigitos(String(sobraLivre))}
-          className="mt-2 min-h-11 text-sm font-semibold text-marca disabled:opacity-40">
-          Usar sobra do mês ({formatarBRL(sobraLivre)})
-        </button>
-        <div role="radiogroup" className="mt-3 grid grid-cols-2 rounded-full bg-[var(--casca)] p-1 text-sm">
-          {(['reduzir_prazo', 'reduzir_parcela'] as const).map((e) => (
-            <button key={e} role="radio" aria-checked={efeito === e} onClick={() => setEfeito(e)}
-              className={`min-h-11 rounded-full font-semibold ${efeito === e ? 'bg-[var(--superficie)]' : 'text-suave'}`}>
-              {e === 'reduzir_prazo' ? 'Reduzir prazo' : 'Reduzir parcela'}
+
+      {estado.restantes.length > 0 && (
+        <Moldura>
+          <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Antecipar as últimas parcelas</h3>
+          <label className="mt-2 grid gap-1 text-sm">Quantas parcelas (de {estado.restantes.length} restantes)?
+            <input inputMode="numeric" value={nTexto} onChange={(e) => setNTexto(e.target.value.replace(/\D/g, ''))}
+              className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="1" />
+          </label>
+          {ant && (
+            <div className="mt-3 text-sm">
+              <Linha rotulo="Valor a pagar hoje" valor={formatarBRL(ant.valor)} />
+              <Linha rotulo="Soma nominal das parcelas" valor={formatarBRL(ant.nominal)} />
+              <Linha rotulo="Desconto" valor={`− ${formatarBRL(ant.desconto)}`} cor="text-positivo" />
+              <button onClick={() => setPagando('antecipacao')} className="mt-2 min-h-11 text-sm font-semibold text-marca">Registrar antecipação</button>
+            </div>
+          )}
+        </Moldura>
+      )}
+
+      {sim && (
+        <>
+          <Moldura>
+            <label className="grid gap-1 text-sm">Aporte extra por mês
+              <input inputMode="numeric" value={digitos} onChange={(e) => setDigitos(e.target.value.replace(/\D/g, ''))}
+                className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="0" />
+              <span className="text-suave">{formatarBRL(aporte)}</span>
+            </label>
+            <button disabled={sobraLivre <= 0} onClick={() => setDigitos(String(sobraLivre))}
+              className="mt-2 min-h-11 text-sm font-semibold text-marca disabled:opacity-40">
+              Usar sobra do mês ({formatarBRL(sobraLivre)})
             </button>
-          ))}
-        </div>
-      </Moldura>
-      <Moldura>
-        <div className="grid grid-cols-2 gap-4">
-          <Col titulo="Atual" r={sim.atual} />
-          <Col titulo="Com aporte" r={sim.comAporte} />
-        </div>
-        <div className="mt-4 rounded-2xl bg-[var(--casca)] p-4">
-          <div className="text-suave text-sm">Economia de juros</div>
-          <div className="valor text-2xl text-positivo">+ {formatarBRL(sim.economiaJuros)}</div>
-          <div className="text-sm text-suave">{sim.mesesEconomizados} meses a menos</div>
-        </div>
-        <button onClick={salvarPlano} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">
-          Salvar como plano
-        </button>
-      </Moldura>
+            <div role="radiogroup" className="mt-3 grid grid-cols-2 rounded-full bg-[var(--casca)] p-1 text-sm">
+              {(['reduzir_prazo', 'reduzir_parcela'] as const).map((e) => (
+                <button key={e} role="radio" aria-checked={efeito === e} onClick={() => setEfeito(e)}
+                  className={`min-h-11 rounded-full font-semibold ${efeito === e ? 'bg-[var(--superficie)]' : 'text-suave'}`}>
+                  {e === 'reduzir_prazo' ? 'Reduzir prazo' : 'Reduzir parcela'}
+                </button>
+              ))}
+            </div>
+          </Moldura>
+          <Moldura>
+            <div className="grid grid-cols-2 gap-4">
+              <Col titulo="Atual" r={sim.atual} />
+              <Col titulo="Com aporte" r={sim.comAporte} />
+            </div>
+            <div className="mt-4 rounded-2xl bg-[var(--casca)] p-4">
+              <div className="text-suave text-sm">Economia de juros</div>
+              <div className="valor text-2xl text-positivo">+ {formatarBRL(sim.economiaJuros)}</div>
+              <div className="text-sm text-suave">{sim.mesesEconomizados} meses a menos</div>
+            </div>
+            <button onClick={salvarPlano} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">
+              Salvar como plano
+            </button>
+          </Moldura>
+        </>
+      )}
+
+      {pagando === 'parcela' && proxima && (
+        <FormPagamento f={f} tipo="parcela" valorInicial={proxima.parcela} parcelaContrato={proxima.parcela}
+          descricao={`Parcela ${proxima.numero} · ${f.nome}`} fechar={() => setPagando(null)} />
+      )}
+      {pagando === 'antecipacao' && ant && (
+        <FormPagamento f={f} tipo="antecipacao" valorInicial={ant.valor}
+          descricao={`Antecipação · ${f.nome}`} fechar={() => setPagando(null)} />
+      )}
     </div>
   )
 }
 ```
 
-- [ ] **Step 3: Rotas, verificar e commitar**
+- [ ] **Step 4: Rotas, verificar e commitar**
 
-Adicionar em `App.tsx`: `/dividas` → `<Dividas />`, `/dividas/:id` → `<DividaDetalhe mes={mes} />`.
+Adicionar em `App.tsx`: `/dividas` → `<Dividas mes={mes} />`, `/dividas/:id` → `<DividaDetalhe mes={mes} />`.
 
-Run: `npm run build` → sucesso. No navegador, cadastrar SAC R$ 1.200,00 / 1% / 4 meses, aporte R$ 300,00, "Reduzir prazo" → economia R$ 12,00 e 2 meses. Salvar plano → sobra otimizada no Resumo cai em R$ 300,00 (anel mostra arco azul-petróleo).
+Run: `npm run build` → sucesso. No navegador, cadastrar o carnê de conferência (SAC, financiado R$ 1.200,00, 1ª parcela R$ 312,00, 4 parcelas, 0 pagas): a taxa aparece como 1,00%; digitar taxa 2 → aviso de divergência. No detalhe: total do contrato R$ 1.230,00 (R$ 312 + 309 + 306 + 303 = 1.230; igual a `estado.totalContrato`), simular aporte R$ 300,00 "Reduzir prazo" → economia R$ 12,00 e 2 meses; "Pagar parcela" cria a saída ligada, o saldo devedor cai e a parcela do mês no Resumo não dobra; "Antecipar as últimas 2" mostra valor e desconto. Salvar plano → sobra otimizada no Resumo cai em R$ 300,00 (anel mostra arco azul-petróleo).
 
 ```bash
-git add -A && git commit -m "feat(ui): dividas e simulador de amortizacao"
+git add -A && git commit -m "feat(ui): dividas pelo carne, estado do contrato e simulador de amortizacao"
 ```
 
 ---
@@ -3525,10 +4192,10 @@ git add -A && git commit -m "feat(ui): dividas e simulador de amortizacao"
 - Modify: `app/src/App.tsx` (rotas `/insights`, `/backup`)
 
 **Acceptance Criteria:**
-- [ ] Insights lista todos os insights do mês com título e detalhe (alertas primeiro) e um cartão "Reserva" com meses cobertos × meta do perfil (6 ou 12) e barra de progresso.
+- [ ] Insights lista todos os insights do mês (`todosInsights`: contas negativas primeiro, depois alertas, depois informativos) com título e detalhe e o cartão "Reserva" (`CartaoReserva`, o mesmo componente do Resumo: `saldoReserva` + `custoEssencialReferencia` + `statusReserva`) com meses cobertos × meta do perfil (6 ou 12) e barra de progresso.
 - [ ] Backup: "Exportar" baixa `financas-AAAA-MM-DD.json`; "Importar" lê arquivo, pede confirmação ("Isso substitui todos os dados atuais") e mostra erro legível se o arquivo for inválido.
 - [ ] `npm run build` gera PWA (service worker + manifest); app abre offline após o primeiro carregamento (verificar em DevTools → Application).
-- [ ] A tela Backup mostra o cartão de privacidade ("Nada sai do seu celular"); o cartão de Reserva usa `statusReserva` (mesma função do Resumo).
+- [ ] A tela Backup mostra o cartão de privacidade (textos iguais: "Nada sai do seu celular…" e o lembrete de backup) e o **status do armazenamento persistente** (`armazenamento` do contexto: persistente / não persistente, com botão para pedir de novo via `pedirPersistencia()` / indisponível).
 - [ ] `npx vitest run` passa inteiro.
 - [ ] Revisão visual em 390×844 e 1280×800, claro e escuro: sem rolagem horizontal, alvos ≥ 44 px, anel legível, nenhum texto cortado.
 
@@ -3540,33 +4207,18 @@ git add -A && git commit -m "feat(ui): dividas e simulador de amortizacao"
 
 ```tsx
 import { Moldura } from '../componentes/Moldura'
+import { CartaoReserva } from '../componentes/CartaoReserva'
 import { useResumo } from '../hooks/useResumo'
-import { parcelaDoMes, saldoContas } from '../../domain/fluxo'
-import { custoEssencial, reservaAlvoMeses } from '../../domain/renda'
-import { statusReserva } from '../../domain/reserva'
-import { formatarBRL, formatarNumero } from '../../domain/dinheiro'
 
 export default function Insights({ mes }: { mes: string }) {
-  const { insights, contas, lancamentos, categorias, fontes, financiamentos } = useResumo(mes)
-  const saldo = saldoContas(contas, lancamentos) // saldo atual (sem `ate`)
-  const essencial = custoEssencial(lancamentos, categorias, financiamentos.reduce((s, f) => s + parcelaDoMes(f), 0), mes, financiamentos.map((f) => f.id))
-  const alvo = reservaAlvoMeses(fontes)
-  const { cobertos, progresso } = statusReserva(saldo, essencial, alvo)
+  // `reserva` (saldoReserva, custoEssencialReferencia, reservaAlvoMeses, statusReserva) e a lista ordenada vêm do hook.
+  const { todosInsights, reserva } = useResumo(mes)
 
   return (
     <div className="grid gap-5">
-      <Moldura>
-        <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Reserva</h3>
-        <p className="mt-2 valor text-2xl">{formatarNumero(cobertos)} <span className="text-base text-suave">de {alvo} meses</span></p>
-        <div className="mt-3 h-2 rounded-full bg-[var(--linha)]" role="progressbar" aria-valuenow={Math.round(progresso)} aria-valuemin={0} aria-valuemax={100}>
-          <div className="h-2 rounded-full bg-positivo" style={{ width: `${progresso}%` }} />
-        </div>
-        <p className="mt-2 text-sm text-suave">
-          Custo essencial mensal {formatarBRL(essencial)}. A meta é {alvo} meses porque {alvo === 12 ? 'sua renda é variável' : 'sua renda é predominantemente fixa'}.
-        </p>
-      </Moldura>
-      {insights.length === 0 && <Moldura><p className="text-suave">Sem alertas este mês.</p></Moldura>}
-      {insights.map((i) => (
+      <CartaoReserva reserva={reserva} />
+      {todosInsights.length === 0 && <Moldura><p className="text-suave">Sem alertas este mês.</p></Moldura>}
+      {todosInsights.map((i) => (
         <Moldura key={i.id}>
           <div className={`font-semibold ${i.severidade === 'alerta' ? 'text-alerta' : ''}`}>{i.titulo}</div>
           <p className="mt-1 text-sm text-suave">{i.detalhe}</p>
@@ -3579,17 +4231,28 @@ export default function Insights({ mes }: { mes: string }) {
 
 (A barra usa `width` dentro de um elemento pequeno e estático; sem animação.)
 
-- [ ] **Step 2: `Backup.tsx`**
+- [ ] **Step 2: `Backup.tsx`** — privacidade (textos inalterados), status do armazenamento persistente, exportar e importar
 
 ```tsx
 import { useRef, useState } from 'react'
 import { Moldura } from '../componentes/Moldura'
-import { exportar, importar } from '../../data/backup'
 import { Privacidade } from '../componentes/Privacidade'
+import { useDados } from '../hooks/useDados'
+import { exportar, importar } from '../../data/backup'
+import { pedirPersistencia, type EstadoArmazenamento } from '../../data/armazenamento'
 import { hojeLocal } from '../../domain/meses'
 
+const TEXTO_ARMAZENAMENTO: Record<EstadoArmazenamento, string> = {
+  persistente: 'Armazenamento protegido: o navegador não apaga os dados do app por conta própria.',
+  nao_persistente: 'O navegador pode apagar os dados do app se faltar espaço. Faça backup com frequência.',
+  indisponivel: 'Este navegador não informa se os dados estão protegidos. Faça backup com frequência.',
+}
+
 export default function Backup() {
+  const d = useDados()
   const [msg, setMsg] = useState('')
+  const [pedido, setPedido] = useState<EstadoArmazenamento>() // resposta de um novo pedido; antes dele vale o do Shell
+  const armazenamento = pedido ?? d.armazenamento
   const arquivo = useRef<HTMLInputElement>(null)
 
   async function baixar() {
@@ -3611,6 +4274,13 @@ export default function Backup() {
     <div className="grid gap-4">
       <Moldura>
         <Privacidade />
+        <h3 className="mt-4 text-[10px] uppercase tracking-[0.2em] text-suave">Armazenamento</h3>
+        <p role="status" className="mt-1 text-sm">{armazenamento ? TEXTO_ARMAZENAMENTO[armazenamento] : 'Verificando o armazenamento…'}</p>
+        {armazenamento === 'nao_persistente' && (
+          <button onClick={async () => setPedido(await pedirPersistencia())} className="mt-1 min-h-11 text-sm font-semibold text-marca">
+            Pedir proteção de novo
+          </button>
+        )}
         <button onClick={baixar} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-[var(--papel)]">Exportar backup</button>
         <button onClick={() => arquivo.current?.click()} className="mt-2 min-h-12 w-full rounded-full bg-[var(--casca)] font-semibold">Importar backup</button>
         <input ref={arquivo} type="file" accept="application/json" hidden onChange={(e) => e.target.files?.[0] && ler(e.target.files[0])} />
@@ -3628,7 +4298,7 @@ Adicionar `/insights` → `<Insights mes={mes} />` e `/backup` → `<Backup />`.
 - [ ] **Step 4: Verificação final**
 
 Run: `cd app && npx vitest run && npm run build && npm run preview`
-Expected: testes PASS; build gera `dist/sw.js` e `manifest.webmanifest`. Abrir o preview, percorrer: onboarding → lançamento rápido (3 toques) → Resumo → Contas → Dívidas/simulador → Insights → Backup (exportar e importar). Conferir offline no DevTools e os dois temas nas duas larguras.
+Expected: testes PASS; build gera `dist/sw.js` e `manifest.webmanifest`. Abrir o preview, percorrer: onboarding → lançamento rápido (3 toques) → lançamento parcelado e pagamento de financiamento → Resumo (cartões Comprometido e Reserva) → Contas (conferir saldo, transferir) → Dívidas (carnê, pagar parcela, antecipar) → Insights → Backup (status do armazenamento, exportar e importar). Conferir offline no DevTools e os dois temas nas duas larguras.
 
 - [ ] **Step 5: Commit**
 
