@@ -384,7 +384,7 @@ describe('contas negativas', () => {
   })
   it('conta_negativa sem taxa: sem juros no detalhe', () => {
     const i = gerarInsights(base({ contas: [nega] })).find((x) => x.tipo === 'conta_negativa')
-    expect(i?.detalhe).not.toContain('juros')
+    expect(i?.detalhe).not.toContain('Juros')
     expect(i?.detalhe).toContain('falta lançar alguma entrada')
   })
   it('ids únicos por conta', () => {
@@ -404,6 +404,12 @@ describe('contas negativas', () => {
     expect(i?.titulo).toBe('Inter vai ficar negativa até o fim do mês')
     expect(i?.detalhe).toContain(formatarBRL(-5000))
     expect(todos.map((x) => x.tipo)).not.toContain('conta_negativa')
+  })
+  it('insights presos ao mês visto', () => {
+    const futura = sai('mer', '2026-11-10', 8000) // paga em novembro: conta só negativa a partir daí
+    const c = base({ contas: [{ ...conta, saldoInicial: 5000 }], lancamentos: [futura] })
+    expect(tipos({ ...c, mes: '2026-10' })).not.toContain('conta_negativa')
+    expect(tipos({ ...c, mes: '2026-11' })).toContain('conta_negativa')
   })
   it('transferência que negativa a origem gera conta_negativa', () => {
     const [s, e] = criarTransferencia({ id: 't', contaOrigemId: 'c', contaDestinoId: 'd', valor: 8000, data: '2026-10-03' })
