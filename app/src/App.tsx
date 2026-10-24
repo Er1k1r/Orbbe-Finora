@@ -16,6 +16,9 @@ import Compromissos from './ui/telas/Compromissos'
 import Lancamentos from './ui/telas/Lancamentos'
 import LancamentoRapido from './ui/telas/LancamentoRapido'
 import Onboarding from './ui/telas/Onboarding'
+import Contas from './ui/telas/Contas'
+import Fontes from './ui/telas/Fontes'
+import Categorias from './ui/telas/Categorias'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
@@ -84,7 +87,10 @@ function Shell() {
         <Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />
         <Route path="/compromissos" element={<Compromissos mes={mes} />} />
         <Route path="/lancamentos" element={<Lancamentos mes={mes} />} />
-        <Route path="*" element={<div>Em construção</div>} />
+        <Route path="/contas" element={<Contas />} />
+        <Route path="/fontes" element={<Fontes />} />
+        <Route path="/categorias" element={<Categorias />} />
+        <Route path="*"element={<div>Em construção</div>} />
       </Routes>
       )}
       </main>
