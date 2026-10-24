@@ -210,3 +210,29 @@ outros pendentes), total por mês e lista de términos ("óculos termina em jun/
 Recorrência com fim (`recorrenciaAte`; cancelar = encerrar no mês atual); campo `descricao` no lançamento;
 pedido de armazenamento persistente ao navegador com status na tela de Backup; categorias de sistema
 (transferência, ajuste) fora da grade de lançamento.
+
+## 13. Identidade visual — base cfc_platform (2026-10-23, substitui a paleta e as fontes do §8)
+
+Por decisão do dono, as cores seguem o projeto `cfc_platform` (`DESIGN.md` / `static/style.css`), identidade
+"petróleo e limão", regra 60/30/10, tema claro e escuro (padrão do sistema, com botão para trocar).
+
+| Token | Claro | Escuro | Uso |
+|---|---|---|---|
+| --fundo | #f1f5f4 | #09171a | fundo (60%) |
+| --superficie | #ffffff | #102226 | cartões |
+| --superficie-2 | #edf3f2 | #163035 | cartão interno, trilho |
+| --texto | #10262b | #e4f2f0 | texto |
+| --texto-suave | #4a6168 | #9db8b6 | rótulos |
+| --linha | #dce8e6 | #1f3c40 | divisórias |
+| --marinho | #0d2b30 | #0b2a2f | topo, barra de navegação, cartão-herói (30%) |
+| --azul (petróleo) | #0b6b73 | #0f7f88 | preenchimentos, gráficos, botão secundário |
+| --azul-texto | #0b6b73 | #62d6d8 | links e textos em petróleo |
+| --destaque (limão) | #c6ef4f | #d4f55a | só 10%: botão principal (+), aba atual, um realce por tela; nunca texto sobre fundo claro |
+| --verde / --verde-texto / --verde-bg | #15803d / #126b2f / #e4f5ea | #2f9e5c / #5bd58a / #12301f | entrada |
+| --vermelho / --vermelho-texto / --vermelho-bg | #c62828 / #c62828 / #fdecec | #c7352d / #ff8f85 / #3a1a1f | saída, conta negativa |
+| --amarelo-bg | #fff4dd | #3a2c12 | pendente |
+
+- Fontes: **Red Hat Display** (títulos e números) e **Figtree** (texto), via `@fontsource`, com fallback de sistema.
+- O anel da sobra (assinatura) usa petróleo para a sobra otimizada, limão para o aporte e vermelho quando negativa;
+  sempre com sinal e rótulo além da cor.
+- Cartões com raio 16 px; o resto do §8 (movimento, acessibilidade, mobile) continua valendo.
