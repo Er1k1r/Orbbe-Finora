@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gerarRecorrentes, cancelarRecorrencia } from './recorrencia'
+import { gerarRecorrentes, cancelarRecorrencia, modelosSemCopia, recorrentesVirtuais } from './recorrencia'
 import type { Lancamento } from './tipos'
 
 const modelo: Lancamento = {
@@ -87,5 +87,22 @@ describe('gerarRecorrentes', () => {
     const r = cancelarRecorrencia(modelo, '2026-10')
     expect(r).toEqual({ ...modelo, recorrenciaAte: '2026-10' })
     expect(modelo.recorrenciaAte).toBeUndefined()
+  })
+})
+
+describe('modelosSemCopia e recorrentesVirtuais (fonte única de recorrência pendente)', () => {
+  const m = { ...modelo, geradoAte: '2026-10' as const }
+  it('meses <= geradoAte contam como cobertos mesmo sem cópia (cópia apagada não ressuscita)', () => {
+    expect(modelosSemCopia([m], [m], '2026-10')).toEqual([])
+    expect(modelosSemCopia([m], [m], '2026-11')).toEqual([m])
+  })
+  it('sem marca d\'água, lista do mês seguinte ao do modelo até o mês pedido, pulando meses com cópia', () => {
+    const sem = { ...modelo, data: '2026-07-05' }
+    const copiaSet: Lancamento = { ...modelo, id: 'm1:2026-09', data: '2026-09-05', origemId: 'm1', recorrencia: undefined }
+    expect(recorrentesVirtuais([sem], [sem, copiaSet], '2026-11').map((v) => v.mes)).toEqual(['2026-08', '2026-10', '2026-11'])
+  })
+  it('para em recorrenciaAte', () => {
+    const c = { ...modelo, data: '2026-08-05', recorrenciaAte: '2026-10' }
+    expect(recorrentesVirtuais([c], [c], '2026-12').map((v) => v.mes)).toEqual(['2026-09', '2026-10'])
   })
 })

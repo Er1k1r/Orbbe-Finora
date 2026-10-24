@@ -1,5 +1,6 @@
 import { ehMovimentoInterno, ehPagamentoParcela, parcelaDoMes } from './fluxo'
 import { mesDe, mesesAnteriores, somarMeses } from './meses'
+import { modelosSemCopia } from './recorrencia'
 import type { Categoria, Centavos, Financiamento, Lancamento, Mes } from './tipos'
 
 export interface EntradaEssencial {
@@ -12,17 +13,6 @@ export interface EntradaEssencial {
 export function saidasComuns(lancs: Lancamento[], financiamentos: Financiamento[]): Lancamento[] {
   const ids = new Set(financiamentos.map((f) => f.id))
   return lancs.filter((l) => l.tipo === 'saida' && !ehMovimentoInterno(l) && !ehPagamentoParcela(l, ids))
-}
-
-/** Modelos recorrentes ativos em `mes` (mês do modelo anterior, dentro de `recorrenciaAte`) que ainda não têm cópia nele. */
-export function modelosSemCopia(modelos: Lancamento[], todos: Lancamento[], mes: Mes): Lancamento[] {
-  return modelos.filter(
-    (l) =>
-      l.recorrencia === 'mensal' &&
-      mesDe(l.data) < mes &&
-      (l.recorrenciaAte === undefined || l.recorrenciaAte >= mes) &&
-      !todos.some((c) => c.origemId === l.id && mesDe(c.data) === mes),
-  )
 }
 
 const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)

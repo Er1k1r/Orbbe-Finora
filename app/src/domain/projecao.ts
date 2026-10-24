@@ -1,4 +1,5 @@
-import { modelosSemCopia, saidasComuns } from './essencial'
+import { saidasComuns } from './essencial'
+import { modelosSemCopia } from './recorrencia'
 import { estadoFinanciamento, parcelaDoMes } from './fluxo'
 import { mesDe, somarMeses } from './meses'
 import type { Centavos, Financiamento, Lancamento, Mes } from './tipos'

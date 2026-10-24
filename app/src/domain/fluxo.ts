@@ -1,5 +1,6 @@
 import { estadoContrato, parcelaNoMes, parcelasAtrasadas as atrasadasDe, type EstadoContrato, type PagamentoContrato } from './contrato'
 import { diffMeses, fimDoMes, mesDe } from './meses'
+import { recorrentesVirtuais } from './recorrencia'
 import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
 
 const sinal = (l: Lancamento) => (l.tipo === 'entrada' ? l.valor : -l.valor)
@@ -63,9 +64,13 @@ export interface EntradaResumo {
 export function resumoMes(e: EntradaResumo) {
   const ids = new Set(e.financiamentos.map((f) => f.id))
   const doMes = e.lancamentos.filter((l) => mesDe(l.data) === e.mes && !ehMovimentoInterno(l))
-  const entradas = doMes.filter((l) => l.tipo === 'entrada')
+  // Recorrências sem cópia (ainda não geradas) entram como pendentes virtuais, do mês seguinte ao do modelo até o visto.
+  const modelos = e.lancamentos.filter((l) => !ehMovimentoInterno(l) && !ehPagamentoParcela(l, ids))
+  const virtuais = recorrentesVirtuais(modelos, e.lancamentos, e.mes).map((v) => v.item)
+  const virtuaisDoMes = virtuais.filter((l) => mesDe(l.data) === e.mes)
+  const entradas = [...doMes, ...virtuaisDoMes].filter((l) => l.tipo === 'entrada')
   // Pagamentos de parcela (financiamentoId de financiamento existente) já estão em `parcelas`.
-  const saidas = doMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids))
+  const saidas = [...doMes, ...virtuaisDoMes].filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids))
   const parcelas = e.financiamentos.reduce((s, f) => s + parcelaDoMes(f, e.mes, e.lancamentos), 0)
   let parcelasPendentes = 0
   let excessoParcelas = 0 // pago acima da parcela do mês: gasto comum, não some da sobra
@@ -93,7 +98,11 @@ export function resumoMes(e: EntradaResumo) {
   const sobraNormal = receitas - despesas - parcelas
 
   const saldo = saldoContas(e.contas, e.lancamentos, fimDoMes(e.mes))
-  const ateMes = e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente' && !ehMovimentoInterno(l))
+  const ateMes = [...e.lancamentos.filter((l) => mesDe(l.data) <= e.mes && l.status === 'pendente' && !ehMovimentoInterno(l)), ...virtuais]
+  // Antecipação marcada como pendente (até o mês visto): o dinheiro ainda vai sair e abate o previsto.
+  const antecipacoesPendentes = soma(
+    ateMes.filter((l) => ehPagamentoParcela(l, ids) && l.pagamentoFinanciamento === 'antecipacao'),
+  )
   const receitasPendentes = soma(ateMes.filter((l) => l.tipo === 'entrada'))
   const despesasPendentes = soma(ateMes.filter((l) => l.tipo === 'saida' && !ehPagamentoParcela(l, ids)))
   const antes = e.lancamentos.filter((l) => mesDe(l.data) < e.mes)
@@ -105,13 +114,14 @@ export function resumoMes(e: EntradaResumo) {
     parcelasPendentes,
     parcelasAtrasadas,
     antecipacoes,
+    antecipacoesPendentes,
     receitasPendentes,
     despesasPendentes,
     sobraNormal,
     sobraOtimizada: sobraNormal - e.aporteExtra,
     saldo,
     inicial: saldoContas(e.contas, antes),
-    previsto: saldo + receitasPendentes - despesasPendentes - parcelasPendentes - parcelasAtrasadas,
-    saldoSeguro: saldo - despesasPendentes - parcelasPendentes - parcelasAtrasadas,
+    previsto: saldo + receitasPendentes - despesasPendentes - parcelasPendentes - parcelasAtrasadas - antecipacoesPendentes,
+    saldoSeguro: saldo - despesasPendentes - parcelasPendentes - parcelasAtrasadas - antecipacoesPendentes,
   }
 }
