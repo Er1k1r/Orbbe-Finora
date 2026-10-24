@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { CheckCircle, Circle } from '@phosphor-icons/react'
 import { Moldura } from './Moldura'
 import { useDados } from '../hooks/useDados'
+import { ehMovimentoInterno } from '../../domain/fluxo'
 import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
 
 export function ChecklistInicial({ abrirLancamento }: { abrirLancamento: () => void }) {
@@ -9,7 +10,7 @@ export function ChecklistInicial({ abrirLancamento }: { abrirLancamento: () => v
   const prefs = usePrefs()
   const passos = [
     { id: 'conta', rotulo: 'Criar conta bancária', feito: d.contas.length > 0, para: '/contas', acao: 'Adicionar conta' },
-    { id: 'gasto', rotulo: 'Registrar o primeiro gasto', feito: d.lancamentos.some((l) => l.tipo === 'saida'), para: undefined, acao: 'Registrar gasto' },
+    { id: 'gasto', rotulo: 'Registrar o primeiro gasto', feito: d.lancamentos.some((l) => l.tipo === 'saida' && !ehMovimentoInterno(l)), para: undefined, acao: 'Registrar gasto' },
     { id: 'renda', rotulo: 'Cadastrar sua renda', feito: d.fontes.length > 0, para: '/fontes', acao: 'Cadastrar renda' },
     { id: 'divida', rotulo: 'Cadastrar um financiamento', feito: d.financiamentos.length > 0 || prefs.semFinanciamento, para: '/dividas', acao: 'Adicionar financiamento' },
   ]

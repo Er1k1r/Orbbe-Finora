@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { HashRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import { HashRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { List } from '@phosphor-icons/react'
 import { BotaoTema } from './ui/componentes/BotaoTema'
 import { Drawer, ID_MENU } from './ui/componentes/Drawer'
@@ -13,6 +13,9 @@ import { gerarRecorrentes } from './domain/recorrencia'
 import { hojeLocal, mesDe } from './domain/meses'
 import Resumo from './ui/telas/Resumo'
 import Compromissos from './ui/telas/Compromissos'
+import Lancamentos from './ui/telas/Lancamentos'
+import LancamentoRapido from './ui/telas/LancamentoRapido'
+import Onboarding from './ui/telas/Onboarding'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
@@ -22,7 +25,10 @@ function Shell() {
   const dados = useDadosAoVivo() // única leitura do banco; as telas recebem por DadosContext
   const [armazenamento, setArmazenamento] = useState<EstadoArmazenamento>()
   const [hoje, setHoje] = useState(hojeLocal()) // dia local; muda ao voltar para o app em outro dia/mês
-  const nav = useNavigate()
+  const { pathname } = useLocation()
+
+  // Troca de rota começa no topo da tela.
+  useEffect(() => { window.scrollTo(0, 0) }, [pathname])
 
   useEffect(() => { semearCategorias().catch((e) => console.error('semearCategorias', e)) }, [])
   // Pede armazenamento persistente uma vez; o estado vai pelo contexto para a tela de Backup.
@@ -53,6 +59,8 @@ function Shell() {
   )
 
   if (!dados.pronto) return null
+  // Sem fonte de renda ou sem conta: primeiro uso (ou banco vazio); o FAB e as rotas ficam ocultos.
+  const emOnboarding = dados.fontes.length === 0 || dados.contas.length === 0
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (
     <DadosContext.Provider value={valor}>
@@ -67,16 +75,18 @@ function Shell() {
         </div>
       </header>
       <main className="mx-auto max-w-md px-4 pt-4">
+      {emOnboarding ? <Onboarding /> : (
       <Routes>
         <Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />
         <Route path="/compromissos" element={<Compromissos mes={mes} />} />
+        <Route path="/lancamentos" element={<Lancamentos mes={mes} />} />
         <Route path="*" element={<div>Em construção</div>} />
       </Routes>
+      )}
       </main>
-      <Fab onClick={() => setLancando(true)} />
+      {!emOnboarding && <Fab onClick={() => setLancando(true)} />}
       <Drawer aberto={aberto} fechar={() => setAberto(false)} />
-      {lancando && null}
-      {void nav}
+      {lancando && !emOnboarding && <LancamentoRapido fechar={() => setLancando(false)} />}
     </div>
     </DadosContext.Provider>
   )
