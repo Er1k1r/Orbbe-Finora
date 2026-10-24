@@ -368,3 +368,21 @@ describe('movimentos internos (transferência e ajuste)', () => {
     expect(r.despesasPendentes).toBe(0)
   })
 })
+
+describe('estadoFinanciamento memorizado', () => {
+  const pago = l({ id: 'p1', valor: 31200, data: '2026-10-05', financiamentoId: 'f1' })
+  it('mesmas entradas devolvem a mesma instância', () => {
+    const ls = [pago]
+    expect(estadoFinanciamento(fin, ls)).toBe(estadoFinanciamento(fin, ls))
+    expect(estadoFinanciamento(fin, ls, '2026-10-31')).toBe(estadoFinanciamento(fin, ls, '2026-10-31'))
+  })
+  it('`ate` diferente, nova lista de lançamentos ou novo financiamento recalculam', () => {
+    const ls = [pago]
+    const a = estadoFinanciamento(fin, ls)
+    expect(estadoFinanciamento(fin, ls, '2026-09-30')).not.toBe(a)
+    expect(estadoFinanciamento(fin, [pago])).not.toBe(a)
+    expect(estadoFinanciamento({ ...fin }, ls)).not.toBe(a)
+    expect(estadoFinanciamento(fin, [pago]).parcelasPagas).toBe(1)
+    expect(estadoFinanciamento(fin, [], undefined).parcelasPagas).toBe(0)
+  })
+})

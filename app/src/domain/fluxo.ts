@@ -33,8 +33,19 @@ export function pagamentosDe(f: Financiamento, lancs: Lancamento[]): PagamentoCo
     .map((l) => ({ data: l.data, valor: l.valor, tipo: l.pagamentoFinanciamento ?? 'parcela', status: l.status }))
 }
 
+// Memória por (financiamento, lançamentos, ate). As entradas são imutáveis por contrato: o Dexie devolve
+// um array novo a cada mudança, então a identidade do array invalida o cache sozinha.
+const cacheEstado = new WeakMap<Financiamento, WeakMap<Lancamento[], Map<string, EstadoContrato>>>()
+
 export function estadoFinanciamento(f: Financiamento, lancs: Lancamento[], ate?: string): EstadoContrato {
-  return estadoContrato(f, pagamentosDe(f, lancs), ate)
+  let porLancs = cacheEstado.get(f)
+  if (!porLancs) cacheEstado.set(f, (porLancs = new WeakMap()))
+  let porAte = porLancs.get(lancs)
+  if (!porAte) porLancs.set(lancs, (porAte = new Map()))
+  const chave = ate ?? ''
+  let estado = porAte.get(chave)
+  if (!estado) porAte.set(chave, (estado = estadoContrato(f, pagamentosDe(f, lancs), ate)))
+  return estado
 }
 
 export function parcelaDoMes(f: Financiamento, mes: Mes, lancs: Lancamento[]): Centavos {

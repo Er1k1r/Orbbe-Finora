@@ -58,6 +58,31 @@ function cronograma(c: Contrato, saldo: Centavos, prazo: number): Parcela[] {
   })
 }
 
+/**
+ * Primeira parcela de `cronograma(c, saldo, prazo)` calculada direto (O(1)), sem montar o cronograma inteiro.
+ * Mesmas regras de `gerarCronograma`: parcela fixa (Price) / amortização fixa (SAC) do contrato, quitação na última parcela.
+ */
+function primeiroPasso(c: Contrato, saldo: Centavos, prazo: number): Parcela | undefined {
+  if (!Number.isInteger(prazo) || prazo < 1) return undefined
+  if (!Number.isFinite(c.taxaMensal) || c.taxaMensal < 0) return undefined
+  if (c.sistema !== 'SAC' && c.sistema !== 'PRICE') return undefined
+  if (!Number.isFinite(saldo) || !(saldo > 0)) return undefined
+  const fixaOk = (v: number) => Number.isSafeInteger(v) && v > 0
+  const juros = Math.round(saldo * c.taxaMensal)
+  let amort: number
+  if (c.sistema === 'PRICE') {
+    const pmt = fixaOk(c.valorParcela)
+      ? c.valorParcela
+      : c.taxaMensal === 0 ? Math.round(saldo / prazo) : Math.round((saldo * c.taxaMensal) / (1 - Math.pow(1 + c.taxaMensal, -prazo)))
+    amort = pmt - juros
+  } else {
+    const fixa = Math.round(c.valorFinanciado / c.totalParcelas)
+    amort = fixaOk(fixa) ? fixa : Math.round(saldo / prazo)
+  }
+  if (amort >= saldo || prazo <= 1) amort = saldo
+  return { numero: 1, juros, amortizacao: amort, extra: 0, parcela: juros + amort, saldo: saldo - amort }
+}
+
 /** Estado do contrato após as parcelas pagas antes do app e os pagamentos pagos (até `ate`, se dado). */
 export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate?: string): EstadoContrato {
   const cronogramaOriginal = cronograma(c, c.valorFinanciado, c.totalParcelas)
@@ -69,7 +94,7 @@ export function estadoContrato(c: Contrato, pagamentos: PagamentoContrato[], ate
   const pagasPassos: ParcelaContrato[] = []
   const aplicados: EstadoContrato['aplicados'] = []
   const passoRegular = () => {
-    const p = cronograma(c, saldo, c.totalParcelas - pagas)[0]
+    const p = primeiroPasso(c, saldo, c.totalParcelas - pagas)
     if (!p) return undefined
     jurosPagos += p.juros
     saldo = p.saldo
