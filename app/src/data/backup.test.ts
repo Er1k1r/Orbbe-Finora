@@ -132,6 +132,7 @@ describe('backup: importação segura', () => {
       await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, numero: 0 } }] })
       await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, numero: 1.5 } }] })
       await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, total: 1 } }] })
+      await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, total: 2.5 } }] })
       await rejeita({ lancamentos: [{ ...lanc, parcelamento: { ...ok, numero: 4 } }] })
     })
     it('aceita saldoInicial negativo e limite zero', async () => {
