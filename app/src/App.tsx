@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { HashRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { List } from '@phosphor-icons/react'
 import { BotaoTema } from './ui/componentes/BotaoTema'
-import { Drawer } from './ui/componentes/Drawer'
+import { Drawer, ID_MENU } from './ui/componentes/Drawer'
 import { Fab } from './ui/componentes/Fab'
 import { SeletorMes } from './ui/componentes/SeletorMes'
 import { useDadosAoVivo } from './ui/hooks/useDados'
@@ -22,7 +22,7 @@ function Shell() {
   const [hoje, setHoje] = useState(hojeLocal()) // dia local; muda ao voltar para o app em outro dia/mês
   const nav = useNavigate()
 
-  useEffect(() => { semearCategorias() }, [])
+  useEffect(() => { semearCategorias().catch((e) => console.error('semearCategorias', e)) }, [])
   // Pede armazenamento persistente uma vez; o estado vai pelo contexto para a tela de Backup.
   useEffect(() => { void pedirPersistencia().then(setArmazenamento) }, [])
   // App aberto por dias: ao voltar (foco / aba visível) relê o dia local; se o mês virou, o efeito abaixo gera as cópias novas.
@@ -40,17 +40,24 @@ function Shell() {
     if (copias.length === 0 && modelos.length === 0) return
     // Uma transação com bulkPut: modelos (geradoAte avançado) e cópias juntos. Ids determinísticos
     // tornam o efeito duplicado do StrictMode (e duas abas) inofensivo.
-    void db.transaction('rw', db.lancamentos, () => db.lancamentos.bulkPut([...modelos, ...copias]))
+    db.transaction('rw', db.lancamentos, () => db.lancamentos.bulkPut([...modelos, ...copias]))
+      .catch((e) => console.error('gerarRecorrentes', e))
   }, [dados.pronto, dados.lancamentos, hoje.slice(0, 7)]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const valor = useMemo(
+    () => ({ ...dados, armazenamento, mes, setMes }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dados.pronto, dados.contas, dados.fontes, dados.categorias, dados.lancamentos, dados.financiamentos, dados.planos, armazenamento, mes],
+  )
 
   if (!dados.pronto) return null
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (
-    <DadosContext.Provider value={{ ...dados, armazenamento }}>
+    <DadosContext.Provider value={valor}>
     <div className="min-h-[100dvh] pb-28">
-      <header className="sticky top-0 z-30 bg-[var(--marinho)] text-[var(--sobre-marinho)]">
+      <header data-sobre-marinho className="sticky top-0 z-30 bg-[var(--marinho)] text-[var(--sobre-marinho)]">
         <div className="mx-auto flex max-w-md items-center justify-between px-4 pb-3 pt-4">
-          <button aria-label="Abrir menu" className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
+          <button aria-label="Abrir menu" aria-expanded={aberto} aria-controls={ID_MENU} className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
             <List size={26} weight="light" />
           </button>
           <SeletorMes mes={mes} onChange={setMes} />
