@@ -27,6 +27,10 @@ body {
 /* Foco por teclado: petróleo em superfícies claras, limão sobre marinho (cabeçalho, drawer, herói, FAB). */
 :focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
 [data-sobre-marinho] :focus-visible, [data-sobre-marinho]:focus-visible, .heroi :focus-visible { outline-color: var(--destaque); }
+/* FAB fica sobre o fundo da página: anel marinho no claro; no escuro marinho some no fundo, então petróleo-texto (#62d6d8 sobre #09171a, contraste alto). */
+.fab:focus-visible { outline-color: var(--marinho); }
+:root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
 h1, h2, h3 { font-family: var(--font-display); }
 .valor { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
 /* Pendente: chip amarelo com texto normal. */
