@@ -4,6 +4,7 @@ import { FormRapido } from '../componentes/FormRapido'
 import { Icone } from '../componentes/Icone'
 import { categoriasDaGrade, useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
+import { bloqueioRemoverCategoria } from '../padroes'
 import type { Categoria, TipoLancamento } from '../../domain/tipos'
 
 const ICONES = ['House', 'ForkKnife', 'ShoppingCart', 'GasPump', 'Bus', 'Heartbeat', 'Lightning', 'GraduationCap', 'FilmSlate', 'Bag', 'PawPrint', 'Gift']
@@ -25,7 +26,8 @@ export default function Categorias() {
   }
 
   async function remover(c: Categoria) {
-    if (d.lancamentos.some((l) => l.categoriaId === c.id)) { alert('Esta categoria tem lançamentos.'); return }
+    const bloqueio = bloqueioRemoverCategoria(c.id, d.lancamentos)
+    if (bloqueio) { alert(bloqueio); return }
     if (confirm(`Remover ${c.nome}?`)) await repo.categorias.remover(c.id)
   }
 

@@ -23,6 +23,7 @@ import Insights from './ui/telas/Insights'
 import Backup from './ui/telas/Backup'
 import Dividas from './ui/telas/Dividas'
 import DividaDetalhe from './ui/telas/DividaDetalhe'
+import { appVazio } from './ui/padroes'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
@@ -67,7 +68,7 @@ function Shell() {
 
   if (!dados.pronto) return null
   // Onboarding só num app realmente vazio; com dados mas sem conta, o app abre com um aviso para cadastrar uma.
-  const emOnboarding = dados.fontes.length === 0 && dados.contas.length === 0 && dados.lancamentos.length === 0
+  const emOnboarding = appVazio(dados)
   const semConta = !emOnboarding && dados.contas.length === 0
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (

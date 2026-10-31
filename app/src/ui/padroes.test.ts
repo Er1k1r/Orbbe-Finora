@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { contaPadrao } from './padroes'
+import { appVazio, bloqueioRemoverCategoria, contaPadrao } from './padroes'
 import type { Conta } from '../domain/tipos'
 
 const c = (id: string, nome: string, extra: Partial<Conta> = {}): Conta => ({ id, nome, tipo: 'banco', saldoInicial: 0, ...extra })
@@ -31,5 +31,26 @@ describe('contaPadrao', () => {
     const copia = [...contas]
     contaPadrao(contas, undefined)
     expect(contas).toEqual(copia)
+  })
+})
+
+describe('appVazio', () => {
+  const nada = { contas: [], fontes: [], lancamentos: [], financiamentos: [] }
+  it('só é vazio sem contas, fontes, lançamentos e financiamentos', () => {
+    expect(appVazio(nada)).toBe(true)
+  })
+  it.each(['contas', 'fontes', 'lancamentos', 'financiamentos'] as const)('um item em %s tira do onboarding', (k) => {
+    expect(appVazio({ ...nada, [k]: [{}] })).toBe(false)
+  })
+})
+
+describe('bloqueioRemoverCategoria', () => {
+  const uso = (categoriaId: string) => ({ categoriaId })
+  it('outros nunca pode ser removida (usada nos pagamentos de financiamento)', () => {
+    expect(bloqueioRemoverCategoria('outros', [])).toBe('Essa categoria é usada nos pagamentos de financiamento e não pode ser removida.')
+  })
+  it('categoria com lançamentos é bloqueada; sem lançamentos libera', () => {
+    expect(bloqueioRemoverCategoria('lazer', [uso('lazer')])).toBe('Esta categoria tem lançamentos.')
+    expect(bloqueioRemoverCategoria('lazer', [uso('mercado')])).toBeUndefined()
   })
 })

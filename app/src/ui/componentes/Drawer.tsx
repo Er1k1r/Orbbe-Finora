@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
+import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
 import { House, Bank, Receipt, Scales, Lightbulb, Tag, Briefcase, FloppyDisk } from '@phosphor-icons/react'
 
 const ITENS = [
@@ -22,6 +23,7 @@ const FOCAVEIS = 'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"
 export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void }) {
   const painel = useRef<HTMLElement>(null)
   const origem = useRef<HTMLElement | null>(null)
+  useFolhaNoHistorico(aberto, fechar) // Voltar do Android fecha o menu
 
   // Ao abrir: foco no primeiro link; ao fechar: devolve o foco a quem abriu (botão de menu).
   useEffect(() => {

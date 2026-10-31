@@ -9,6 +9,7 @@ import { hojeLocal, mesDe } from '../../domain/meses'
 import { cancelarRecorrencia } from '../../domain/recorrencia'
 import { rotuloMes } from '../rotulos'
 import { rotuloParcelamento } from '../lancamento'
+import { parcelasRestantesDoGrupo } from '../../domain/parcelamento'
 import type { Lancamento } from '../../domain/tipos'
 
 export default function Lancamentos({ mes }: { mes: string }) {
@@ -32,6 +33,15 @@ export default function Lancamentos({ mes }: { mes: string }) {
     if (!confirm(l.transferenciaId ? 'Excluir esta transferência (as duas pontas)?' : 'Excluir este lançamento?')) return
     if (l.transferenciaId) await db.lancamentos.where('transferenciaId').equals(l.transferenciaId).delete()
     else await repo.lancamentos.remover(l.id)
+  }
+
+  // Compra parcelada: apaga só as parcelas pendentes do grupo; as pagas ficam.
+  async function excluirRestantes(grupoId: string) {
+    const restantes = parcelasRestantesDoGrupo(d.lancamentos, grupoId)
+    if (restantes.length === 0) return
+    const total = restantes.reduce((s, x) => s + x.valor, 0)
+    if (!confirm(`Excluir as ${restantes.length} parcelas restantes (${formatarBRL(total)})? As parcelas já pagas ficam.`)) return
+    await db.lancamentos.bulkDelete(restantes.map((x) => x.id))
   }
 
   return (
@@ -73,6 +83,11 @@ export default function Lancamentos({ mes }: { mes: string }) {
                   <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-marca-texto"
                     onClick={() => repo.lancamentos.salvar({ ...l, status: 'pago' })}>
                     Marcar como pago
+                  </button>
+                )}
+                {l.parcelamento && parcelasRestantesDoGrupo(d.lancamentos, l.parcelamento.grupoId).length > 0 && (
+                  <button className="min-h-11 rounded-full px-3 text-sm font-semibold text-suave" onClick={() => excluirRestantes(l.parcelamento!.grupoId)}>
+                    Excluir parcelas restantes
                   </button>
                 )}
                 {modelo && ativo(modelo) && (

@@ -41,3 +41,7 @@ export function resumoParcelamento(grupo: Lancamento[]) {
     total: ordenado[0]?.parcelamento?.total ?? 0,
   }
 }
+
+/** Parcelas ainda pendentes de uma compra parcelada (as pagas ficam de fora). */
+export const parcelasRestantesDoGrupo = (lancs: Lancamento[], grupoId: string): Lancamento[] =>
+  lancs.filter((l) => l.parcelamento?.grupoId === grupoId && l.status === 'pendente')

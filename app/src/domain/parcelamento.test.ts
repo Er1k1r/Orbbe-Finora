@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { criarParcelamento, resumoParcelamento } from './parcelamento'
+import { criarParcelamento, parcelasRestantesDoGrupo, resumoParcelamento } from './parcelamento'
 import type { NovoParcelamento } from './parcelamento'
 
 const base: NovoParcelamento['base'] = {
@@ -62,5 +62,19 @@ describe('resumoParcelamento', () => {
   })
   it('grupo vazio', () => {
     expect(resumoParcelamento([])).toEqual({ pagas: 0, restantes: 0, valorRestante: 0, ultimaData: undefined, total: 0 })
+  })
+})
+
+describe('parcelasRestantesDoGrupo', () => {
+  const grupo = criarParcelamento({ ...entrada, parcelaAtual: 1, total: 4, statusAtual: 'pago' }) // 1 paga + 3 pendentes
+  const outro = criarParcelamento({ ...entrada, grupoId: 'g2', parcelaAtual: 1, total: 3, statusAtual: 'pendente' })
+  const solto = { id: 'x', valor: 1, data: '2026-10-01', tipo: 'saida' as const, categoriaId: 'a', natureza: 'variavel' as const, contaId: 'c1', status: 'pendente' as const }
+  it('devolve só as pendentes do grupo; as pagas ficam', () => {
+    const r = parcelasRestantesDoGrupo([...grupo, ...outro, solto], 'g1')
+    expect(r.map((l) => l.id)).toEqual(['g1:2', 'g1:3', 'g1:4'])
+  })
+  it('grupo sem pendentes ou inexistente: vazio', () => {
+    expect(parcelasRestantesDoGrupo(grupo.map((l) => ({ ...l, status: 'pago' as const })), 'g1')).toEqual([])
+    expect(parcelasRestantesDoGrupo(grupo, 'nada')).toEqual([])
   })
 })

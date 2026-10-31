@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Icone } from '../componentes/Icone'
+import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
 import { categoriasDaGrade, useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { db } from '../../data/db'
@@ -19,6 +20,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
   const d = useDados()
   const { categorias: todasCategorias, lancamentos } = d
   const prefs = usePrefs()
+  useFolhaNoHistorico(true, fechar) // Voltar do Android fecha a folha
   const [tipo, setTipo] = useState<TipoLancamento>('saida')
   const [digitos, setDigitos] = useState('')
   const [descricao, setDescricao] = useState('')

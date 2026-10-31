@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
 
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -7,6 +8,7 @@ export function FormRapido({ titulo, onSalvar, onCancelar, children }: {
   titulo: string; onSalvar: () => void; onCancelar: () => void; children: ReactNode
 }) {
   const painel = useRef<HTMLFormElement>(null)
+  useFolhaNoHistorico(true, onCancelar) // Voltar do Android cancela o formulário
   const aoCancelar = useRef(onCancelar)
   useEffect(() => { aoCancelar.current = onCancelar })
   useEffect(() => {
