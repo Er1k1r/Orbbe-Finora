@@ -5,6 +5,7 @@ import { db } from '../../data/db'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { somenteDigitos } from '../validacao'
 import { salvarPrefs } from '../hooks/usePreferencias'
+import { montarRenda } from '../construtores'
 import type { TipoFonte } from '../../domain/tipos'
 
 const OPCOES: { tipo: TipoFonte; nome: string; exemplo: string }[] = [
@@ -26,9 +27,9 @@ export function EtapaRenda() {
     try {
       // Uma transação: ou grava fontes e conta juntas, ou nada.
       await db.transaction('rw', db.fontes, db.contas, async () => {
-        for (const o of OPCOES.filter((o) => sel[o.tipo] !== undefined))
-          await db.fontes.put({ id: ids.current[o.tipo], nome: o.nome, tipo: o.tipo, valorEsperado: centavosDeDigitos(sel[o.tipo]) })
-        await db.contas.put({ id: ids.current.conta, nome: 'Conta principal', tipo: 'banco', saldoInicial: centavosDeDigitos(saldo) })
+        const { fontes, conta } = montarRenda({ opcoes: OPCOES, sel, ids: ids.current, saldoDigitos: saldo })
+        for (const f of fontes) await db.fontes.put(f)
+        await db.contas.put(conta)
       })
       salvarPrefs({ contaPadraoId: ids.current.conta }) // a conta criada aqui é a padrão dos lançamentos
     } catch (e) {

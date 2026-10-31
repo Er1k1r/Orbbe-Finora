@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom'
 import { Moldura } from '../componentes/Moldura'
 import { FormPagamento } from './FormPagamento'
 import { useResumo } from '../hooks/useResumo'
-import { repo, novoId } from '../../data/repo'
-import { db } from '../../data/db'
+import { novoId } from '../../data/repo'
+import { substituirPlano } from '../../data/planos'
+import { montarPlano, sobraLivre as calcularSobraLivre } from '../construtores'
 import { simularAporte, type resumirCronograma } from '../../domain/amortizacao'
 import { somenteDigitos } from '../validacao'
 import { antecipacaoUltimas } from '../../domain/contrato'
@@ -37,7 +38,7 @@ export default function DividaDetalhe({ mes }: { mes: Mes }) {
   const ocupado = useRef(false)
   const aporte = centavosDeDigitos(digitos)
   // A sobra otimizada já desconta o plano de TODAS as dívidas; devolve só o plano desta, que será substituído.
-  const sobraLivre = Math.max(0, resumo.sobraOtimizada + (plano?.aporteExtraMensal ?? 0))
+  const sobraLivre = calcularSobraLivre(resumo.sobraOtimizada, plano)
 
   const estado = useMemo(() => (f ? estadoFinanciamento(f, lancamentos) : undefined), [f, lancamentos])
   // O simulador parte do estado atual: saldo devedor e parcelas restantes, com a parcela fixa do contrato.
@@ -63,15 +64,14 @@ export default function DividaDetalhe({ mes }: { mes: Mes }) {
     if (!f || ocupado.current) return
     ocupado.current = true
     try {
-      for (const p of planos.filter((p) => p.financiamentoId === f.id)) await repo.planos.remover(p.id)
-      if (aporte > 0) await repo.planos.salvar({ id: novoId(), financiamentoId: f.id, aporteExtraMensal: aporte, efeito })
+      await substituirPlano(f.id, montarPlano({ id: novoId(), financiamentoId: f.id, aporte, efeito })) // remove + grava numa transação
       setSalvo(true)
     } finally { ocupado.current = false }
   }
 
   async function removerPlano() {
     if (!f) return
-    await db.planos.where('financiamentoId').equals(f.id).delete()
+    await substituirPlano(f.id, undefined)
   }
 
   return (

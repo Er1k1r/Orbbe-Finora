@@ -10,6 +10,7 @@ import { cancelarRecorrencia } from '../../domain/recorrencia'
 import { rotuloMes } from '../rotulos'
 import { rotuloParcelamento } from '../lancamento'
 import { parcelasRestantesDoGrupo } from '../../domain/parcelamento'
+import { idsDeExclusao } from '../construtores'
 import type { Lancamento } from '../../domain/tipos'
 
 export default function Lancamentos({ mes }: { mes: string }) {
@@ -31,8 +32,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
 
   async function excluir(l: Lancamento) {
     if (!confirm(l.transferenciaId ? 'Excluir esta transferência (as duas pontas)?' : 'Excluir este lançamento?')) return
-    if (l.transferenciaId) await db.lancamentos.where('transferenciaId').equals(l.transferenciaId).delete()
-    else await repo.lancamentos.remover(l.id)
+    await db.lancamentos.bulkDelete(idsDeExclusao(l, d.lancamentos))
   }
 
   // Compra parcelada: apaga só as parcelas pendentes do grupo; as pagas ficam.

@@ -5,6 +5,7 @@ import { useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { somenteDigitos } from '../validacao'
+import { montarFonte } from '../construtores'
 import type { FonteDeRenda, TipoFonte } from '../../domain/tipos'
 
 const ROTULOS: Record<TipoFonte, string> = { fixa: 'Fixa', variavel: 'Variável', eventual: 'Eventual' }
@@ -25,11 +26,7 @@ export default function Fontes() {
   async function salvar() {
     if (!edit || !edit.nome.trim()) return
     // `diaPagamento` é omitido quando não vale: nunca se grava undefined/null (o importador de backup rejeita null).
-    const { diaPagamento: _d, ...base } = edit
-    await repo.fontes.salvar({
-      ...base, nome: edit.nome.trim(), valorEsperado: centavosDeDigitos(valor),
-      ...(edit.tipo === 'fixa' && dia ? { diaPagamento: Math.min(31, Math.max(1, Number(dia))) } : {}),
-    })
+    await repo.fontes.salvar(montarFonte(edit, valor, dia))
     setEdit(null)
   }
 

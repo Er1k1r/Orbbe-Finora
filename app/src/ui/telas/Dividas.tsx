@@ -6,6 +6,7 @@ import { useDados } from '../hooks/useDados'
 import { analisarCarne, type CamposCarne } from '../contratoForm'
 import { somenteDigitos } from '../validacao'
 import { filtrarTaxa } from '../valores'
+import { desvincularContrato } from '../construtores'
 import { repo, novoId } from '../../data/repo'
 import { db } from '../../data/db'
 import { estadoFinanciamento, parcelaDoMes } from '../../domain/fluxo'
@@ -51,14 +52,9 @@ export default function Dividas({ mes }: { mes: Mes }) {
     await db.transaction('rw', db.financiamentos, db.planos, db.lancamentos, async () => {
       await db.financiamentos.delete(f.id)
       await db.planos.where('financiamentoId').equals(f.id).delete()
-      for (const l of d.lancamentos.filter((x) => x.financiamentoId === f.id)) {
-        if (l.status === 'pendente') await db.lancamentos.delete(l.id)
-        else {
-          // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { financiamentoId: _f, pagamentoFinanciamento: _p, ...comum } = l
-          await db.lancamentos.put(comum)
-        }
-      }
+      const { excluirIds, reescrever } = desvincularContrato(f.id, d.lancamentos)
+      for (const id of excluirIds) await db.lancamentos.delete(id)
+      for (const l of reescrever) await db.lancamentos.put(l)
     })
   }
 

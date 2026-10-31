@@ -5,6 +5,7 @@ import { Icone } from '../componentes/Icone'
 import { categoriasDaGrade, useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { bloqueioRemoverCategoria } from '../padroes'
+import { montarCategoria } from '../construtores'
 import type { Categoria, TipoLancamento } from '../../domain/tipos'
 
 const ICONES = ['House', 'ForkKnife', 'ShoppingCart', 'GasPump', 'Bus', 'Heartbeat', 'Lightning', 'GraduationCap', 'FilmSlate', 'Bag', 'PawPrint', 'Gift']
@@ -20,8 +21,7 @@ export default function Categorias() {
   async function salvar() {
     if (!edit || !edit.nome.trim()) return
     // Categoria de sistema nunca chega aqui (não aparece na lista); `sistema` não é gravado.
-    const { sistema: _s, ...base } = edit
-    await repo.categorias.salvar({ ...base, nome: edit.nome.trim() })
+    await repo.categorias.salvar(montarCategoria(edit))
     setEdit(null)
   }
 

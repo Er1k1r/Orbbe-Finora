@@ -7,10 +7,11 @@ import { comSinal, filtrarTaxa, fracaoDeTaxa, textoDeTaxa } from '../valores'
 import { useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { db } from '../../data/db'
-import { criarAjuste, criarTransferencia, saldoReserva, situacaoContas } from '../../domain/contas'
+import { saldoReserva, situacaoContas } from '../../domain/contas'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { saldoContas } from '../../domain/fluxo'
 import { somenteDigitos } from '../validacao'
+import { montarConferencia, montarConta, montarTransferencia } from '../construtores'
 import { salvarPrefs } from '../hooks/usePreferencias'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import type { Conta } from '../../domain/tipos'
@@ -52,15 +53,8 @@ export default function Contas() {
     // `taxa` guarda o percent com até 4 casas (vírgula ou ponto); a fração gravada mantém essa precisão.
     const taxaNum = fracaoDeTaxa(taxa)
     if (taxaNum !== undefined && !Number.isFinite(taxaNum)) { alert('Taxa do cheque especial inválida.'); return }
-    const lim = centavosDeDigitos(limite)
     // Opcionais entram só quando preenchidos (nunca null/undefined gravado à força).
-    const { limiteChequeEspecial: _l, taxaChequeEspecial: _t, reserva: _r, ...base } = edit
-    await repo.contas.salvar({
-      ...base, nome: edit.nome.trim(), saldoInicial: comSinal(saldo, neg),
-      ...(lim > 0 ? { limiteChequeEspecial: lim } : {}),
-      ...(taxaNum !== undefined ? { taxaChequeEspecial: taxaNum } : {}),
-      ...(edit.reserva ? { reserva: true } : {}),
-    })
+    await repo.contas.salvar(montarConta(edit, { saldoDigitos: saldo, negativo: neg, limiteDigitos: limite, taxa: taxaNum }))
     setEdit(null)
   }
 
@@ -72,7 +66,7 @@ export default function Contas() {
   // Conferir saldo: o saldo do app é o de `situacaoContas` (o mesmo exibido no cartão); a diferença vira um ajuste.
   async function salvarConferencia() {
     if (!conferir || ocupado.current) return
-    const ajuste = criarAjuste({ id: novoId(), contaId: conferir.id, saldoApp: saldoHoje(conferir), saldoReal: comSinal(real, negReal), data: hojeLocal() })
+    const ajuste = montarConferencia({ id: novoId(), contaId: conferir.id, saldoApp: saldoHoje(conferir), realDigitos: real, negativo: negReal, data: hojeLocal() })
     if (!ajuste) { alert('O saldo já confere.'); setConferir(null); return }
     ocupado.current = true
     try { await repo.lancamentos.salvar(ajuste); setConferir(null) } finally { ocupado.current = false }
@@ -82,10 +76,7 @@ export default function Contas() {
     if (!transf || ocupado.current) return
     ocupado.current = true
     try {
-      const par = criarTransferencia({
-        id: novoId(), contaOrigemId: transf.id, contaDestinoId: destinoId, valor: centavosDeDigitos(valorTr), data: hojeLocal(),
-        ...(descTr.trim() ? { descricao: descTr.trim() } : {}),
-      })
+      const par = montarTransferencia({ id: novoId(), origemId: transf.id, destinoId, valorDigitos: valorTr, data: hojeLocal(), descricao: descTr })
       await db.transaction('rw', db.lancamentos, () => db.lancamentos.bulkPut(par)) // saída e entrada juntas, numa transação
       setTransf(null)
     } catch (e) { alert((e as Error).message) } finally { ocupado.current = false } // mesma conta ou valor zero

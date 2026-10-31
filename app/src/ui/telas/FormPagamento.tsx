@@ -6,6 +6,7 @@ import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { hojeLocal } from '../../domain/meses'
 import { dataReal, somenteDigitos } from '../validacao'
 import { contaPadrao } from '../padroes'
+import { montarPagamento } from '../construtores'
 import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
 import type { Centavos, Financiamento, PagamentoFinanciamento } from '../../domain/tipos'
 
@@ -37,12 +38,7 @@ export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descrica
     if (!dataReal(data)) { setErro('Informe uma data válida.'); return }
     ocupado.current = true
     try {
-      await repo.lancamentos.salvar({
-        id: novoId(), valor, data, tipo: 'saida', categoriaId,
-        natureza: tipo === 'parcela' ? 'fixo' : 'variavel',
-        contaId, status: 'pago', descricao,
-        financiamentoId: f.id, pagamentoFinanciamento: tipo,
-      })
+      await repo.lancamentos.salvar(montarPagamento({ id: novoId(), valor, data, categoriaId, contaId, tipo, descricao, financiamentoId: f.id }))
       fechar()
     } finally { ocupado.current = false }
   }

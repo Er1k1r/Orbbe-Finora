@@ -9,10 +9,11 @@ import { estadoFinanciamento } from '../../domain/fluxo'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import { criarParcelamento, resumoParcelamento } from '../../domain/parcelamento'
 import { avisoParcela, textoPrevia } from '../lancamento'
+import { montarLancamentoRapido, montarParcelado, type EntradaRapida } from '../construtores'
 import { dataReal, mesReal, somenteDigitos } from '../validacao'
 import { contaPadrao } from '../padroes'
 import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
-import type { Categoria, Lancamento, PagamentoFinanciamento, TipoLancamento } from '../../domain/tipos'
+import type { Categoria, PagamentoFinanciamento, TipoLancamento } from '../../domain/tipos'
 
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
@@ -108,20 +109,15 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
 
   async function gravar(c: Categoria) {
     if (!dataReal(data)) { alert('Informe uma data válida.'); return } // nunca grava data vazia/inválida
-    const desc = descricao.trim()
-    const base = {
-      tipo, categoriaId: c.id, natureza: natureza === 'auto' ? c.natureza : natureza,
-      contaId: contaId || contaPadrao(d.contas, prefs.contaPadraoId)?.id || '',
-      ...(desc ? { descricao: desc } : {}),
-      ...(obs.trim() ? { observacao: obs.trim() } : {}),
+    const entrada: EntradaRapida = {
+      id: novoId(), tipo, categoria: c, natureza, contaId: contaId || contaPadrao(d.contas, prefs.contaPadraoId)?.id || '',
+      descricao, observacao: obs, valor, data, pendente, fonteId, modo: efetivo,
+      financiamentoId: financId, pagamento: pagTipo, repete, ate,
     }
     if (efetivo === 'parcelado') {
       try {
         // grupo inteiro (parcela atual até a última) numa operação só; ids `${grupoId}:${n}`
-        await db.lancamentos.bulkPut(criarParcelamento({
-          grupoId: novoId(), valorParcela: valor, total: Number(totalParc), parcelaAtual: Number(parcAtual),
-          dataParcelaAtual: data, statusAtual: pendente ? 'pendente' : 'pago', base,
-        }))
+        await db.lancamentos.bulkPut(montarParcelado(entrada, novoId(), Number(totalParc), Number(parcAtual)))
       } catch (e) { alert((e as Error).message); return }
       fechar()
       return
@@ -129,13 +125,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
     if (efetivo === 'financiamento' && !financId) { alert('Escolha o financiamento.'); return }
     if (efetivo === 'comum' && repete && ate && !mesReal(ate)) { alert('Use o formato AAAA-MM, por exemplo 2026-12.'); return }
     if (efetivo === 'comum' && repete && ate && ate < mesDe(data)) { alert('O mês final da recorrência não pode ser anterior ao mês do lançamento.'); return }
-    const l: Lancamento = {
-      ...base, id: novoId(), valor, data, status: pendente ? 'pendente' : 'pago',
-      ...(tipo === 'entrada' && fonteId ? { fonteId } : {}), // sem fonte padrão: só quando escolhida em Mais opções
-      ...(efetivo === 'financiamento' ? { financiamentoId: financId, pagamentoFinanciamento: pagTipo } : {}),
-      ...(repete && efetivo === 'comum' ? { recorrencia: 'mensal' as const, ...(ate ? { recorrenciaAte: ate } : {}) } : {}),
-    }
-    await repo.lancamentos.salvar(l)
+    await repo.lancamentos.salvar(montarLancamentoRapido(entrada))
     fechar()
   }
 
