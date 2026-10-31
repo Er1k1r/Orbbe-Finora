@@ -1,7 +1,7 @@
 import { estadoContrato, parcelaNoMes, parcelasAtrasadas as atrasadasDe, type EstadoContrato, type PagamentoContrato } from './contrato'
 import { diffMeses, fimDoMes, mesDe } from './meses'
 import { recorrentesVirtuais } from './recorrencia'
-import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
+import type { Centavos, Conta, Financiamento, Lancamento, Mes, PlanoAmortizacao } from './tipos'
 
 const sinal = (l: Lancamento) => (l.tipo === 'entrada' ? l.valor : -l.valor)
 const soma = (ls: Lancamento[]) => ls.reduce((s, l) => s + l.valor, 0)
@@ -51,6 +51,17 @@ export function estadoFinanciamento(f: Financiamento, lancs: Lancamento[], ate?:
 
 export function parcelaDoMes(f: Financiamento, mes: Mes, lancs: Lancamento[]): Centavos {
   return parcelaNoMes(f, estadoFinanciamento(f, lancs, fimDoMes(mes)), mes)
+}
+
+/**
+ * Aporte extra mensal em vigor: soma só os planos cujo financiamento existe e ainda tem saldo devedor no fim de `mes`.
+ * Plano de contrato quitado (ou órfão) não reduz a sobra.
+ */
+export function aporteVigente(planos: PlanoAmortizacao[], financiamentos: Financiamento[], lancs: Lancamento[], mes: Mes): Centavos {
+  const vigentes = new Set(
+    financiamentos.filter((f) => estadoFinanciamento(f, lancs, fimDoMes(mes)).saldoDevedor > 0).map((f) => f.id),
+  )
+  return planos.filter((p) => vigentes.has(p.financiamentoId)).reduce((s, p) => s + p.aporteExtraMensal, 0)
 }
 
 export interface EntradaResumo {

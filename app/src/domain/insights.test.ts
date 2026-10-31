@@ -265,6 +265,15 @@ describe('financiamentos', () => {
     expect(tipos(c)).not.toContain('divida_mais_cara')
     expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
   })
+  it('plano de contrato quitado não consome a sobra sugerida para a dívida ativa', () => {
+    // 'a' está quitado (saldo 0): seu plano de 300.000 não conta. 'b' = SAC 1.200.000/24 a 1%: parcela 62.000.
+    // sobraNormal = 500.000 - 62.000 = 438.000; sem plano vigente, sobraOtimizada = 438.000 (com o plano antigo seria 138.000);
+    // saldo 500.000 >= meta 6 * 61.500 (reserva ok) => aporte = 438.000 (< saldo devedor 1.200.000)
+    const quitado = { ...f('a', 0.05), parcelasPagasAntes: 24, primeiraParcela: '2020-01-05' }
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 300000, efeito: 'reduzir_prazo' as const }
+    const c = base({ financiamentos: [quitado, f('b', 0.01)], planos: [plano], lancamentos: [ent('2026-10-01', 500000)] })
+    expect(achar(c, 'sobra_para_divida')?.dados.aporte).toBe(438000)
+  })
   it('sobra_para_divida não dispara quando a economia de juros é zero', () => {
     const c = base({ financiamentos: [f('a', 0)], lancamentos: [ent('2026-10-01', 500000)] })
     expect(tipos(c)).not.toContain('sobra_para_divida')

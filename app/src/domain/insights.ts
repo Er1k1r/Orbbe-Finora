@@ -1,6 +1,6 @@
 import { simularAporte } from './amortizacao'
 import { saldoReserva, situacaoContas } from './contas'
-import { ehMovimentoInterno, ehPagamentoParcela, estadoFinanciamento, parcelaDoMes, resumoMes } from './fluxo'
+import { aporteVigente, ehMovimentoInterno, ehPagamentoParcela, estadoFinanciamento, parcelaDoMes, resumoMes } from './fluxo'
 import { formatarBRL, formatarNumero, formatarPct } from './dinheiro'
 import { fimDoMes, mesDe, mesesAnteriores } from './meses'
 import { custoEssencialReferencia } from './essencial'
@@ -154,7 +154,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   const estados = new Map(ctx.financiamentos.map((f) => [f.id, estadoFinanciamento(f, ctx.lancamentos, fimDoMes(ctx.mes))]))
   const candidatas = ctx.financiamentos.filter((f) => (estados.get(f.id)?.saldoDevedor ?? 0) > 0)
   const maisCara = [...candidatas].sort((a, b) => b.taxaMensal - a.taxaMensal)[0]
-  const aporteExistente = ctx.planos.reduce((s, p) => s + p.aporteExtraMensal, 0)
+  const aporteExistente = aporteVigente(ctx.planos, ctx.financiamentos, ctx.lancamentos, ctx.mes)
   const resumo = resumoMes({
     mes: ctx.mes, contas: ctx.contas, lancamentos: ctx.lancamentos,
     financiamentos: ctx.financiamentos, aporteExtra: aporteExistente,

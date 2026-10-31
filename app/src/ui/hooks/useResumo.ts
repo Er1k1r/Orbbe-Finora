@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { saldoReserva } from '../../domain/contas'
 import { custoEssencialReferencia } from '../../domain/essencial'
-import { resumoMes } from '../../domain/fluxo'
+import { aporteVigente, resumoMes } from '../../domain/fluxo'
 import { gerarInsights, type Insight } from '../../domain/insights'
 import { fimDoMes } from '../../domain/meses'
 import { projetarCompromissos } from '../../domain/projecao'
@@ -16,7 +16,7 @@ const alertaPrimeiro = (a: Insight, b: Insight) => Number(b.severidade === 'aler
 export function useResumo(mes: Mes) {
   const d = useDados() // vem do DadosContext (provido no Shell)
   return useMemo(() => {
-    const aporte = d.planos.reduce((s, p) => s + p.aporteExtraMensal, 0)
+    const aporte = aporteVigente(d.planos, d.financiamentos, d.lancamentos, mes)
     const resumo = resumoMes({
       mes, contas: d.contas, lancamentos: d.lancamentos, financiamentos: d.financiamentos, aporteExtra: aporte,
     })

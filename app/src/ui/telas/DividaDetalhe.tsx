@@ -4,6 +4,7 @@ import { Moldura } from '../componentes/Moldura'
 import { FormPagamento } from './FormPagamento'
 import { useResumo } from '../hooks/useResumo'
 import { repo, novoId } from '../../data/repo'
+import { db } from '../../data/db'
 import { simularAporte, type resumirCronograma } from '../../domain/amortizacao'
 import { somenteDigitos } from '../validacao'
 import { antecipacaoUltimas } from '../../domain/contrato'
@@ -68,6 +69,11 @@ export default function DividaDetalhe({ mes }: { mes: Mes }) {
     } finally { ocupado.current = false }
   }
 
+  async function removerPlano() {
+    if (!f) return
+    await db.planos.where('financiamentoId').equals(f.id).delete()
+  }
+
   return (
     <div className="grid gap-5">
       <Moldura>
@@ -109,6 +115,13 @@ export default function DividaDetalhe({ mes }: { mes: Mes }) {
               <button onClick={() => setPagando('antecipacao')} className="mt-2 min-h-11 text-sm font-semibold text-marca-texto">Registrar antecipação</button>
             </div>
           )}
+        </Moldura>
+      )}
+
+      {estado.restantes.length === 0 && plano && (
+        <Moldura>
+          <p className="text-sm text-suave">Este contrato está quitado, mas ainda tem um plano de aporte salvo ({formatarBRL(plano.aporteExtraMensal)}/mês).</p>
+          <button onClick={removerPlano} className="mt-2 min-h-11 text-sm font-semibold text-negativo">Remover plano</button>
         </Moldura>
       )}
 

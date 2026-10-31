@@ -7,3 +7,6 @@ export function dataReal(v: string): boolean {
   const [a, m, d] = v.split('-').map(Number)
   return m >= 1 && m <= 12 && d >= 1 && d <= new Date(Date.UTC(a, m, 0)).getUTCDate()
 }
+
+/** 'AAAA-MM' com mês de 01 a 12. O `type="month"` do navegador não basta: no Safari/Firefox antigo vira texto livre. */
+export const mesReal = (v: string): boolean => /^\d{4}-(0[1-9]|1[0-2])$/.test(v)

@@ -4,6 +4,7 @@ import { novoId } from '../../data/repo'
 import { db } from '../../data/db'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { somenteDigitos } from '../validacao'
+import { salvarPrefs } from '../hooks/usePreferencias'
 import type { TipoFonte } from '../../domain/tipos'
 
 const OPCOES: { tipo: TipoFonte; nome: string; exemplo: string }[] = [
@@ -29,6 +30,7 @@ export function EtapaRenda() {
           await db.fontes.put({ id: ids.current[o.tipo], nome: o.nome, tipo: o.tipo, valorEsperado: centavosDeDigitos(sel[o.tipo]) })
         await db.contas.put({ id: ids.current.conta, nome: 'Conta principal', tipo: 'banco', saldoInicial: centavosDeDigitos(saldo) })
       })
+      salvarPrefs({ contaPadraoId: ids.current.conta }) // a conta criada aqui é a padrão dos lançamentos
     } catch (e) {
       setSalvando(false)
       alert((e as Error).message)

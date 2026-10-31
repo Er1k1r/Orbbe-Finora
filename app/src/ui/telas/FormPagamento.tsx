@@ -5,6 +5,8 @@ import { repo, novoId } from '../../data/repo'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { hojeLocal } from '../../domain/meses'
 import { dataReal, somenteDigitos } from '../validacao'
+import { contaPadrao } from '../padroes'
+import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
 import type { Centavos, Financiamento, PagamentoFinanciamento } from '../../domain/tipos'
 
 export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descricao, fechar }: {
@@ -16,10 +18,11 @@ export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descrica
   fechar: () => void
 }) {
   const d = useDados()
+  const prefs = usePrefs()
   const grade = categoriasDaGrade(d.categorias, 'saida')
   const [digitos, setDigitos] = useState(String(valorInicial))
   const [data, setData] = useState(hojeLocal())
-  const [contaId, setContaId] = useState(d.contas[0]?.id ?? '')
+  const [contaId, setContaId] = useState(contaPadrao(d.contas, prefs.contaPadraoId)?.id ?? '')
   // Padrão "Outros": é só um rótulo; o Resumo não mostra pagamento de financiamento por categoria.
   const [categoriaId, setCategoriaId] = useState((grade.find((c) => c.id === 'outros') ?? grade[0])?.id ?? '')
   const [erro, setErro] = useState('')
@@ -63,7 +66,7 @@ export function FormPagamento({ f, tipo, valorInicial, parcelaContrato, descrica
       )}
       <label className="grid gap-1 text-sm">Data<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
       <label className="grid gap-1 text-sm">Conta
-        <select value={contaId} onChange={(e) => setContaId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+        <select value={contaId} onChange={(e) => { setContaId(e.target.value); salvarPrefs({ contaPadraoId: e.target.value }) }} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
           {d.contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>
       </label>

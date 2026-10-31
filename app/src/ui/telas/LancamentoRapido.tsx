@@ -8,7 +8,9 @@ import { estadoFinanciamento } from '../../domain/fluxo'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import { criarParcelamento, resumoParcelamento } from '../../domain/parcelamento'
 import { avisoParcela, textoPrevia } from '../lancamento'
-import { dataReal, somenteDigitos } from '../validacao'
+import { dataReal, mesReal, somenteDigitos } from '../validacao'
+import { contaPadrao } from '../padroes'
+import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
 import type { Categoria, Lancamento, PagamentoFinanciamento, TipoLancamento } from '../../domain/tipos'
 
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -16,6 +18,7 @@ const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select:not([dis
 export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
   const d = useDados()
   const { categorias: todasCategorias, lancamentos } = d
+  const prefs = usePrefs()
   const [tipo, setTipo] = useState<TipoLancamento>('saida')
   const [digitos, setDigitos] = useState('')
   const [descricao, setDescricao] = useState('')
@@ -106,7 +109,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
     const desc = descricao.trim()
     const base = {
       tipo, categoriaId: c.id, natureza: natureza === 'auto' ? c.natureza : natureza,
-      contaId: contaId || d.contas[0]?.id || '',
+      contaId: contaId || contaPadrao(d.contas, prefs.contaPadraoId)?.id || '',
       ...(desc ? { descricao: desc } : {}),
       ...(obs.trim() ? { observacao: obs.trim() } : {}),
     }
@@ -122,11 +125,11 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
       return
     }
     if (efetivo === 'financiamento' && !financId) { alert('Escolha o financiamento.'); return }
+    if (efetivo === 'comum' && repete && ate && !mesReal(ate)) { alert('Use o formato AAAA-MM, por exemplo 2026-12.'); return }
     if (efetivo === 'comum' && repete && ate && ate < mesDe(data)) { alert('O mês final da recorrência não pode ser anterior ao mês do lançamento.'); return }
-    const fonte = fonteId || d.fontes[0]?.id
     const l: Lancamento = {
       ...base, id: novoId(), valor, data, status: pendente ? 'pendente' : 'pago',
-      ...(tipo === 'entrada' && fonte ? { fonteId: fonte } : {}),
+      ...(tipo === 'entrada' && fonteId ? { fonteId } : {}), // sem fonte padrão: só quando escolhida em Mais opções
       ...(efetivo === 'financiamento' ? { financiamentoId: financId, pagamentoFinanciamento: pagTipo } : {}),
       ...(repete && efetivo === 'comum' ? { recorrencia: 'mensal' as const, ...(ate ? { recorrenciaAte: ate } : {}) } : {}),
     }
@@ -223,13 +226,14 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
             )}
             <label className="grid gap-1">{efetivo === 'parcelado' ? 'Data desta parcela' : 'Data'}<input type="date" value={data} onChange={(e) => setData(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3" /></label>
             <label className="grid gap-1">Conta
-              <select value={contaId || d.contas[0]?.id || ''} onChange={(e) => setContaId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+              <select value={contaId || contaPadrao(d.contas, prefs.contaPadraoId)?.id || ''} onChange={(e) => { setContaId(e.target.value); salvarPrefs({ contaPadraoId: e.target.value }) }} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
                 {d.contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
               </select>
             </label>
             {tipo === 'entrada' && (
               <label className="grid gap-1">Fonte de renda
-                <select value={fonteId || d.fontes[0]?.id || ''} onChange={(e) => setFonteId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+                <select value={fonteId} onChange={(e) => setFonteId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+                  <option value="">Nenhuma</option>
                   {d.fontes.map((f) => <option key={f.id} value={f.id}>{f.nome}</option>)}
                 </select>
               </label>

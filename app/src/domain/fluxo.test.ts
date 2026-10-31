@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { saldoContas, resumoMes, parcelaDoMes, estadoFinanciamento } from './fluxo'
+import { saldoContas, resumoMes, parcelaDoMes, estadoFinanciamento, aporteVigente } from './fluxo'
 import { taxaImplicita } from './contrato'
 import { gerarCronograma } from './amortizacao'
 import { criarParcelamento } from './parcelamento'
@@ -470,5 +470,28 @@ describe('resumoMes: família completa (recorrências sem cópia e antecipaçõe
   it('a soma do saldo das contas (situacaoContas) é o saldo do resumo', () => {
     const soma = situacaoContas(contasF, todos, '2026-10').reduce((s, c) => s + c.saldo, 0)
     expect(soma).toBe(resumo('2026-10').saldo)
+  })
+})
+
+describe('aporteVigente', () => {
+  // `fin`: Price/SAC 120.000 em 4 parcelas desde 2026-10-05. Quitado: 4 pagas antes do app => saldo 0.
+  const quitado: Financiamento = { id: 'q', nome: 'Velho', ...contratoDe(120000, 0.01, 4), parcelasPagasAntes: 4 }
+  const pl = (financiamentoId: string, aporteExtraMensal: number) => ({ id: 'p' + financiamentoId, financiamentoId, aporteExtraMensal, efeito: 'reduzir_prazo' as const })
+  it('soma só os planos de financiamentos com saldo devedor', () => {
+    // fin tem saldo 120.000 > 0 (conta 30.000); quitado tem saldo 0 (ignorado)
+    expect(aporteVigente([pl('f1', 30000), pl('q', 70000)], [fin, quitado], [], '2026-10')).toBe(30000)
+  })
+  it('plano de contrato quitado não conta; sem planos vigentes = 0', () => {
+    expect(aporteVigente([pl('q', 70000)], [fin, quitado], [], '2026-10')).toBe(0)
+    expect(aporteVigente([], [fin], [], '2026-10')).toBe(0)
+  })
+  it('plano órfão (financiamento removido) não conta', () => {
+    expect(aporteVigente([pl('x', 5000)], [fin], [], '2026-10')).toBe(0)
+  })
+  it('o saldo é medido no fim do mês visto: quitado por pagamentos até então', () => {
+    // 4 parcelas pagas em out..jan: em 2026-12 ainda há saldo (2 restantes); em 2027-01 zerou.
+    const pagos = [0, 1, 2, 3].map((k) => l({ valor: 31200, data: `${k < 3 ? '2026-' + (10 + k) : '2027-01'}-05`, financiamentoId: 'f1', pagamentoFinanciamento: 'parcela' }))
+    expect(aporteVigente([pl('f1', 30000)], [fin], pagos, '2026-12')).toBe(30000)
+    expect(aporteVigente([pl('f1', 30000)], [fin], pagos, '2027-01')).toBe(0)
   })
 })
