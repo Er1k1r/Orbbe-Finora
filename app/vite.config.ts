@@ -9,9 +9,11 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: { globPatterns: ['**/*.{js,css,html,woff2,svg}'] }, // padrão + fontes e favicon
       manifest: {
         name: 'Finanças Pessoais',
         short_name: 'Finanças',
+        lang: 'pt-BR',
         display: 'standalone',
         start_url: '.',
         background_color: '#f1f5f4',

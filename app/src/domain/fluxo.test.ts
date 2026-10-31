@@ -495,3 +495,16 @@ describe('aporteVigente', () => {
     expect(aporteVigente([pl('f1', 30000)], [fin], pagos, '2027-01')).toBe(0)
   })
 })
+
+describe('estadoFinanciamento até hoje (Quitar hoje na tela de detalhe)', () => {
+  // pagamento da 1ª parcela com data futura (2026-12-05); fin = SAC 120.000 em 4x a 1%: saldo 120.000 -> 90.000 após 1 parcela
+  const futuro = [l({ valor: 31200, data: '2026-12-05', financiamentoId: 'f1', pagamentoFinanciamento: 'parcela' })]
+  it('pagamento datado no futuro não conta em "hoje"; sem corte ele conta', () => {
+    const hoje = estadoFinanciamento(fin, futuro, '2026-10-19')
+    expect(hoje.parcelasPagas).toBe(0)
+    expect(hoje.saldoDevedor).toBe(120000)
+    const semCorte = estadoFinanciamento(fin, futuro)
+    expect(semCorte.parcelasPagas).toBe(1)
+    expect(semCorte.saldoDevedor).toBe(90000)
+  })
+})

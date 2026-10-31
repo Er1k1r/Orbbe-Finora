@@ -142,7 +142,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
           ))}
         </div>
 
-        <label className="mt-5 block text-center">
+        <label className="mt-5 block rounded-2xl py-2 text-center focus-within:ring-2 focus-within:ring-[var(--azul-texto)]">
           <span className="sr-only">Valor em centavos</span>
           <input ref={campo} inputMode="numeric" value={digitos}
             onChange={(e) => setDigitos(somenteDigitos(e.target.value))}

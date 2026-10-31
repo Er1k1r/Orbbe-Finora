@@ -55,7 +55,7 @@ export default function Onboarding() {
       <button onClick={() => setEtapa('objetivos')} className="min-h-12 rounded-full bg-marca font-semibold text-white">Montar meu controle</button>
       <p className="text-center text-xs text-suave">Leva menos de 1 minuto · sem cadastro</p>
       <button onClick={() => arquivo.current?.click()} className="min-h-11 text-sm font-semibold text-marca-texto">Já uso · Restaurar backup</button>
-      <input ref={arquivo} type="file" accept="application/json" hidden aria-label="Arquivo de backup"
+      <input ref={arquivo} type="file" accept=".json,application/json" hidden aria-label="Arquivo de backup"
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void restaurar(f) }} />
     </div>
   )

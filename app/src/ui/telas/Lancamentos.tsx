@@ -7,8 +7,8 @@ import { db } from '../../data/db'
 import { formatarBRL } from '../../domain/dinheiro'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import { cancelarRecorrencia } from '../../domain/recorrencia'
-import { rotuloMes } from '../rotulos'
-import { rotuloParcelamento } from '../lancamento'
+import { rotuloMes, rotuloNatureza } from '../rotulos'
+import { ordenarLancamentos, rotuloParcelamento } from '../lancamento'
 import { parcelasRestantesDoGrupo } from '../../domain/parcelamento'
 import { idsDeExclusao } from '../construtores'
 import type { Lancamento } from '../../domain/tipos'
@@ -18,9 +18,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
   const [filtro, setFiltro] = useState<'todos' | 'entrada' | 'saida'>('todos')
   const mesAtual = mesDe(hojeLocal())
   const nome = (id: string) => d.categorias.find((c) => c.id === id)?.nome ?? ''
-  const itens = d.lancamentos
-    .filter((l) => mesDe(l.data) === mes && (filtro === 'todos' || l.tipo === filtro))
-    .sort((a, b) => b.data.localeCompare(a.data))
+  const itens = ordenarLancamentos(d.lancamentos.filter((l) => mesDe(l.data) === mes && (filtro === 'todos' || l.tipo === filtro)))
 
   // O modelo da recorrência: o próprio lançamento (modelo) ou aquele de que a cópia nasceu (`origemId`).
   const modeloDe = (l: Lancamento) =>
@@ -69,7 +67,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
                     {l.parcelamento && <span className="ml-2 valor text-xs text-suave">{rotuloParcelamento(l.parcelamento)}</span>}
                   </div>
                   <div className="text-xs text-suave">
-                    {l.data.slice(8)}/{l.data.slice(5, 7)}{l.descricao ? ` · ${nome(l.categoriaId)}` : ''} · {l.natureza}
+                    {l.data.slice(8)}/{l.data.slice(5, 7)}{l.descricao ? ` · ${nome(l.categoriaId)}` : ''} · {rotuloNatureza(l.natureza)}
                     {l.status === 'pendente' ? ' · pendente' : ''}
                     {fin ? ` · ${l.pagamentoFinanciamento === 'antecipacao' ? 'antecipação' : 'parcela'} de ${fin.nome}` : ''}
                     {modelo?.recorrenciaAte ? ` · recorrência até ${rotuloMes(modelo.recorrenciaAte)}` : ''}

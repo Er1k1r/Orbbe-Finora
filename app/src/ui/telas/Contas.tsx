@@ -11,6 +11,7 @@ import { saldoReserva, situacaoContas } from '../../domain/contas'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { saldoContas } from '../../domain/fluxo'
 import { somenteDigitos } from '../validacao'
+import { rotuloTipoConta } from '../rotulos'
 import { montarConferencia, montarConta, montarTransferencia } from '../construtores'
 import { salvarPrefs } from '../hooks/usePreferencias'
 import { hojeLocal, mesDe } from '../../domain/meses'
@@ -94,7 +95,7 @@ export default function Contas() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-semibold">{c.nome}</div>
-                <div className="text-xs text-suave">{c.tipo}{c.reserva ? ' · reserva' : ''}</div>
+                <div className="text-xs text-suave">{rotuloTipoConta(c.tipo)}{c.reserva ? ' · reserva' : ''}</div>
               </div>
               <div className={`valor text-lg ${s?.negativa ? 'text-negativo' : ''}`}>{formatarBRL(s?.saldo ?? 0)}</div>
             </div>

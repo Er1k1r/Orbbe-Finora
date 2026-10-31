@@ -1,6 +1,6 @@
 import { formatarBRL } from '../domain/dinheiro'
 import { mesDe } from '../domain/meses'
-import type { Centavos, Parcelamento } from '../domain/tipos'
+import type { Centavos, Lancamento, Parcelamento } from '../domain/tipos'
 import { rotuloMes } from './rotulos'
 
 /** Aviso quando o valor de um pagamento do tipo "parcela" difere da parcela do contrato; `null` se não há o que avisar. */
@@ -19,3 +19,7 @@ export function textoPrevia(r: { restantes: number; valorRestante: Centavos; ult
 }
 
 export const rotuloParcelamento = (p: Parcelamento): string => `${p.numero}/${p.total}`
+
+/** Lista do mês: data mais recente primeiro; mesma data desempata por id, para a ordem não mudar entre leituras. */
+export const ordenarLancamentos = (ls: Lancamento[]): Lancamento[] =>
+  [...ls].sort((a, b) => b.data.localeCompare(a.data) || a.id.localeCompare(b.id))

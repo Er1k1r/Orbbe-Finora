@@ -23,10 +23,13 @@ export default function Backup() {
     try {
       const blob = new Blob([await exportar()], { type: 'application/json' })
       const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(blob)
+      a.href = url
       a.download = `financas-${hojeLocal()}.json`
+      document.body.appendChild(a) // alguns navegadores só baixam com o link no DOM
       a.click()
-      URL.revokeObjectURL(a.href)
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 0)
       setMsg('Backup exportado.')
     } catch (e) { setMsg((e as Error).message) }
   }
@@ -49,7 +52,7 @@ export default function Backup() {
         )}
         <button onClick={baixar} className="mt-4 min-h-12 w-full rounded-full bg-marca font-semibold text-white">Exportar backup</button>
         <button onClick={() => arquivo.current?.click()} className="mt-2 min-h-12 w-full rounded-full bg-[var(--casca)] font-semibold">Importar backup</button>
-        <input ref={arquivo} type="file" accept="application/json" hidden aria-label="Arquivo de backup"
+        <input ref={arquivo} type="file" accept=".json,application/json" hidden aria-label="Arquivo de backup"
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void ler(f) }} />
         {msg && <p role="status" className="mt-3 text-sm">{msg}</p>}
       </Moldura>

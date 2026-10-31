@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { avisoParcela, rotuloParcelamento, textoPrevia } from './lancamento'
+import { avisoParcela, ordenarLancamentos, rotuloParcelamento, textoPrevia } from './lancamento'
 const sp = (t: string | null) => t?.replace(/ /g, ' ')
 
 describe('avisoParcela', () => {
@@ -31,5 +31,20 @@ describe('textoPrevia', () => {
 describe('rotuloParcelamento', () => {
   it('formata numero/total', () => {
     expect(rotuloParcelamento({ grupoId: 'g', numero: 4, total: 12 })).toBe('4/12')
+  })
+})
+
+describe('ordenarLancamentos', () => {
+  const l = (id: string, data: string) => ({ id, data, valor: 1, tipo: 'saida' as const, categoriaId: 'a', natureza: 'variavel' as const, contaId: 'c', status: 'pago' as const })
+  it('mais recente primeiro; mesma data desempata por id, qualquer que seja a ordem de entrada', () => {
+    const a = [l('b', '2026-10-05'), l('c', '2026-10-09'), l('a', '2026-10-05')]
+    const esperado = ['c', 'a', 'b']
+    expect(ordenarLancamentos(a).map((x) => x.id)).toEqual(esperado)
+    expect(ordenarLancamentos([...a].reverse()).map((x) => x.id)).toEqual(esperado)
+  })
+  it('não altera o array de entrada', () => {
+    const a = [l('b', '2026-10-05'), l('a', '2026-10-05')]
+    ordenarLancamentos(a)
+    expect(a.map((x) => x.id)).toEqual(['b', 'a'])
   })
 })

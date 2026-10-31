@@ -11,6 +11,7 @@ import { somenteDigitos } from '../validacao'
 import { antecipacaoUltimas } from '../../domain/contrato'
 import { centavosDeDigitos, formatarBRL, formatarNumero, formatarPct } from '../../domain/dinheiro'
 import { estadoFinanciamento } from '../../domain/fluxo'
+import { hojeLocal } from '../../domain/meses'
 import type { EfeitoAporte, Mes } from '../../domain/tipos'
 
 const Linha = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) => (
@@ -37,10 +38,11 @@ export default function DividaDetalhe({ mes }: { mes: Mes }) {
   const [salvo, setSalvo] = useState(false)
   const ocupado = useRef(false)
   const aporte = centavosDeDigitos(digitos)
+  const hoje = hojeLocal()
   // A sobra otimizada já desconta o plano de TODAS as dívidas; devolve só o plano desta, que será substituído.
   const sobraLivre = calcularSobraLivre(resumo.sobraOtimizada, plano)
 
-  const estado = useMemo(() => (f ? estadoFinanciamento(f, lancamentos) : undefined), [f, lancamentos])
+  const estado = useMemo(() => (f ? estadoFinanciamento(f, lancamentos, hoje) : undefined), [f, lancamentos, hoje]) // pagamento com data futura ainda não conta
   // O simulador parte do estado atual: saldo devedor e parcelas restantes, com a parcela fixa do contrato.
   const sim = useMemo(
     () => f && estado && estado.restantes.length > 0
