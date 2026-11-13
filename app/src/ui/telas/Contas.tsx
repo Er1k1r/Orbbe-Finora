@@ -13,7 +13,6 @@ import { saldoContas } from '../../domain/fluxo'
 import { somenteDigitos } from '../validacao'
 import { rotuloTipoConta } from '../rotulos'
 import { montarConferencia, montarConta, montarTransferencia } from '../construtores'
-import { salvarPrefs } from '../hooks/usePreferencias'
 import { hojeLocal, mesDe } from '../../domain/meses'
 import type { Conta } from '../../domain/tipos'
 
@@ -164,7 +163,7 @@ export default function Contas() {
       {transf && (
         <FormRapido titulo={`Transferir de ${transf.nome}`} onSalvar={salvarTransferencia} onCancelar={() => setTransf(null)}>
           <label className="grid gap-1 text-sm">Para a conta
-            <select value={destinoId} onChange={(e) => { setDestinoId(e.target.value); salvarPrefs({ contaPadraoId: e.target.value }) }} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
+            <select value={destinoId} onChange={(e) => setDestinoId(e.target.value)} className="min-h-11 rounded-xl bg-[var(--casca)] px-3">
               {d.contas.filter((x) => x.id !== transf.id).map((x) => <option key={x.id} value={x.id}>{x.nome}</option>)}
             </select>
           </label>
