@@ -508,3 +508,33 @@ describe('estadoFinanciamento até hoje (Quitar hoje na tela de detalhe)', () =>
     expect(semCorte.saldoDevedor).toBe(90000)
   })
 })
+
+describe('pinos do motor: receita virtual sem cópia e antecipação pendente anterior', () => {
+  it('modelo de receita sem cópia visto meses depois: só o mês visto entra em receitas; os anteriores em receitasPendentes', () => {
+    // salário 500.000 (modelo pago em 2026-07-05, geradoAte 2026-09, nenhuma cópia). Visto: 2026-12.
+    // virtuais = meses de ago a dez fora da marca d'água (<= set): out, nov e dez => 3 itens pendentes de 500.000.
+    const modelo = l({ id: 'sal', tipo: 'entrada', valor: 500000, data: '2026-07-05', recorrencia: 'mensal', geradoAte: '2026-09' })
+    const r = resumoMes({ mes: '2026-12', contas: [conta], lancamentos: [modelo], financiamentos: [], aporteExtra: 0 })
+    expect(r.receitas).toBe(500000) // só o virtual de dez (out e nov não são receita do mês visto)
+    expect(r.receitasPendentes).toBe(1500000) // 3 x 500.000 (out, nov e dez)
+    // saldo = 100.000 + 500.000 (modelo pago de jul) = 600.000; previsto = 600.000 + 1.500.000
+    expect(r.saldo).toBe(600000)
+    expect(r.previsto).toBe(2100000)
+    expect(r.saldoSeguro).toBe(600000) // receita pendente não entra no saldo seguro
+  })
+
+  it('antecipação pendente de mês anterior ao visto reduz previsto e saldo seguro (antecipacoesPendentes)', () => {
+    // fin: SAC 120.000 em 4x a 1%, 1ª parcela 2026-10-05 => parcela de out = 30.000 + 1.200 = 31.200.
+    // Antecipação de 20.000 pendente, datada 2026-09-15 (set), vista em out.
+    const ant = l({ id: 'ant', valor: 20000, data: '2026-09-15', status: 'pendente', financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao' })
+    const r = resumoMes({ mes: '2026-10', contas: [conta], lancamentos: [ant], financiamentos: [fin], aporteExtra: 0 })
+    expect(r.antecipacoesPendentes).toBe(20000)
+    expect(r.parcelasPendentes).toBe(31200)
+    // saldo 100.000 (pendente não conta); previsto = saldoSeguro = 100.000 - 31.200 - 20.000 = 48.800
+    expect(r.saldo).toBe(100000)
+    expect(r.previsto).toBe(48800)
+    expect(r.saldoSeguro).toBe(48800)
+    const sem = resumoMes({ mes: '2026-10', contas: [conta], lancamentos: [], financiamentos: [fin], aporteExtra: 0 })
+    expect(sem.previsto).toBe(68800) // sem a antecipação: 100.000 - 31.200
+  })
+})

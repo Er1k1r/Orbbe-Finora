@@ -207,3 +207,28 @@ describe('pagamento sem parcela para consumir', () => {
     expect(e.antecipado).toBe(0)
   })
 })
+
+describe('SAC: última parcela absorve o saldo (prazo <= 1 em primeiroPasso)', () => {
+  // SAC 100.000 em 3x a 1%: amortização fixa = round(100.000 / 3) = 33.333. 2 parcelas pagas antes do app (= total - 1):
+  //  p1: juros 1.000, saldo 100.000 -> 66.667 | p2: juros round(666,67) = 667, saldo -> 33.334
+  // Pagando a última (prazo 1): amortização fixa 33.333 < saldo 33.334, mas a última absorve tudo: amort 33.334,
+  //  juros round(333,34) = 333, parcela 33.667, saldo 0. Juros pagos = 1.000 + 667 + 333 = 2.000.
+  const sac: Contrato = {
+    valorFinanciado: 100000, valorParcela: 34333, totalParcelas: 3, sistema: 'SAC',
+    taxaMensal: 0.01, primeiraParcela: '2026-08-10', parcelasPagasAntes: 2,
+  }
+  it('antes de pagar a última: saldo 33.334 e uma parcela restante que quita', () => {
+    const e = estadoContrato(sac, [])
+    expect(e.saldoDevedor).toBe(33334)
+    expect(e.restantes.map((p) => [p.numero, p.amortizacao, p.parcela, p.saldo])).toEqual([[3, 33334, 33667, 0]])
+  })
+  it('pagar a última parcela zera o contrato (sem resíduo de 1 centavo)', () => {
+    const e = estadoContrato(sac, [pg({ data: '2026-10-10', valor: 33667 })])
+    expect(e.parcelasPagas).toBe(3)
+    expect(e.saldoDevedor).toBe(0)
+    expect(e.jurosPagos).toBe(2000)
+    expect(e.pagas[2]).toMatchObject({ numero: 3, amortizacao: 33334, juros: 333, parcela: 33667, saldo: 0 })
+    expect(e.aplicados).toEqual([{ data: '2026-10-10', valor: 33667, numero: 3, valorParcela: 33667, excesso: 0, tipo: 'parcela' }])
+    expect(e.restantes).toEqual([])
+  })
+})
