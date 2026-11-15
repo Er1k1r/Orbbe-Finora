@@ -346,6 +346,15 @@ describe('excluir lançamento recorrente', () => {
     expect(encerrarRepeticao(lancs, lancs[0], '2026-10')).toEqual(r) // pelo próprio modelo
   })
 
+  it('encerrar uma recorrência que já terminou antes do mês atual não a reabre (nada a salvar)', () => {
+    // fim 2026-09, hoje 2026-11: min(2026-09, 2026-11) = 2026-09, ou seja, sem mudança
+    const m = modelo({ recorrenciaAte: '2026-09' })
+    const lancs = [m, copia('2026-08'), copia('2026-09')]
+    expect(encerrarRepeticao(lancs, lancs[1], '2026-11')).toEqual({ apagar: [], salvar: [] })
+    expect(encerrarRepeticao(lancs, m, '2026-09')).toEqual({ apagar: [], salvar: [] })
+    // fim depois do mês atual é encurtado
+    expect(encerrarRepeticao([modelo({ recorrenciaAte: '2027-03' })], modelo(), '2026-11').salvar[0].recorrenciaAte).toBe('2026-11')
+  })
   it('encerrar a repetição a partir de uma cópia pendente futura: também apaga essa cópia', () => {
     const futura = copia('2026-12', { status: 'pendente' })
     const lancs = [modelo(), futura]

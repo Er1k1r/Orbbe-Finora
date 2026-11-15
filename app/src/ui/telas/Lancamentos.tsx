@@ -33,12 +33,20 @@ export default function Lancamentos({ mes }: { mes: string }) {
 
   const [perguntaExcluir, setPerguntaExcluir] = useState<Lancamento | null>(null)
 
-  async function aplicarEdicao(e: EdicaoExclusao) {
+  const [aviso, setAviso] = useState('')
+
+  async function aplicarEdicao(e: EdicaoExclusao, mensagem = '') {
     await db.transaction('rw', db.lancamentos, async () => {
       await db.lancamentos.bulkDelete(e.apagar)
       await db.lancamentos.bulkPut(e.salvar)
     })
     setPerguntaExcluir(null)
+    setAviso(mensagem)
+  }
+
+  function encerrar(l: Lancamento) {
+    const e = encerrarRepeticao(d.lancamentos, l, mesAtual)
+    return aplicarEdicao(e, e.apagar.length === 0 ? 'Repetição encerrada. Este lançamento foi mantido.' : '')
   }
 
   async function excluir(l: Lancamento) {
@@ -67,6 +75,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
           </button>
         ))}
       </div>
+      {aviso && <p role="status" className="text-sm text-suave">{aviso}</p>}
       <Moldura>
         {itens.length === 0 && previstos.length === 0 && <p className="text-suave">Nenhum lançamento neste mês.</p>}
         <ul className="divide-y divide-[var(--linha)]">
@@ -136,16 +145,15 @@ export default function Lancamentos({ mes }: { mes: string }) {
             <div className="grid gap-2">
               <button type="button" onClick={() => aplicarEdicao(excluirSoEsteMes(d.lancamentos, perguntaExcluir))}
                 className="min-h-12 rounded-full bg-marca font-semibold text-white">Só este mês</button>
-              <button type="button" onClick={() => aplicarEdicao(encerrarRepeticao(d.lancamentos, perguntaExcluir, mesAtual))}
+              <button type="button" onClick={() => encerrar(perguntaExcluir)}
                 className="min-h-12 rounded-full bg-[var(--casca)] font-semibold">Encerrar a repetição</button>
               <button type="button" onClick={() => setPerguntaExcluir(null)}
                 className="min-h-12 rounded-full font-semibold text-suave">Cancelar</button>
             </div>
           }>
+          <p className="text-sm text-suave">Só este mês: tira apenas este lançamento e mantém a repetição nos próximos meses.</p>
           <p className="text-sm text-suave">
-            “Só este mês” tira apenas este lançamento e mantém a repetição nos próximos meses.
-            “Encerrar a repetição” para de gerar novos meses a partir do próximo e remove este lançamento só se for um
-            mês futuro ainda pendente.
+            Encerrar a repetição: os próximos meses deixam de ser gerados. Este lançamento só é removido se for um mês futuro ainda pendente.
           </p>
         </FormRapido>
       )}

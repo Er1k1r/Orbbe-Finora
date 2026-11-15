@@ -17,7 +17,7 @@ export interface PreferenciasBackup {
 
 export async function exportar(preferencias?: PreferenciasBackup): Promise<string> {
   const dados: Record<string, unknown> = { versao: VERSAO }
-  if (preferencias) dados.preferencias = limparPreferencias(preferencias)
+  if (typeof preferencias === 'object' && preferencias !== null) dados.preferencias = limparPreferencias(preferencias)
   // Uma transação de leitura: as seis tabelas saem do mesmo instante (sem escrita no meio).
   await db.transaction('r', TABELAS.map((t) => db[t]), async () => {
     for (const t of TABELAS) dados[t] = await db[t].toArray()
@@ -27,13 +27,17 @@ export async function exportar(preferencias?: PreferenciasBackup): Promise<strin
 
 const INVALIDO = 'Arquivo de backup inválido'
 
-/** Só as chaves conhecidas e definidas (chave desconhecida é ignorada, nunca gravada nem rejeitada). */
+/**
+ * Só as chaves conhecidas COM valor válido (chave desconhecida ou valor inválido é descartado, nunca gravado):
+ * um localStorage corrompido não pode gerar um backup que `importar` rejeita.
+ */
 function limparPreferencias(p: PreferenciasBackup): PreferenciasBackup {
+  const { objetivos, checklistFechado, semFinanciamento, contaPadraoId } = p as Record<string, unknown>
   return {
-    ...(p.objetivos !== undefined ? { objetivos: [...p.objetivos] } : {}),
-    ...(p.checklistFechado !== undefined ? { checklistFechado: p.checklistFechado } : {}),
-    ...(p.semFinanciamento !== undefined ? { semFinanciamento: p.semFinanciamento } : {}),
-    ...(p.contaPadraoId !== undefined ? { contaPadraoId: p.contaPadraoId } : {}),
+    ...(Array.isArray(objetivos) ? { objetivos: objetivos.filter((o): o is (typeof OBJETIVOS)[number] => OBJETIVOS.includes(o as never)) } : {}),
+    ...(typeof checklistFechado === 'boolean' ? { checklistFechado } : {}),
+    ...(typeof semFinanciamento === 'boolean' ? { semFinanciamento } : {}),
+    ...(typeof contaPadraoId === 'string' ? { contaPadraoId } : {}),
   }
 }
 

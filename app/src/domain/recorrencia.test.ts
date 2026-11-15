@@ -90,6 +90,19 @@ describe('gerarRecorrentes', () => {
   })
 })
 
+describe('cancelarRecorrencia só encurta', () => {
+  it('recorrência que já terminava antes do mês pedido fica como está (não reabre meses)', () => {
+    // modelo ago/26 terminando em 2026-09; "cancelar" em 2026-11 NÃO pode estender para 2026-11
+    const encerrado = { ...modelo, recorrenciaAte: '2026-09', geradoAte: '2026-09' }
+    expect(cancelarRecorrencia(encerrado, '2026-11')).toBe(encerrado)
+    expect(cancelarRecorrencia(encerrado, '2026-09')).toBe(encerrado) // igual: nada muda
+    expect(gerarRecorrentes([cancelarRecorrencia(encerrado, '2026-11')], '2026-11-10').copias).toEqual([])
+  })
+  it('recorrência que termina depois do mês pedido é encurtada', () => {
+    expect(cancelarRecorrencia({ ...modelo, recorrenciaAte: '2027-03' }, '2026-11').recorrenciaAte).toBe('2026-11')
+  })
+})
+
 describe("marca d'água com recorrenciaAte", () => {
   it('não avança além de recorrenciaAte e a reativação gera os meses seguintes', () => {
     const cancelado = cancelarRecorrencia(modelo, '2026-10')

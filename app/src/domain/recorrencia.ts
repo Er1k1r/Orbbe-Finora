@@ -97,8 +97,12 @@ export function gerarRecorrentes(existentes: Lancamento[], hoje: string): Result
   return { copias, modelos }
 }
 
-/** Encerra a recorrência: o modelo deixa de gerar cópias após `mes` ('YYYY-MM', inclusive). */
+/**
+ * Encerra a recorrência: o modelo deixa de gerar cópias após `mes` ('YYYY-MM', inclusive). Só ENCURTA: se o
+ * modelo já termina em `mes` ou antes, devolve-o sem mudança (nunca reabre meses de uma recorrência já encerrada).
+ */
 export function cancelarRecorrencia(modelo: Lancamento, mes: Mes): Lancamento {
+  if (modelo.recorrenciaAte !== undefined && modelo.recorrenciaAte <= mes) return modelo
   return { ...modelo, recorrenciaAte: mes }
 }
 

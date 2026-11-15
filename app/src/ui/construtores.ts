@@ -227,5 +227,7 @@ export function excluirSoEsteMes(lancs: Lancamento[], alvo: Lancamento): EdicaoE
 export function encerrarRepeticao(lancs: Lancamento[], alvo: Lancamento, mesAtual: string): EdicaoExclusao {
   const modelo = modeloDaRecorrencia(alvo, lancs)
   const futuraPendente = alvo.recorrencia !== 'mensal' && alvo.origemId !== undefined && alvo.status === 'pendente' && mesDe(alvo.data) > mesAtual
-  return { apagar: futuraPendente ? [alvo.id] : [], salvar: modelo ? [cancelarRecorrencia(modelo, mesAtual)] : [] }
+  const encerrado = modelo ? cancelarRecorrencia(modelo, mesAtual) : undefined
+  // Recorrência que já terminava em `mesAtual` ou antes não muda (nada a regravar).
+  return { apagar: futuraPendente ? [alvo.id] : [], salvar: modelo && encerrado !== modelo ? [encerrado!] : [] }
 }

@@ -196,6 +196,14 @@ describe('backup v3: preferências', () => {
     expect(await importar(json)).toEqual({ preferencias: prefs })
     expect(await repo.contas.listar()).toEqual([conta])
   })
+  it('exportar descarta valores inválidos/chaves desconhecidas: o backup sempre é importável', async () => {
+    await repo.contas.salvar(conta)
+    const sujo = { objetivos: ['destino', 'rico', 5], checklistFechado: 'sim', semFinanciamento: true, contaPadraoId: 7, tema: 'x' } as never
+    const json = await exportar(sujo)
+    expect(JSON.parse(json).preferencias).toEqual({ objetivos: ['destino'], semFinanciamento: true })
+    expect(await importar(json)).toEqual({ preferencias: { objetivos: ['destino'], semFinanciamento: true } })
+    expect(JSON.parse(await exportar({ objetivos: 'x' } as never)).preferencias).toEqual({})
+  })
   it('exportar sem preferências não grava o bloco; importar devolve objeto vazio', async () => {
     const json = await exportar()
     expect('preferencias' in JSON.parse(json)).toBe(false)
