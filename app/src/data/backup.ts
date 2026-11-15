@@ -1,11 +1,23 @@
 import type { Table } from 'dexie'
 import { db } from './db'
 
-const VERSAO = 2
+const VERSAO = 3
+const VERSOES_ACEITAS = [2, 3] // v2 (sem preferências) continua importável: não orfanar backups existentes
 const TABELAS = ['contas', 'fontes', 'categorias', 'lancamentos', 'financiamentos', 'planos'] as const
 
-export async function exportar(): Promise<string> {
+const OBJETIVOS = ['destino', 'nao_estourar', 'contas_em_dia', 'meta'] as const
+
+/** Preferências do aparelho que viajam no backup (a UI passa o conteúdo do seu store; a camada de dados não importa de `ui/`). */
+export interface PreferenciasBackup {
+  objetivos?: (typeof OBJETIVOS)[number][]
+  checklistFechado?: boolean
+  semFinanciamento?: boolean
+  contaPadraoId?: string
+}
+
+export async function exportar(preferencias?: PreferenciasBackup): Promise<string> {
   const dados: Record<string, unknown> = { versao: VERSAO }
+  if (preferencias) dados.preferencias = limparPreferencias(preferencias)
   // Uma transação de leitura: as seis tabelas saem do mesmo instante (sem escrita no meio).
   await db.transaction('r', TABELAS.map((t) => db[t]), async () => {
     for (const t of TABELAS) dados[t] = await db[t].toArray()
@@ -14,6 +26,28 @@ export async function exportar(): Promise<string> {
 }
 
 const INVALIDO = 'Arquivo de backup inválido'
+
+/** Só as chaves conhecidas e definidas (chave desconhecida é ignorada, nunca gravada nem rejeitada). */
+function limparPreferencias(p: PreferenciasBackup): PreferenciasBackup {
+  return {
+    ...(p.objetivos !== undefined ? { objetivos: [...p.objetivos] } : {}),
+    ...(p.checklistFechado !== undefined ? { checklistFechado: p.checklistFechado } : {}),
+    ...(p.semFinanciamento !== undefined ? { semFinanciamento: p.semFinanciamento } : {}),
+    ...(p.contaPadraoId !== undefined ? { contaPadraoId: p.contaPadraoId } : {}),
+  }
+}
+
+/** Valida o bloco `preferencias` (todos os campos opcionais); lança INVALIDO sem tocar em nada. Chaves extras são ignoradas. */
+function validarPreferencias(v: unknown): PreferenciasBackup {
+  if (typeof v !== 'object' || v === null || Array.isArray(v)) throw new Error(INVALIDO)
+  const p = v as Record<string, unknown>
+  const { objetivos, checklistFechado, semFinanciamento, contaPadraoId } = p
+  if (objetivos !== undefined && !(Array.isArray(objetivos) && objetivos.every((o) => OBJETIVOS.includes(o as never)))) throw new Error(INVALIDO)
+  if (checklistFechado !== undefined && typeof checklistFechado !== 'boolean') throw new Error(INVALIDO)
+  if (semFinanciamento !== undefined && typeof semFinanciamento !== 'boolean') throw new Error(INVALIDO)
+  if (contaPadraoId !== undefined && typeof contaPadraoId !== 'string') throw new Error(INVALIDO)
+  return limparPreferencias(p as PreferenciasBackup)
+}
 
 type Tabela = (typeof TABELAS)[number]
 type Linha = Record<string, unknown>
@@ -91,12 +125,12 @@ function linhaValida(t: Tabela, l: Linha): boolean {
   return true
 }
 
-function validar(json: string): Record<Tabela, object[]> {
+function validar(json: string): { tabelas: Record<Tabela, object[]>; preferencias?: PreferenciasBackup } {
   let dados: unknown
   try { dados = JSON.parse(json) } catch { throw new Error(INVALIDO) }
   if (typeof dados !== 'object' || dados === null || Array.isArray(dados)) throw new Error(INVALIDO)
   const obj = dados as Record<string, unknown>
-  if (obj.versao !== VERSAO) throw new Error('Versão de backup não suportada')
+  if (typeof obj.versao !== 'number' || !VERSOES_ACEITAS.includes(obj.versao)) throw new Error('Versão de backup não suportada')
   for (const t of TABELAS) {
     const linhas = obj[t]
     if (!Array.isArray(linhas)) throw new Error(INVALIDO)
@@ -106,11 +140,19 @@ function validar(json: string): Record<Tabela, object[]> {
       if (!linhaValida(t, l as Linha)) throw new Error(INVALIDO)
     }
   }
-  return obj as Record<Tabela, object[]>
+  const tabelas = obj as Record<Tabela, object[]>
+  if (obj.versao !== 3 || obj.preferencias === undefined) return { tabelas }
+  const preferencias = validarPreferencias(obj.preferencias)
+  // Conta padrão que não existe entre as contas importadas é descartada.
+  if (preferencias.contaPadraoId !== undefined && !tabelas.contas.some((c) => (c as { id: string }).id === preferencias.contaPadraoId)) {
+    delete preferencias.contaPadraoId
+  }
+  return { tabelas, preferencias }
 }
 
-export async function importar(json: string): Promise<void> {
-  const dados = validar(json)
+/** Importa o backup (v2 ou v3). Nada é apagado antes de a validação passar. Devolve as preferências para a UI aplicar. */
+export async function importar(json: string): Promise<{ preferencias?: PreferenciasBackup }> {
+  const { tabelas: dados, preferencias } = validar(json)
   await db.transaction('rw', TABELAS.map((t) => db[t]), async () => {
     for (const t of TABELAS) {
       // Único cast: `db[t]` é uma união de Table<Tipo, string>; as linhas já foram validadas por tabela em `validar`.
@@ -119,4 +161,5 @@ export async function importar(json: string): Promise<void> {
       await tabela.bulkPut(dados[t])
     }
   })
+  return preferencias ? { preferencias } : {}
 }

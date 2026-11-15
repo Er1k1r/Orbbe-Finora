@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from 'react'
 
 export type Objetivo = 'destino' | 'nao_estourar' | 'contas_em_dia' | 'meta'
-interface Prefs { objetivos: Objetivo[]; checklistFechado: boolean; semFinanciamento: boolean; contaPadraoId?: string }
+export interface Prefs { objetivos: Objetivo[]; checklistFechado: boolean; semFinanciamento: boolean; contaPadraoId?: string }
 
 const CHAVE = 'financas.prefs'
 const PADRAO: Prefs = { objetivos: [], checklistFechado: false, semFinanciamento: false }

@@ -180,3 +180,61 @@ describe('backup v2: ida e volta com campos novos', () => {
     expect(JSON.parse(await exportar())).toEqual(antes)
   })
 })
+
+describe('backup v3: preferências', () => {
+  const conta = { id: 'c1', nome: 'Banco', tipo: 'banco' as const, saldoInicial: 1000 }
+  const vazio = { contas: [], fontes: [], categorias: [], lancamentos: [], financiamentos: [], planos: [] }
+  const prefs = { objetivos: ['destino', 'meta'] as ('destino' | 'meta')[], checklistFechado: true, semFinanciamento: false, contaPadraoId: 'c1' }
+  const preservou = async () => expect(await repo.contas.listar()).toEqual([conta])
+
+  it('exporta versão 3 com preferências e importar as devolve (ida e volta)', async () => {
+    await repo.contas.salvar(conta)
+    const json = await exportar(prefs)
+    expect(JSON.parse(json).versao).toBe(3)
+    expect(JSON.parse(json).preferencias).toEqual(prefs)
+    await db.delete(); await db.open()
+    expect(await importar(json)).toEqual({ preferencias: prefs })
+    expect(await repo.contas.listar()).toEqual([conta])
+  })
+  it('exportar sem preferências não grava o bloco; importar devolve objeto vazio', async () => {
+    const json = await exportar()
+    expect('preferencias' in JSON.parse(json)).toBe(false)
+    expect(await importar(json)).toEqual({})
+  })
+  it('importa arquivo v2 (sem preferências), ignora preferencias num v2 e rejeita outras versões', async () => {
+    expect(await importar(JSON.stringify({ versao: 2, ...vazio, contas: [conta] }))).toEqual({})
+    expect(await importar(JSON.stringify({ versao: 2, ...vazio, contas: [conta], preferencias: { objetivos: ['x'] } }))).toEqual({})
+    await expect(importar(JSON.stringify({ versao: 4, ...vazio }))).rejects.toThrow('Versão de backup não suportada')
+    await expect(importar(JSON.stringify({ versao: '3', ...vazio }))).rejects.toThrow('Versão de backup não suportada')
+    await preservou()
+  })
+  describe('rejeita preferências inválidas e preserva os dados', () => {
+    const rejeita = async (preferencias: unknown) => {
+      await repo.contas.salvar(conta)
+      await expect(importar(JSON.stringify({ versao: 3, ...vazio, contas: [], preferencias }))).rejects.toThrow('Arquivo de backup inválido')
+      await preservou()
+    }
+    it('objetivo desconhecido', () => rejeita({ objetivos: ['destino', 'rico'] }))
+    it('objetivos que não é array', () => rejeita({ objetivos: 'destino' }))
+    it('flag não booleana', async () => {
+      await rejeita({ checklistFechado: 'sim' })
+      await rejeita({ semFinanciamento: 1 })
+    })
+    it('contaPadraoId que não é texto', () => rejeita({ contaPadraoId: 5 }))
+    it('bloco que não é objeto', async () => {
+      await rejeita('x')
+      await rejeita(null)
+      await rejeita([])
+    })
+  })
+  it('chaves desconhecidas são ignoradas e todos os campos são opcionais', async () => {
+    const r = await importar(JSON.stringify({ versao: 3, ...vazio, preferencias: { tema: 'escuro', checklistFechado: true } }))
+    expect(r).toEqual({ preferencias: { checklistFechado: true } })
+    expect(await importar(JSON.stringify({ versao: 3, ...vazio, preferencias: {} }))).toEqual({ preferencias: {} })
+  })
+  it('contaPadraoId que não existe entre as contas importadas é descartada', async () => {
+    const com = (id: string) => JSON.stringify({ versao: 3, ...vazio, contas: [conta], preferencias: { contaPadraoId: id, semFinanciamento: true } })
+    expect(await importar(com('c1'))).toEqual({ preferencias: { contaPadraoId: 'c1', semFinanciamento: true } })
+    expect(await importar(com('fantasma'))).toEqual({ preferencias: { semFinanciamento: true } })
+  })
+})

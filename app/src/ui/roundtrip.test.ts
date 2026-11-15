@@ -93,12 +93,13 @@ describe('ida e volta de todas as linhas construídas pelas telas', () => {
     await substituirPlano('fin1', t.planos[0])
 
     const antes = await ordenado()
-    const json = await exportar()
+    const prefs = { objetivos: ['nao_estourar' as const, 'meta' as const], checklistFechado: true, semFinanciamento: true, contaPadraoId: t.contas[0].id }
+    const json = await exportar(prefs)
     expect(json).not.toContain(':null') // o importador rejeita null; nada grava null
     await db.delete()
     await db.open()
     expect((await ordenado()).lancamentos).toEqual([]) // apagou de verdade
-    await importar(json)
+    expect(await importar(json)).toEqual({ preferencias: prefs }) // preferências voltam e a conta padrão existe entre as importadas
     expect(await ordenado()).toEqual(antes)
     expect(antes.lancamentos.length).toBeGreaterThan(15)
   })

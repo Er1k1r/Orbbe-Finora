@@ -5,6 +5,7 @@ import { useDados } from '../hooks/useDados'
 import { exportar, importar } from '../../data/backup'
 import { pedirPersistencia, type EstadoArmazenamento } from '../../data/armazenamento'
 import { hojeLocal } from '../../domain/meses'
+import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
 
 const TEXTO_ARMAZENAMENTO: Record<EstadoArmazenamento, string> = {
   persistente: 'Armazenamento protegido: o navegador não apaga os dados do app por conta própria.',
@@ -17,11 +18,12 @@ export default function Backup() {
   const [msg, setMsg] = useState('')
   const [pedido, setPedido] = useState<EstadoArmazenamento>() // resposta de um novo pedido; antes dele vale o do Shell
   const armazenamento = pedido ?? d.armazenamento
+  const prefs = usePrefs()
   const arquivo = useRef<HTMLInputElement>(null)
 
   async function baixar() {
     try {
-      const blob = new Blob([await exportar()], { type: 'application/json' })
+      const blob = new Blob([await exportar(prefs)], { type: 'application/json' })
       const a = document.createElement('a')
       const url = URL.createObjectURL(blob)
       a.href = url
@@ -35,7 +37,11 @@ export default function Backup() {
   }
   async function ler(f: File) {
     if (!confirm('Isso substitui todos os dados atuais. Continuar?')) return
-    try { await importar(await f.text()); setMsg('Backup importado.') }
+    try {
+      const { preferencias } = await importar(await f.text())
+      if (preferencias) salvarPrefs({ ...preferencias, contaPadraoId: preferencias.contaPadraoId }) // o arquivo manda: sem conta padrão nele, limpa a atual
+      setMsg('Backup importado.')
+    }
     catch (e) { setMsg((e as Error).message) }
   }
 
