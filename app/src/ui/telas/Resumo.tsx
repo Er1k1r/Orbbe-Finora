@@ -12,6 +12,7 @@ import { topCategorias } from '../../domain/categorias'
 import { formatarBRL } from '../../domain/dinheiro'
 import { ehMovimentoInterno, ehPagamentoParcela } from '../../domain/fluxo'
 import { mesDe } from '../../domain/meses'
+import { linhasContas } from '../padroes'
 import type { Mes } from '../../domain/tipos'
 
 const Linha = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: string }) => (
@@ -26,7 +27,7 @@ const Titulo = ({ children }: { children: ReactNode }) => (
 )
 
 export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancamento: () => void }) {
-  const { resumo: r, aporte, insights, alertasConta, compromissos, reserva, lancamentos, categorias, financiamentos } = useResumo(mes)
+  const { resumo: r, aporte, insights, alertasConta, compromissos, reserva, lancamentos, categorias, financiamentos, contas } = useResumo(mes)
   const prefs = usePrefs()
   const nomeCat = (id: string) => categorias.find((c) => c.id === id)?.nome ?? ''
   const idsFin = new Set(financiamentos.map((f) => f.id))
@@ -65,6 +66,7 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
     return nomeCat(l.categoriaId)
   }
   const destino = topCategorias(lancamentos, financiamentos, mes, 3)
+  const linhaContas = linhasContas(contas, lancamentos, mes)
   const tresMeses = compromissos.meses.slice(0, 3)
 
   const cartoes: Record<Cartao, ReactNode> = {
@@ -89,8 +91,31 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
         )}
         <div className="mt-1 border-t border-[var(--linha)] pt-2">
           <Linha rotulo="Saldo seguro" valor={formatarBRL(r.saldoSeguro)} />
+          <Link to="/lancamentos" className="inline-flex min-h-11 items-center font-semibold text-marca-texto">Verificar</Link>
           <p className="text-xs text-suave">Saldo no fim do mês menos despesas, parcelas e antecipações ainda não pagas.</p>
         </div>
+      </Moldura>
+    ),
+    contas: (
+      <Moldura>
+        <Link to="/contas" className="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2">
+          <Titulo>Contas</Titulo>
+          {linhaContas.length === 0 && <p className="mt-2 text-suave">Nenhuma conta cadastrada.</p>}
+          <ul className="mt-2 divide-y divide-[var(--linha)]">
+            {linhaContas.map((c) => (
+              <li key={c.id} className="flex min-h-11 items-center justify-between gap-3 py-2">
+                <span className="min-w-0 truncate">
+                  {c.nome}
+                  {c.reserva && <span className="ml-2 rounded-full border border-[var(--linha)] px-2 py-0.5 text-xs font-semibold text-suave">Reserva</span>}
+                </span>
+                <span className="text-right">
+                  <span className={`valor ${c.negativa ? 'text-negativo' : ''}`}>{formatarBRL(c.saldo)}</span>
+                  {c.negativa && <span className="block text-xs text-negativo">Conta negativa</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Link>
       </Moldura>
     ),
     compromissos: (

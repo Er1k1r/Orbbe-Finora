@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { appVazio, bloqueioRemoverCategoria, contaPadrao } from './padroes'
-import type { Conta } from '../domain/tipos'
+import { appVazio, bloqueioRemoverCategoria, contaPadrao, linhasContas } from './padroes'
+import type { Conta, Lancamento } from '../domain/tipos'
 
 const c = (id: string, nome: string, extra: Partial<Conta> = {}): Conta => ({ id, nome, tipo: 'banco', saldoInicial: 0, ...extra })
 
@@ -53,4 +53,30 @@ describe('bloqueioRemoverCategoria', () => {
     expect(bloqueioRemoverCategoria('lazer', [uso('lazer')])).toBe('Esta categoria tem lançamentos.')
     expect(bloqueioRemoverCategoria('lazer', [uso('mercado')])).toBeUndefined()
   })
+})
+
+describe('linhasContas (card Contas do Resumo)', () => {
+  const l = (id: string, contaId: string, valor: number, data: string, p: Partial<Lancamento> = {}): Lancamento => ({
+    id, valor, data, tipo: 'saida', categoriaId: 'x', natureza: 'variavel', contaId, status: 'pago', ...p,
+  })
+  const contas = [c('r', 'Cofre', { reserva: true, saldoInicial: 50000 }), c('z', 'Zeta'), c('a', 'alfa', { saldoInicial: 100000 }), c('b', 'Beta')]
+  const lancs = [
+    l('1', 'a', 5000, '2026-10-02', { tipo: 'entrada' }), // alfa: 100000 + 5000 - 2000 = 103000 (nov e pendentes não contam em out)
+    l('2', 'a', 2000, '2026-10-03'),
+    l('3', 'a', 9999, '2026-11-01'),
+    l('4', 'a', 7777, '2026-10-20', { status: 'pendente' }),
+    l('5', 'b', 3000, '2026-10-05'), // Beta: 0 - 3000 = -3000 (negativa)
+  ]
+  it('uma linha por conta: não-reserva por nome (pt-BR) e depois a reserva; saldo do mês visto', () => {
+    expect(linhasContas(contas, lancs, '2026-10')).toEqual([
+      { id: 'a', nome: 'alfa', reserva: false, saldo: 103000, negativa: false },
+      { id: 'b', nome: 'Beta', reserva: false, saldo: -3000, negativa: true },
+      { id: 'z', nome: 'Zeta', reserva: false, saldo: 0, negativa: false },
+      { id: 'r', nome: 'Cofre', reserva: true, saldo: 50000, negativa: false },
+    ])
+  })
+  it('o mês seguinte inclui o lançamento pago de novembro', () => {
+    expect(linhasContas(contas, lancs, '2026-11')[0].saldo).toBe(103000 - 9999)
+  })
+  it('sem contas, lista vazia', () => expect(linhasContas([], [], '2026-10')).toEqual([]))
 })

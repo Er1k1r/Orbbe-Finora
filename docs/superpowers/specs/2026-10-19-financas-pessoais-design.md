@@ -210,6 +210,7 @@ outros pendentes), total por mês e lista de términos ("óculos termina em jun/
 Recorrência com fim (`recorrenciaAte`; cancelar = encerrar no mês atual); campo `descricao` no lançamento;
 pedido de armazenamento persistente ao navegador com status na tela de Backup; categorias de sistema
 (transferência, ajuste) fora da grade de lançamento.
+Decisões de 2026-11-14: (a) excluir um lançamento recorrente (modelo ou cópia) pergunta "Só este mês" ou "Encerrar a repetição"; "só este mês" no modelo passa a recorrência para um novo modelo no mês seguinte ao último mês coberto (modelo, cópias, `geradoAte`), re-apontando as cópias; (b) o backup é versão 3 e leva as preferências (v2 continua importável, sem preferências; chaves extras ignoradas; conta padrão inexistente descartada); (c) a lista do mês mostra os previstos da recorrência (somente leitura) e o seletor de mês só aparece onde o mês importa (nas demais telas o cabeçalho mostra o título); (d) o Resumo ganha o card Contas (depois de Pendências) e o link "Verificar" no saldo seguro.
 
 ## 13. Identidade visual — base cfc_platform (2026-10-23, substitui a paleta e as fontes do §8)
 

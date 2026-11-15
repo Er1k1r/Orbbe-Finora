@@ -1,4 +1,5 @@
-import type { Conta, Lancamento } from '../domain/tipos'
+import { situacaoContas } from '../domain/contas'
+import type { Centavos, Conta, Lancamento, Mes } from '../domain/tipos'
 
 /**
  * Conta padrão dos formulários: a preferida (`contaPadraoId`) se ainda existir; senão a primeira que NÃO é
@@ -20,4 +21,14 @@ export function bloqueioRemoverCategoria(id: string, lancs: Pick<Lancamento, 'ca
   if (id === 'outros') return 'Essa categoria é usada nos pagamentos de financiamento e não pode ser removida.'
   if (lancs.some((l) => l.categoriaId === id)) return 'Esta categoria tem lançamentos.'
   return undefined
+}
+
+export interface LinhaConta { id: string; nome: string; reserva: boolean; saldo: Centavos; negativa: boolean }
+
+/** Card Contas do Resumo: saldo de cada conta no fim do mês visto; as comuns por nome (pt-BR) e a reserva por último. */
+export function linhasContas(contas: Conta[], lancs: Lancamento[], mes: Mes): LinhaConta[] {
+  const situacao = new Map(situacaoContas(contas, lancs, mes).map((s) => [s.contaId, s]))
+  return [...contas]
+    .sort((a, b) => Number(a.reserva === true) - Number(b.reserva === true) || a.nome.localeCompare(b.nome, 'pt-BR'))
+    .map((c) => ({ id: c.id, nome: c.nome, reserva: c.reserva === true, saldo: situacao.get(c.id)?.saldo ?? 0, negativa: situacao.get(c.id)?.negativa === true }))
 }
