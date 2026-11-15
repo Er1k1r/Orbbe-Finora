@@ -10,7 +10,8 @@ import { cancelarRecorrencia } from '../../domain/recorrencia'
 import { rotuloMes, rotuloNatureza } from '../rotulos'
 import { ordenarLancamentos, rotuloParcelamento } from '../lancamento'
 import { parcelasRestantesDoGrupo } from '../../domain/parcelamento'
-import { idsDeExclusao } from '../construtores'
+import { encerrarRepeticao, excluirSoEsteMes, idsDeExclusao, modeloDaRecorrencia, type EdicaoExclusao } from '../construtores'
+import { FormRapido } from '../componentes/FormRapido'
 import type { Lancamento } from '../../domain/tipos'
 
 export default function Lancamentos({ mes }: { mes: string }) {
@@ -21,14 +22,24 @@ export default function Lancamentos({ mes }: { mes: string }) {
   const itens = ordenarLancamentos(d.lancamentos.filter((l) => mesDe(l.data) === mes && (filtro === 'todos' || l.tipo === filtro)))
 
   // O modelo da recorrência: o próprio lançamento (modelo) ou aquele de que a cópia nasceu (`origemId`).
-  const modeloDe = (l: Lancamento) =>
-    l.recorrencia === 'mensal' ? l : d.lancamentos.find((m) => m.id === l.origemId && m.recorrencia === 'mensal')
+  const modeloDe = (l: Lancamento) => modeloDaRecorrencia(l, d.lancamentos)
   const ativo = (m?: Lancamento) => m !== undefined && (m.recorrenciaAte === undefined || m.recorrenciaAte > mesAtual)
 
   // `{ ...modelo, recorrenciaAte }` (dentro de cancelarRecorrencia) preserva o `geradoAte` do modelo.
   const cancelar = (m: Lancamento) => repo.lancamentos.salvar(cancelarRecorrencia(m, mesAtual))
 
+  const [perguntaExcluir, setPerguntaExcluir] = useState<Lancamento | null>(null)
+
+  async function aplicarEdicao(e: EdicaoExclusao) {
+    await db.transaction('rw', db.lancamentos, async () => {
+      await db.lancamentos.bulkDelete(e.apagar)
+      await db.lancamentos.bulkPut(e.salvar)
+    })
+    setPerguntaExcluir(null)
+  }
+
   async function excluir(l: Lancamento) {
+    if (l.recorrencia === 'mensal' || l.origemId !== undefined) { setPerguntaExcluir(l); return } // pergunta o que fazer
     if (!confirm(l.transferenciaId ? 'Excluir esta transferência (as duas pontas)?' : 'Excluir este lançamento?')) return
     await db.lancamentos.bulkDelete(idsDeExclusao(l, d.lancamentos))
   }
@@ -101,6 +112,25 @@ export default function Lancamentos({ mes }: { mes: string }) {
           })}
         </ul>
       </Moldura>
+      {perguntaExcluir && (
+        <FormRapido titulo="Excluir lançamento recorrente" onSalvar={() => {}} onCancelar={() => setPerguntaExcluir(null)}
+          acoes={
+            <div className="grid gap-2">
+              <button type="button" onClick={() => aplicarEdicao(excluirSoEsteMes(d.lancamentos, perguntaExcluir))}
+                className="min-h-12 rounded-full bg-marca font-semibold text-white">Só este mês</button>
+              <button type="button" onClick={() => aplicarEdicao(encerrarRepeticao(d.lancamentos, perguntaExcluir, mesAtual))}
+                className="min-h-12 rounded-full bg-[var(--casca)] font-semibold">Encerrar a repetição</button>
+              <button type="button" onClick={() => setPerguntaExcluir(null)}
+                className="min-h-12 rounded-full font-semibold text-suave">Cancelar</button>
+            </div>
+          }>
+          <p className="text-sm text-suave">
+            “Só este mês” tira apenas este lançamento e mantém a repetição nos próximos meses.
+            “Encerrar a repetição” para de gerar novos meses a partir do próximo e remove este lançamento só se for um
+            mês futuro ainda pendente.
+          </p>
+        </FormRapido>
+      )}
     </div>
   )
 }

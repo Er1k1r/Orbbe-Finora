@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   baseRapida, desvincularContrato, idsDeExclusao, montarCategoria, montarConferencia, montarConta, montarFonte,
   montarLancamentoRapido, montarPagamento, montarParcelado, montarPlano, montarRenda, montarTransferencia,
-  sobraLivre, type EntradaRapida,
+  sobraLivre, excluirSoEsteMes, encerrarRepeticao, modeloDaRecorrencia, type EntradaRapida,
 } from './construtores'
 import { dataReal } from './validacao'
 import { semVazios } from '../test-ajuda'
 import type { Lancamento } from '../domain/tipos'
+import { recorrentesVirtuais } from '../domain/recorrencia'
 
 const centavosOk = (n: number) => Number.isSafeInteger(n)
 
@@ -233,5 +234,129 @@ describe('montarPagamento, planos e remoção', () => {
     expect(idsDeExclusao(s, lancs).sort()).toEqual(['t:entrada', 't:saida'])
     expect(idsDeExclusao(e, lancs).sort()).toEqual(['t:entrada', 't:saida'])
     expect(idsDeExclusao(s, [])).toEqual(['t:saida']) // ponta isolada: ainda apaga a si mesma
+  })
+})
+
+describe('excluir lançamento recorrente', () => {
+  const modelo = (p: Partial<Lancamento> = {}): Lancamento => ({
+    id: 'm', valor: 10000, data: '2026-07-05', tipo: 'saida', categoriaId: 'x', natureza: 'fixo', contaId: 'c1',
+    status: 'pago', recorrencia: 'mensal', geradoAte: '2026-09', ...p,
+  })
+  const copia = (mes: string, p: Partial<Lancamento> = {}): Lancamento => ({
+    id: `m:${mes}`, valor: 10000, data: `${mes}-05`, tipo: 'saida', categoriaId: 'x', natureza: 'fixo', contaId: 'c1',
+    status: 'pago', origemId: 'm', ...p,
+  })
+  const aplicar = (lancs: Lancamento[], r: { apagar: string[]; salvar: Lancamento[] }) => {
+    const por = new Map(lancs.filter((l) => !r.apagar.includes(l.id)).map((l) => [l.id, l]))
+    for (const s of r.salvar) por.set(s.id, s)
+    return [...por.values()]
+  }
+  const semPendurados = (lancs: Lancamento[]) => {
+    const ids = new Set(lancs.map((l) => l.id))
+    return lancs.every((l) => l.origemId === undefined || ids.has(l.origemId))
+  }
+
+  it('modeloDaRecorrencia: o próprio modelo, o da cópia, ou nada', () => {
+    const m = modelo(), c = copia('2026-08')
+    expect(modeloDaRecorrencia(m, [m, c])).toBe(m)
+    expect(modeloDaRecorrencia(c, [m, c])).toBe(m)
+    expect(modeloDaRecorrencia(c, [c])).toBeUndefined()
+    expect(modeloDaRecorrencia({ ...m, recorrencia: undefined, id: 'z' }, [m])).toBeUndefined()
+  })
+
+  it('cópia: apaga só ela; a marca d\'água do modelo já cobre o mês', () => {
+    const lancs = [modelo(), copia('2026-08'), copia('2026-09')]
+    const r = excluirSoEsteMes(lancs, lancs[2])
+    expect(r).toEqual({ apagar: ['m:2026-09'], salvar: [] })
+    expect(semPendurados(aplicar(lancs, r))).toBe(true)
+  })
+
+  it('cópia sem marca d\'água no modelo: avança geradoAte até o mês apagado (não ressuscita)', () => {
+    const { geradoAte: _g, ...semMarca } = modelo()
+    const lancs = [semMarca as Lancamento, copia('2026-08'), copia('2026-09')]
+    const r = excluirSoEsteMes(lancs, lancs[2])
+    expect(r.apagar).toEqual(['m:2026-09'])
+    expect(r.salvar).toEqual([{ ...semMarca, geradoAte: '2026-09' }])
+    // marca d'água abaixo do mês (2026-08 < 2026-09) também avança
+    const r2 = excluirSoEsteMes([modelo({ geradoAte: '2026-08' }), copia('2026-09')], copia('2026-09'))
+    expect(r2.salvar).toEqual([modelo({ geradoAte: '2026-09' })])
+  })
+
+  it('modelo 2026-07-05 com cópias pagas ago/set: o novo modelo começa em out (depois da última cópia)', () => {
+    // maior mês entre modelo (07), cópias (08, 09) e geradoAte (09) = 09; +1 = 2026-10; dia 5 mantido
+    const lancs = [modelo(), copia('2026-08'), copia('2026-09')]
+    const r = excluirSoEsteMes(lancs, lancs[0])
+    expect(r.apagar).toEqual(['m'])
+    expect(r.salvar).toEqual([
+      { ...modelo(), id: 'm:modelo:2026-10', data: '2026-10-05', status: 'pendente' },
+      { ...copia('2026-08'), origemId: 'm:modelo:2026-10' },
+      { ...copia('2026-09'), origemId: 'm:modelo:2026-10' },
+    ])
+    const depois = aplicar(lancs, r)
+    expect(semPendurados(depois)).toBe(true)
+    expect(depois.filter((l) => l.recorrencia === 'mensal')).toHaveLength(1)
+    semVazios(r.salvar)
+    // a recorrência segue: o novo modelo só traz nov e dez (out é o próprio modelo, ago/set já existem)
+    const novo = depois.find((l) => l.recorrencia === 'mensal')!
+    expect(recorrentesVirtuais([novo], depois, '2026-12').map((v) => v.mes)).toEqual(['2026-11', '2026-12'])
+  })
+
+  it('modelo sem cópias e sem marca d\'água: o novo começa no mês seguinte, dia limitado ao fim do mês', () => {
+    const m = { id: 'm', valor: 5000, data: '2026-01-31', tipo: 'saida', categoriaId: 'x', natureza: 'fixo', contaId: 'c1', status: 'pendente', recorrencia: 'mensal' } as Lancamento
+    const r = excluirSoEsteMes([m], m)
+    expect(r.salvar).toEqual([{ ...m, id: 'm:modelo:2026-02', data: '2026-02-28' }])
+    semVazios(r.salvar)
+  })
+
+  it('cópias apagadas dentro da marca d\'água: o novo modelo começa depois da marca (mês apagado não volta)', () => {
+    // geradoAte 2026-10 cobre set e out apagados; cópia só em ago => maior = 10 => novo em 2026-11
+    const lancs = [modelo({ geradoAte: '2026-10' }), copia('2026-08')]
+    const r = excluirSoEsteMes(lancs, lancs[0])
+    expect(r.salvar[0]).toMatchObject({ id: 'm:modelo:2026-11', data: '2026-11-05', geradoAte: '2026-10' })
+  })
+
+  it('sem marca d\'água, o mês das cópias é que manda (maior = 09 => novo em 2026-10)', () => {
+    const { geradoAte: _g, ...m } = modelo()
+    const lancs = [m as Lancamento, copia('2026-08'), copia('2026-09')]
+    expect(excluirSoEsteMes(lancs, lancs[0]).salvar[0]).toMatchObject({ id: 'm:modelo:2026-10', data: '2026-10-05' })
+  })
+
+  it('apagar o modelo de novo mantém a raiz do id (sem :modelo:modelo)', () => {
+    const m2 = modelo({ id: 'm:modelo:2026-10', data: '2026-10-05', status: 'pendente' })
+    const r = excluirSoEsteMes([m2], m2)
+    expect(r.salvar[0].id).toBe('m:modelo:2026-11')
+  })
+
+  it('recorrência já encerrada antes do mês novo: sem novo modelo, as cópias viram lançamentos comuns', () => {
+    const lancs = [modelo({ recorrenciaAte: '2026-09' }), copia('2026-08'), copia('2026-09')]
+    const r = excluirSoEsteMes(lancs, lancs[0]) // novo seria 2026-10 > 2026-09
+    expect(r.apagar).toEqual(['m'])
+    expect(r.salvar).toEqual([
+      { ...copia('2026-08'), origemId: undefined },
+      { ...copia('2026-09'), origemId: undefined },
+    ].map(({ origemId: _o, ...c }) => c))
+    expect(r.salvar.every((l) => !('origemId' in l))).toBe(true)
+    expect(semPendurados(aplicar(lancs, r))).toBe(true)
+  })
+
+  it('encerrar a repetição: cancela o modelo no mês atual (geradoAte preservado); o item fica', () => {
+    const lancs = [modelo(), copia('2026-08'), copia('2026-09')]
+    const r = encerrarRepeticao(lancs, lancs[1], '2026-10')
+    expect(r).toEqual({ apagar: [], salvar: [{ ...modelo(), recorrenciaAte: '2026-10' }] })
+    expect(encerrarRepeticao(lancs, lancs[0], '2026-10')).toEqual(r) // pelo próprio modelo
+  })
+
+  it('encerrar a repetição a partir de uma cópia pendente futura: também apaga essa cópia', () => {
+    const futura = copia('2026-12', { status: 'pendente' })
+    const lancs = [modelo(), futura]
+    expect(encerrarRepeticao(lancs, futura, '2026-10').apagar).toEqual(['m:2026-12'])
+    // pendente mas do mês corrente, ou paga e futura: fica
+    expect(encerrarRepeticao(lancs, copia('2026-10', { status: 'pendente' }), '2026-10').apagar).toEqual([])
+    expect(encerrarRepeticao(lancs, copia('2026-12'), '2026-10').apagar).toEqual([])
+  })
+
+  it('encerrar sem modelo (cópia órfã): só apaga a pendente futura, nada a salvar', () => {
+    const futura = copia('2026-12', { status: 'pendente' })
+    expect(encerrarRepeticao([futura], futura, '2026-10')).toEqual({ apagar: ['m:2026-12'], salvar: [] })
   })
 })

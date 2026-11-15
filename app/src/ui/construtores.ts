@@ -10,6 +10,8 @@ import type {
   Categoria, Centavos, Conta, EfeitoAporte, FonteDeRenda, Lancamento, Natureza, PagamentoFinanciamento,
   PlanoAmortizacao, TipoFonte, TipoLancamento,
 } from '../domain/tipos'
+import { diffMeses, mesDe, somarMeses } from '../domain/meses'
+import { cancelarRecorrencia } from '../domain/recorrencia'
 import { comSinal } from './valores'
 
 // ---------- Lançamento rápido ----------
@@ -177,4 +179,53 @@ export function idsDeExclusao(l: Lancamento, lancs: Lancamento[]): string[] {
   if (l.transferenciaId === undefined) return [l.id]
   const par = lancs.filter((x) => x.transferenciaId === l.transferenciaId).map((x) => x.id)
   return par.includes(l.id) ? par : [...par, l.id]
+}
+
+// ---------- Exclusão de lançamento recorrente ----------
+
+export interface EdicaoExclusao { apagar: string[]; salvar: Lancamento[] }
+
+/** O modelo mensal do grupo: o próprio lançamento (modelo) ou aquele de que a cópia nasceu (`origemId`). */
+export function modeloDaRecorrencia(l: Lancamento, lancs: Lancamento[]): Lancamento | undefined {
+  if (l.recorrencia === 'mensal') return l
+  if (l.origemId === undefined) return undefined
+  return lancs.find((m) => m.id === l.origemId && m.recorrencia === 'mensal')
+}
+
+/**
+ * "Só este mês". Cópia: apaga só ela (se o modelo não tiver marca d'água cobrindo o mês, avança `geradoAte` até
+ * ele para a cópia apagada não ressuscitar). Modelo: o modelo não pode ser apagado (pararia a recorrência), então
+ * a recorrência passa para um NOVO modelo (id `${raiz}:modelo:${mês}`, pendente, mesmos campos e `geradoAte`)
+ * no mês seguinte ao MAIOR entre o mês do modelo, o das cópias existentes e `geradoAte` — nada é duplicado nem
+ * ressuscitado. As cópias passam a apontar para o novo modelo na mesma edição (sem `origemId` pendurado); se a
+ * recorrência já acabou antes desse mês (`recorrenciaAte`), não há novo modelo e as cópias viram lançamentos comuns.
+ */
+export function excluirSoEsteMes(lancs: Lancamento[], alvo: Lancamento): EdicaoExclusao {
+  if (alvo.recorrencia !== 'mensal') {
+    const mes = mesDe(alvo.data)
+    const modelo = alvo.origemId === undefined ? undefined : modeloDaRecorrencia(alvo, lancs)
+    const avanca = modelo !== undefined && (modelo.geradoAte === undefined || modelo.geradoAte < mes)
+    return { apagar: [alvo.id], salvar: avanca ? [{ ...modelo, geradoAte: mes }] : [] }
+  }
+  const copias = lancs.filter((c) => c.origemId === alvo.id)
+  const ultimo = [mesDe(alvo.data), ...(alvo.geradoAte ? [alvo.geradoAte] : []), ...copias.map((c) => mesDe(c.data))].sort().pop()!
+  const mesNovo = somarMeses(`${ultimo}-01`, 1).slice(0, 7)
+  if (alvo.recorrenciaAte !== undefined && mesNovo > alvo.recorrenciaAte) {
+    return { apagar: [alvo.id], salvar: copias.map(({ origemId: _o, ...comum }) => comum) }
+  }
+  const raiz = alvo.id.replace(/:modelo:\d{4}-\d{2}$/, '')
+  const id = `${raiz}:modelo:${mesNovo}`
+  const novo: Lancamento = { ...alvo, id, data: somarMeses(alvo.data, diffMeses(mesDe(alvo.data), mesNovo)), status: 'pendente' }
+  return { apagar: [alvo.id], salvar: [novo, ...copias.map((c) => ({ ...c, origemId: id }))] }
+}
+
+/**
+ * "Encerrar a repetição": o modelo do grupo para de gerar após `mesAtual` (`cancelarRecorrencia`, que preserva
+ * `geradoAte`); se o item selecionado é uma cópia pendente de mês futuro, ela também é apagada. Nos demais casos
+ * (o modelo, cópia paga ou do mês corrente/passado) o item fica.
+ */
+export function encerrarRepeticao(lancs: Lancamento[], alvo: Lancamento, mesAtual: string): EdicaoExclusao {
+  const modelo = modeloDaRecorrencia(alvo, lancs)
+  const futuraPendente = alvo.recorrencia !== 'mensal' && alvo.origemId !== undefined && alvo.status === 'pendente' && mesDe(alvo.data) > mesAtual
+  return { apagar: futuraPendente ? [alvo.id] : [], salvar: modelo ? [cancelarRecorrencia(modelo, mesAtual)] : [] }
 }

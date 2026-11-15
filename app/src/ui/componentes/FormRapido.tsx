@@ -4,8 +4,9 @@ import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
 
 /** Folha inferior genérica (diálogo): foco no primeiro campo, Escape fecha, Tab fica dentro, foco volta a quem abriu. */
-export function FormRapido({ titulo, onSalvar, onCancelar, children }: {
-  titulo: string; onSalvar: () => void; onCancelar: () => void; children: ReactNode
+/** `acoes` substitui o rodapé padrão (Cancelar/Salvar) quando o diálogo tem outras escolhas. */
+export function FormRapido({ titulo, onSalvar, onCancelar, acoes, children }: {
+  titulo: string; onSalvar: () => void; onCancelar: () => void; acoes?: ReactNode; children: ReactNode
 }) {
   const painel = useRef<HTMLFormElement>(null)
   useFolhaNoHistorico(true, onCancelar) // Voltar do Android cancela o formulário
@@ -36,10 +37,12 @@ export function FormRapido({ titulo, onSalvar, onCancelar, children }: {
         className="mx-auto grid max-h-[92dvh] w-full max-w-md gap-3 overflow-y-auto rounded-t-[2rem] bg-[var(--superficie)] p-5 pb-8">
         <h2 className="text-lg font-semibold">{titulo}</h2>
         {children}
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={onCancelar} className="min-h-12 rounded-full bg-[var(--casca)] font-semibold">Cancelar</button>
-          <button type="submit" className="min-h-12 rounded-full bg-marca font-semibold text-white">Salvar</button>
-        </div>
+        {acoes ?? (
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={onCancelar} className="min-h-12 rounded-full bg-[var(--casca)] font-semibold">Cancelar</button>
+            <button type="submit" className="min-h-12 rounded-full bg-marca font-semibold text-white">Salvar</button>
+          </div>
+        )}
       </form>
     </div>
   )
