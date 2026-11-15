@@ -1,5 +1,5 @@
 import { fimDoMes, mesDe } from './meses'
-import type { Lancamento, Mes } from './tipos'
+import type { Lancamento, Mes, TipoLancamento } from './tipos'
 
 function proximoMes(mes: Mes): Mes {
   const [y, m] = mes.split('-').map(Number)
@@ -100,4 +100,14 @@ export function gerarRecorrentes(existentes: Lancamento[], hoje: string): Result
 /** Encerra a recorrência: o modelo deixa de gerar cópias após `mes` ('YYYY-MM', inclusive). */
 export function cancelarRecorrencia(modelo: Lancamento, mes: Mes): Lancamento {
   return { ...modelo, recorrenciaAte: mes }
+}
+
+/**
+ * Itens PREVISTOS de `mes` (cópias que a recorrência ainda vai gerar quando o mês chegar), só para exibição:
+ * ids determinísticos `${modelo.id}:${mes}`, pendentes. Mesmas regras do motor (`recorrentesVirtuais`):
+ * respeita `geradoAte`/`recorrenciaAte` e nunca repete uma cópia real do mês. `tipo` aplica o filtro Entradas/Saídas.
+ */
+export function previstosDoMes(lancs: Lancamento[], mes: Mes, tipo?: TipoLancamento): Lancamento[] {
+  const modelos = lancs.filter((l) => l.recorrencia === 'mensal')
+  return recorrentesVirtuais(modelos, lancs, mes).filter((v) => v.mes === mes && (tipo === undefined || v.item.tipo === tipo)).map((v) => v.item)
 }

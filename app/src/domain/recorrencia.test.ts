@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { gerarRecorrentes, cancelarRecorrencia, modelosSemCopia, recorrentesVirtuais } from './recorrencia'
+import { gerarRecorrentes, cancelarRecorrencia, modelosSemCopia, previstosDoMes, recorrentesVirtuais } from './recorrencia'
 import type { Lancamento } from './tipos'
 
 const modelo: Lancamento = {
@@ -122,5 +122,40 @@ describe('modelosSemCopia e recorrentesVirtuais (fonte única de recorrência pe
   it('para em recorrenciaAte', () => {
     const c = { ...modelo, data: '2026-08-05', recorrenciaAte: '2026-10' }
     expect(recorrentesVirtuais([c], [c], '2026-12').map((v) => v.mes)).toEqual(['2026-09', '2026-10'])
+  })
+})
+
+describe('previstosDoMes', () => {
+  // modelo m1: 2026-08-05, mensal. Meses virtuais possíveis: set, out, nov...
+  it('traz o previsto do mês visto (id determinístico, pendente, origem no modelo) e nada de outros meses', () => {
+    const r = previstosDoMes([modelo], '2026-10')
+    expect(r).toEqual([{ ...modelo, id: 'm1:2026-10', data: '2026-10-05', status: 'pendente', origemId: 'm1', recorrencia: undefined }]
+      .map(({ recorrencia: _r, ...x }) => x))
+    expect(previstosDoMes([modelo], '2026-08')).toEqual([]) // o mês do próprio modelo é real, não previsto
+    expect(previstosDoMes([modelo], '2026-07')).toEqual([]) // antes do modelo
+  })
+  it('nunca duplica uma cópia real do mês', () => {
+    const copia: Lancamento = { ...modelo, id: 'm1:2026-10', data: '2026-10-05', status: 'pendente', origemId: 'm1' }
+    delete copia.recorrencia
+    expect(previstosDoMes([modelo, copia], '2026-10')).toEqual([])
+  })
+  it('respeita a marca d\'água geradoAte (cópia apagada não ressuscita) e recorrenciaAte', () => {
+    expect(previstosDoMes([{ ...modelo, geradoAte: '2026-10' }], '2026-10')).toEqual([])
+    expect(previstosDoMes([{ ...modelo, geradoAte: '2026-10' }], '2026-11')).toHaveLength(1)
+    expect(previstosDoMes([{ ...modelo, recorrenciaAte: '2026-10' }], '2026-10')).toHaveLength(1)
+    expect(previstosDoMes([{ ...modelo, recorrenciaAte: '2026-10' }], '2026-11')).toEqual([])
+  })
+  it('limita o dia ao fim do mês e ignora lançamentos que não são modelos', () => {
+    const m31 = { ...modelo, id: 'm31', data: '2026-01-31' }
+    expect(previstosDoMes([m31, { ...modelo, id: 'z', recorrencia: undefined }], '2026-02').map((l) => [l.id, l.data])).toEqual([['m31:2026-02', '2026-02-28']])
+  })
+  it('o filtro de tipo (Entradas/Saídas) vale para os previstos', () => {
+    const b = { ...modelo, id: 'm2', tipo: 'entrada' as const }
+    expect(previstosDoMes([modelo, b], '2026-09', 'entrada').map((l) => l.id)).toEqual(['m2:2026-09'])
+    expect(previstosDoMes([modelo, b], '2026-09', 'saida').map((l) => l.id)).toEqual(['m1:2026-09'])
+  })
+  it('vários modelos no mesmo mês', () => {
+    const b = { ...modelo, id: 'm2', tipo: 'entrada' as const }
+    expect(previstosDoMes([modelo, b], '2026-09').map((l) => l.id).sort()).toEqual(['m1:2026-09', 'm2:2026-09'])
   })
 })

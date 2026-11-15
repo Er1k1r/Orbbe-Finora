@@ -24,6 +24,7 @@ import Backup from './ui/telas/Backup'
 import Dividas from './ui/telas/Dividas'
 import DividaDetalhe from './ui/telas/DividaDetalhe'
 import { appVazio } from './ui/padroes'
+import { infoDaRota } from './ui/rotas'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
 
 function Shell() {
@@ -34,6 +35,7 @@ function Shell() {
   const [armazenamento, setArmazenamento] = useState<EstadoArmazenamento>()
   const [hoje, setHoje] = useState(hojeLocal()) // dia local; muda ao voltar para o app em outro dia/mês
   const { pathname } = useLocation()
+  const rota = infoDaRota(pathname) // o seletor de mês só aparece onde o mês importa
 
   // Troca de rota começa no topo da tela.
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
@@ -79,7 +81,9 @@ function Shell() {
           <button aria-label="Abrir menu" aria-expanded={aberto} aria-controls={ID_MENU} className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
             <List size={26} weight="light" />
           </button>
-          <SeletorMes mes={mes} onChange={setMes} />
+          {rota.mostraMes
+            ? <SeletorMes mes={mes} onChange={setMes} />
+            : <span className="min-w-32 text-center font-semibold">{rota.titulo}</span>}
           <BotaoTema />
         </div>
       </header>

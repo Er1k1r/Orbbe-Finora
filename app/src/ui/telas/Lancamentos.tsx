@@ -6,7 +6,7 @@ import { repo } from '../../data/repo'
 import { db } from '../../data/db'
 import { formatarBRL } from '../../domain/dinheiro'
 import { hojeLocal, mesDe } from '../../domain/meses'
-import { cancelarRecorrencia } from '../../domain/recorrencia'
+import { cancelarRecorrencia, previstosDoMes } from '../../domain/recorrencia'
 import { rotuloMes, rotuloNatureza } from '../rotulos'
 import { ordenarLancamentos, rotuloParcelamento } from '../lancamento'
 import { parcelasRestantesDoGrupo } from '../../domain/parcelamento'
@@ -20,6 +20,9 @@ export default function Lancamentos({ mes }: { mes: string }) {
   const mesAtual = mesDe(hojeLocal())
   const nome = (id: string) => d.categorias.find((c) => c.id === id)?.nome ?? ''
   const itens = ordenarLancamentos(d.lancamentos.filter((l) => mesDe(l.data) === mes && (filtro === 'todos' || l.tipo === filtro)))
+
+  // Previstos da recorrência para o mês visto (só leitura): respeitam o mesmo filtro de Entradas/Saídas.
+  const previstos = ordenarLancamentos(previstosDoMes(d.lancamentos, mes, filtro === 'todos' ? undefined : filtro))
 
   // O modelo da recorrência: o próprio lançamento (modelo) ou aquele de que a cópia nasceu (`origemId`).
   const modeloDe = (l: Lancamento) => modeloDaRecorrencia(l, d.lancamentos)
@@ -65,7 +68,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
         ))}
       </div>
       <Moldura>
-        {itens.length === 0 && <p className="text-suave">Nenhum lançamento neste mês.</p>}
+        {itens.length === 0 && previstos.length === 0 && <p className="text-suave">Nenhum lançamento neste mês.</p>}
         <ul className="divide-y divide-[var(--linha)]">
           {itens.map((l) => {
             const modelo = modeloDe(l)
@@ -110,7 +113,22 @@ export default function Lancamentos({ mes }: { mes: string }) {
               </li>
             )
           })}
+          {previstos.map((l) => (
+            <li key={l.id} data-previsto className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 text-suave">
+              <div className="min-w-0">
+                <div className="truncate">
+                  {l.descricao ?? nome(l.categoriaId)}
+                  <span className="ml-2 rounded-full border border-[var(--linha)] px-2 py-0.5 text-xs font-semibold">previsto</span>
+                </div>
+                <div className="text-xs">
+                  {l.data.slice(8)}/{l.data.slice(5, 7)}{l.descricao ? ` · ${nome(l.categoriaId)}` : ''} · {rotuloNatureza(l.natureza)}
+                </div>
+              </div>
+              <span className="valor">{l.tipo === 'entrada' ? '+' : '−'} {formatarBRL(l.valor)}</span>
+            </li>
+          ))}
         </ul>
+        {previstos.length > 0 && <p className="mt-2 text-xs text-suave">Gerado automaticamente quando o mês chegar.</p>}
       </Moldura>
       {perguntaExcluir && (
         <FormRapido titulo="Excluir lançamento recorrente" onSalvar={() => {}} onCancelar={() => setPerguntaExcluir(null)}
