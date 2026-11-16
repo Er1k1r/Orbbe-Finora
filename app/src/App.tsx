@@ -29,6 +29,12 @@ import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenament
 
 function Shell() {
   const [aberto, setAberto] = useState(false)
+  // Barra lateral recolhida (computador): escolha salva no aparelho.
+  const [recolhida, setRecolhida] = useState(() => { try { return localStorage.getItem('finora.barra') === 'recolhida' } catch { return false } })
+  const alternarBarra = () => setRecolhida((r) => {
+    try { localStorage.setItem('finora.barra', r ? 'aberta' : 'recolhida') } catch { /* modo privado: vale só nesta sessão */ }
+    return !r
+  })
   const [mes, setMes] = useState(mesDe(hojeLocal()))
   const [lancando, setLancando] = useState(false)
   const dados = useDadosAoVivo() // única leitura do banco; as telas recebem por DadosContext
@@ -80,8 +86,8 @@ function Shell() {
     <DadosContext.Provider value={valor}>
     <div className="min-h-[100dvh] pb-28 lg:pb-12">
       <div className="ambiente" aria-hidden><i /><i /><i /></div>
-      <BarraLateral />
-      <div className="lg:pl-64">
+      <BarraLateral recolhida={recolhida} alternar={alternarBarra} />
+      <div className={`transition-[padding] duration-300 ease-[var(--ease)] ${recolhida ? 'lg:pl-20' : 'lg:pl-64'}`}>
       <div className={`mx-auto lg:px-6 ${estreita ? 'lg:max-w-2xl' : 'lg:max-w-7xl'}`}>
         <Cabecalho mes={mes} setMes={setMes} mostraMes={rota.mostraMes} titulo={rota.titulo} semana={pathname === '/'} virar={pathname !== '/painel'}
           abrirMenu={() => setAberto(true)} menuAberto={aberto} />

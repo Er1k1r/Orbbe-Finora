@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: { globPatterns: ['**/*.{js,css,html,woff2,svg}'] }, // padrão + fontes e favicon
       manifest: {
-        name: 'Finanças Pessoais',
-        short_name: 'Finanças',
+        name: 'Finora',
+        short_name: 'Finora',
         lang: 'pt-BR',
         display: 'standalone',
         start_url: '.',

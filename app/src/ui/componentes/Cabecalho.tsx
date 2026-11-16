@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { CaretLeft, CaretRight, List } from '@phosphor-icons/react'
 import { BotaoTema } from './BotaoTema'
-import { ID_MENU } from './Drawer'
+import { ID_MENU, Marca } from './Drawer'
 import { useDados } from '../hooks/useDados'
 import { eventosDoMes, semanaDe, type EventoDia } from '../../domain/folhinha'
 import { hojeLocal, mesAnterior, mesDe } from '../../domain/meses'
@@ -72,7 +72,7 @@ export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, virar = true
         <button aria-label="Abrir menu" aria-expanded={menuAberto} aria-controls={ID_MENU} className="grid size-11 place-items-center rounded-xl lg:hidden" onClick={abrirMenu}>
           <List size={26} />
         </button>
-        <span className="text-sm font-semibold">Finanças Pessoais</span>
+        <span className="text-[22px]"><Marca /></span>
         <BotaoTema />
       </div>
       {mostraMes ? (
