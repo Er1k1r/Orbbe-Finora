@@ -84,7 +84,7 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
 
   const cartoes: Record<Cartao, ReactNode> = {
     sobra: (
-      <Moldura heroi>
+      <Moldura heroi className="neon-borda">
         <div className="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
           <FolhaSobra receitas={r.receitas} despesas={r.despesas} parcelas={r.parcelas} aporte={aporte} normal={r.sobraNormal} otimizada={r.sobraOtimizada} />
           <div className="border-t border-[var(--linha)] pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">

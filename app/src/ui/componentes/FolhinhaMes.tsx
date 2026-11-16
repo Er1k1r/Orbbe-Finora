@@ -47,7 +47,7 @@ export function FolhinhaMes({ mes, editar }: { mes: Mes; editar: (l: Lancamento)
           return (
             <button key={data} role="gridcell" aria-selected={dia === data} onClick={() => setEscolhido(dia === data ? null : data)}
               aria-label={`Dia ${Number(data.slice(8))}${ehHoje ? ', hoje' : ''}: ${ev.length === 0 ? 'nada marcado' : ev.map((e) => `${e.nome} ${formatarBRL(e.valor)}`).join(', ')}`}
-              style={{ boxShadow: [ehHoje && 'inset 0 0 0 3px var(--destaque)', dia === data && `inset 0 0 0 ${ehHoje ? 5 : 2}px var(--azul)`].filter(Boolean).join(', ') || undefined }}
+              style={{ boxShadow: [ehHoje && 'inset 0 0 0 3px var(--destaque), 0 0 22px -4px var(--neon-forte)', dia === data && `inset 0 0 0 ${ehHoje ? 5 : 2}px var(--azul)`].filter(Boolean).join(', ') || undefined }}
               className={`group flex min-h-16 flex-col rounded-[10px] p-1.5 text-left transition-[box-shadow,background-color] duration-200 sm:min-h-24 sm:p-2
                 ${dia === data ? 'bg-[var(--casca)]' : 'bg-[var(--casa)] hover:bg-[var(--casca)]'}
                 `}>
