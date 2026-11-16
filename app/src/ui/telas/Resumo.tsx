@@ -166,7 +166,7 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
             { rotulo: 'Gasto no mês', v: r.despesas, ant: anterior.despesas, bom: false, cor: 'text-negativo' },
             { rotulo: 'Financiamentos', v: r.parcelas, ant: anterior.parcelas, bom: false, cor: 'text-divida' },
           ].map((k) => (
-            <Moldura key={k.rotulo} className="!p-4">
+            <Moldura key={k.rotulo} preenchimento="p-4">
               <div className="text-xs text-suave">{k.rotulo}</div>
               <div className={`valor mt-1 text-[22px] ${k.cor}`}>{formatarBRL(k.v)}</div>
               <div className="mt-2"><Variacao atual={k.v} anterior={k.ant} bomSobe={k.bom} /></div>

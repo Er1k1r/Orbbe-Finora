@@ -51,7 +51,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
         <ul className="grid gap-1">
           {ITENS.map((it, i) =>
             'secao' in it ? (
-              <li key={i} className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--sobre-marinho-suave)]">{it.secao}</li>
+              <li key={i} className="mb-1 mt-5 px-4 text-xs font-bold text-[var(--sobre-marinho-suave)]">{it.secao}</li>
             ) : (
               <li key={it.para}>
                 <NavLink to={it.para} end={it.para === '/'} onClick={fechar}
@@ -75,7 +75,7 @@ export function BarraLateral() {
       <ul className="grid gap-0.5">
         {ITENS.map((it, i) =>
           'secao' in it ? (
-            <li key={i} className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--sobre-marinho-suave)]">{it.secao}</li>
+            <li key={i} className="mb-1 mt-5 px-4 text-xs font-bold text-[var(--sobre-marinho-suave)]">{it.secao}</li>
           ) : (
             <li key={it.para}>
               <NavLink to={it.para} end={it.para === '/'}

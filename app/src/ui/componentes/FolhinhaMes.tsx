@@ -33,9 +33,9 @@ export function FolhinhaMes({ mes, editar }: { mes: Mes; editar: (l: Lancamento)
 
   return (
     <div>
-      <div className="grid grid-cols-7 gap-1 sm:gap-1.5" role="grid" aria-label="Folhinha do mês">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1.5" role="grid" aria-label="Folhinha do mês">
         {SEMANA.map((s, i) => (
-          <div key={s} role="columnheader" className={`px-1 pb-1 text-[11px] font-bold tracking-[0.08em] ${i === 0 ? 'text-negativo' : 'text-suave'}`}>{s}</div>
+          <div key={s} role="columnheader" className={`px-1 pb-1 text-xs font-bold ${i === 0 ? 'text-negativo' : 'text-suave'}`}>{s}</div>
         ))}
         {casasDoMes(mes).map((data, i) => {
           if (!data) return <div key={`v${i}`} aria-hidden />
@@ -57,7 +57,7 @@ export function FolhinhaMes({ mes, editar }: { mes: Mes; editar: (l: Lancamento)
                 {ev.some((e) => e.tipo === 'entrada') && <i className="size-1.5 rounded-full bg-[var(--verde)]" />}
                 {ev.some((e) => e.tipo === 'saida') && <i className={`size-1.5 rounded-full ${aberto.some((e) => e.tipo === 'saida') ? 'bg-[var(--vermelho)]' : 'bg-[var(--texto-suave)]'}`} />}
               </span>
-              <span className="mt-auto hidden w-full gap-0.5 text-[11px] leading-tight sm:grid" aria-hidden>
+              <span className="mt-auto hidden w-full gap-0.5 text-xs leading-tight sm:grid" aria-hidden>
                 {ev.slice(0, 2).map((e) => (
                   <span key={e.id} className={`grid ${COR[e.situacao]}`}>
                     <span className={`truncate ${e.situacao === 'pago' ? 'line-through decoration-1' : ''}`}>{e.nome}</span>

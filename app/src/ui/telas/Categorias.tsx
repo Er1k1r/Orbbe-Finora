@@ -39,14 +39,14 @@ export default function Categorias() {
           <Moldura>
             <ul className="grid gap-1">
               {categoriasDaGrade(d.categorias, g.tipo).map((c) => (
-                <li key={c.id} className="flex items-center gap-2">
+                <li key={c.id} className="flex flex-wrap items-center gap-x-2">
                   <span className="grid size-11 place-items-center"><Icone nome={c.icone} /></span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{c.nome}</div>
                     <div className="text-xs text-suave">{c.natureza === 'fixo' ? 'Fixo' : 'Variável'}{c.essencial ? ' · essencial' : ''}</div>
                   </div>
-                  <button className="min-h-11 px-3 text-sm font-semibold text-marca-texto" aria-label={`Editar ${c.nome}`} onClick={() => setEdit(c)}>Editar</button>
-                  <button className="min-h-11 px-3 text-sm font-semibold text-negativo" aria-label={`Remover ${c.nome}`} onClick={() => remover(c)}>Remover</button>
+                  <button className="min-h-11 px-2 text-sm font-semibold text-marca-texto" aria-label={`Editar ${c.nome}`} onClick={() => setEdit(c)}>Editar</button>
+                  <button className="min-h-11 px-2 text-sm font-semibold text-negativo" aria-label={`Remover ${c.nome}`} onClick={() => remover(c)}>Remover</button>
                 </li>
               ))}
             </ul>

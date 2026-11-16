@@ -41,14 +41,16 @@ html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); car
 a { text-underline-offset: 3px; }
 /* Botões (sistema do cfc): preenchimento verde com texto branco, hover um tom abaixo. */
 .bg-marca { transition: background-color 0.2s var(--ease); }
-.bg-marca:hover { background-color: var(--azul-escuro); }
+@media (hover: hover) { .bg-marca:hover { background-color: var(--azul-escuro); } }
 /* Campos: contorno de controle (3:1) e foco verde; o fundo continua a casca. */
 input:not([type='checkbox']):not([type='radio']), select, textarea {
   border: 1px solid var(--borda-ui);
-  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+  transition: border-color 0.2s var(--ease);
 }
+/* Como no cfc: :focus só troca a borda; :focus-visible (teclado) desenha o contorno de 3 px. */
+input:not([type='checkbox']):not([type='radio']):focus, select:focus, textarea:focus { border-color: var(--azul-texto); }
 input:not([type='checkbox']):not([type='radio']):focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: none; border-color: var(--azul-texto); box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul-texto) 22%, transparent);
+  outline: 3px solid var(--azul-texto); outline-offset: 2px;
 }
 .heroi input, [data-sobre-marinho] input { border-color: rgba(255, 255, 255, 0.4); }
 /* Pendente: chip neutro (o amarelo é só de hoje e do botão de lançar); vencido: chip vermelho. */

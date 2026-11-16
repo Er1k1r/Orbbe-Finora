@@ -93,7 +93,7 @@ function GraficoMeses({ pontos, atual }: { pontos: ReturnType<typeof serieMensal
       </div>
       <div className="mt-1 flex gap-1.5 sm:gap-2">
         {pontos.map((p) => (
-          <span key={p.mes} className={`flex-1 text-center text-[10px] ${p.mes === atual ? 'font-bold text-[var(--texto)]' : 'text-suave'}`}>
+          <span key={p.mes} className={`flex-1 text-center text-xs ${p.mes === atual ? 'font-bold text-[var(--texto)]' : 'text-suave'}`}>
             {rotuloMes(p.mes).slice(0, 3)}
           </span>
         ))}
@@ -136,8 +136,8 @@ export default function Painel({ mes }: { mes: Mes }) {
             <AnimatePresence mode="popLayout" initial={false}>
             <motion.div key={mes} className="origin-top" initial={{ opacity: 0, rotateX: -18, y: 14 }} animate={{ opacity: 1, rotateX: 0, y: 0 }}
               exit={{ opacity: 0, rotateX: 40, y: -30 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
-            <Moldura>
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <Moldura preenchimento="p-3 sm:p-5">
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2 px-1 sm:px-0">
                 <Titulo>Folhinha de {NOMES_MES[Number(mes.slice(5)) - 1].toLowerCase()}</Titulo>
                 <span className="text-xs text-suave">Toque num dia para ver e editar</span>
               </div>
@@ -249,7 +249,7 @@ export default function Painel({ mes }: { mes: Mes }) {
                 <Moldura key={f.id}>
                   <div className="flex items-center gap-4">
                     <div className="min-w-0 flex-1">
-                      <Link to={`/dividas/${f.id}`} className="block truncate font-semibold">{f.nome}</Link>
+                      <Link to={`/dividas/${f.id}`} className="flex min-h-11 items-center truncate font-semibold">{f.nome}</Link>
                       <div className="text-xs text-suave">{pagas}/{f.totalParcelas} pagas · {f.sistema}</div>
                       <div className="valor mt-1 text-lg text-divida">{formatarBRL(estado.saldoDevedor)}</div>
                       <div className="text-xs text-suave">saldo devedor{atrasadas > 0 ? ` · ${atrasadas} atrasada${atrasadas > 1 ? 's' : ''}` : ''}</div>
@@ -272,13 +272,13 @@ export default function Painel({ mes }: { mes: Mes }) {
 
         <Aparecer atraso={0.2}>
           <Moldura>
-            <div className="mb-2 flex items-baseline justify-between"><Titulo>Lançamentos de {rotuloMes(mes)}</Titulo><Link to="/lancamentos" className="text-sm font-semibold text-marca-texto">Ver lista</Link></div>
+            <div className="mb-2 flex items-baseline justify-between"><Titulo>Lançamentos de {rotuloMes(mes)}</Titulo><Link to="/lancamentos" className="inline-flex min-h-11 items-center text-sm font-semibold text-marca-texto">Ver lista</Link></div>
             {doMes.length === 0 && <p className="text-sm text-suave">Nenhum lançamento neste mês.</p>}
             {doMes.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[34rem] text-sm">
                   <thead>
-                    <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-suave">
+                    <tr className="text-left text-xs font-bold text-suave">
                       <th className="py-2 pr-3 font-semibold">Dia</th><th className="pr-3 font-semibold">Descrição</th><th className="pr-3 font-semibold">Categoria</th>
                       <th className="pr-3 text-right font-semibold">Valor</th><th className="pr-3 font-semibold">Situação</th><th />
                     </tr>
@@ -298,10 +298,10 @@ export default function Painel({ mes }: { mes: Mes }) {
                         <td className="pr-3">
                           {l.status === 'pago'
                             ? <span className="text-xs font-semibold text-positivo">pago</span>
-                            : <button className="chip-pendente min-h-8 text-xs font-semibold" onClick={() => repo.lancamentos.salvar({ ...l, status: 'pago' })}>pendente · marcar pago</button>}
+                            : <button className="chip-pendente min-h-11 text-xs font-semibold" onClick={() => repo.lancamentos.salvar({ ...l, status: 'pago' })}>pendente · marcar pago</button>}
                         </td>
                         <td className="text-right">
-                          <button aria-label="Editar lançamento" className="size-9 inline-grid place-items-center text-suave" onClick={() => setEditando(l)}>
+                          <button aria-label="Editar lançamento" className="size-11 inline-grid place-items-center rounded-[10px] text-suave" onClick={() => setEditando(l)}>
                             <PencilSimple size={18} weight="light" />
                           </button>
                         </td>
