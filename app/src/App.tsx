@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
+import { HashRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { List } from '@phosphor-icons/react'
 import { BotaoTema } from './ui/componentes/BotaoTema'
 import { Drawer, ID_MENU } from './ui/componentes/Drawer'
@@ -12,6 +12,7 @@ import { db } from './data/db'
 import { gerarRecorrentes } from './domain/recorrencia'
 import { hojeLocal, mesDe } from './domain/meses'
 import Resumo from './ui/telas/Resumo'
+import Painel from './ui/telas/Painel'
 import Compromissos from './ui/telas/Compromissos'
 import Lancamentos from './ui/telas/Lancamentos'
 import LancamentoRapido from './ui/telas/LancamentoRapido'
@@ -36,6 +37,8 @@ function Shell() {
   const [hoje, setHoje] = useState(hojeLocal()) // dia local; muda ao voltar para o app em outro dia/mês
   const { pathname } = useLocation()
   const rota = infoDaRota(pathname) // o seletor de mês só aparece onde o mês importa
+  // Largura por tela: o painel usa o espaço do computador; o resumo vira duas colunas; o resto fica estreito e centralizado.
+  const largura = pathname === '/painel' ? 'max-w-md md:max-w-3xl xl:max-w-6xl' : pathname === '/' ? 'max-w-md md:max-w-3xl' : 'max-w-md md:max-w-xl'
 
   // Troca de rota começa no topo da tela.
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
@@ -77,23 +80,31 @@ function Shell() {
     <DadosContext.Provider value={valor}>
     <div className="min-h-[100dvh] pb-28">
       <header data-sobre-marinho className="sticky top-0 z-30 bg-[var(--marinho)] text-[var(--sobre-marinho)]">
-        <div className="mx-auto flex max-w-md items-center justify-between px-4 pb-3 pt-4">
-          <button aria-label="Abrir menu" aria-expanded={aberto} aria-controls={ID_MENU} className="size-11 grid place-items-center" onClick={() => setAberto(true)}>
+        <div className="mx-auto flex max-w-md items-center justify-between px-4 pb-3 pt-4 md:max-w-3xl xl:max-w-6xl">
+          <button aria-label="Abrir menu" aria-expanded={aberto} aria-controls={ID_MENU} className="size-11 grid place-items-center lg:hidden" onClick={() => setAberto(true)}>
             <List size={26} weight="light" />
           </button>
+          <nav aria-label="Atalhos" className="hidden items-center gap-1 text-sm lg:flex">
+            {[['/', 'Resumo'], ['/painel', 'Painel'], ['/lancamentos', 'Lançamentos'], ['/contas', 'Contas'], ['/dividas', 'Dívidas'], ['/insights', 'Insights']].map(([para, rotulo]) => (
+              <NavLink key={para} to={para} end={para === '/'}
+                className={({ isActive }) => `inline-flex min-h-11 items-center rounded-full px-4 ${isActive ? 'bg-white/10 font-semibold text-[var(--destaque)]' : ''}`}>{rotulo}</NavLink>
+            ))}
+            <button aria-label="Mais opções" className="size-11 grid place-items-center" onClick={() => setAberto(true)}><List size={22} weight="light" /></button>
+          </nav>
           {rota.mostraMes
             ? <SeletorMes mes={mes} onChange={setMes} />
             : <span className="min-w-32 text-center font-semibold">{rota.titulo}</span>}
           <BotaoTema />
         </div>
       </header>
-      <main className="mx-auto max-w-md px-4 pt-4">
+      <main className={`mx-auto px-4 pt-4 ${largura}`}>
       {semConta && (
         <Link to="/contas" className="mb-4 grid min-h-11 place-items-center rounded-xl bg-[var(--amarelo-bg)] px-3 text-sm font-semibold text-[var(--texto)]">Cadastre uma conta para continuar</Link>
       )}
       {emOnboarding ? <Onboarding /> : (
       <Routes>
         <Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />
+        <Route path="/painel" element={<Painel mes={mes} />} />
         <Route path="/compromissos" element={<Compromissos mes={mes} />} />
         <Route path="/lancamentos" element={<Lancamentos mes={mes} />} />
         <Route path="/contas" element={<Contas />} />

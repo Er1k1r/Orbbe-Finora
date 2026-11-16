@@ -75,7 +75,12 @@ export interface Contrato {
   parcelasPagasAntes: number // pagas antes de usar o app (não geram lançamento)
 }
 
+/** O que o contrato financia; só muda o desenho da dívida (carro, moto, casa...), nunca a conta. */
+export type TipoBem = 'carro' | 'moto' | 'casa' | 'outro'
+export const TIPOS_BEM: readonly TipoBem[] = ['carro', 'moto', 'casa', 'outro']
+
 export interface Financiamento extends Contrato {
   id: string
   nome: string
+  tipo?: TipoBem
 }

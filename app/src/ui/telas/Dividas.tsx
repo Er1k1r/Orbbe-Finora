@@ -13,13 +13,15 @@ import { estadoFinanciamento, parcelaDoMes } from '../../domain/fluxo'
 import { parcelasAtrasadas } from '../../domain/contrato'
 import { formatarBRL, formatarPct } from '../../domain/dinheiro'
 import { fimDoMes, hojeLocal, mesDe } from '../../domain/meses'
-import type { Financiamento, Mes } from '../../domain/tipos'
+import { TIPOS_BEM, type Financiamento, type Mes, type TipoBem } from '../../domain/tipos'
+
+const ROTULO_BEM: Record<TipoBem, string> = { carro: 'Carro', moto: 'Moto', casa: 'Casa', outro: 'Outro' }
 
 const vazio = (): CamposCarne => ({ nome: '', valorFin: '', valorParc: '', total: '', pagas: '', primeira: hojeLocal(), sistema: 'SAC', taxaTexto: '' })
 
 export default function Dividas({ mes }: { mes: Mes }) {
   const d = useDados()
-  const [edit, setEdit] = useState<{ id: string; campos: CamposCarne } | null>(null)
+  const [edit, setEdit] = useState<{ id: string; campos: CamposCarne; tipo: TipoBem } | null>(null)
   const [erros, setErros] = useState<string[]>([])
   const ocupado = useRef(false)
   const futuro = mes > mesDe(hojeLocal())
@@ -30,8 +32,8 @@ export default function Dividas({ mes }: { mes: Mes }) {
       ? { id: f.id, campos: {
           nome: f.nome, valorFin: String(f.valorFinanciado), valorParc: String(f.valorParcela), total: String(f.totalParcelas),
           pagas: String(f.parcelasPagasAntes), primeira: f.primeiraParcela, sistema: f.sistema, taxaTexto: '',
-        } }
-      : { id: novoId(), campos: vazio() })
+        }, tipo: f.tipo ?? 'outro' }
+      : { id: novoId(), campos: vazio(), tipo: 'outro' })
   }
   const campo = <K extends keyof CamposCarne>(k: K, v: CamposCarne[K]) => setEdit((e) => (e ? { ...e, campos: { ...e.campos, [k]: v } } : e))
 
@@ -42,7 +44,7 @@ export default function Dividas({ mes }: { mes: Mes }) {
     if (analise.erros.length > 0) { setErros(analise.erros); return }
     ocupado.current = true
     try {
-      await repo.financiamentos.salvar({ ...analise.contrato, id: edit.id, nome: edit.campos.nome.trim() })
+      await repo.financiamentos.salvar({ ...analise.contrato, id: edit.id, nome: edit.campos.nome.trim(), tipo: edit.tipo })
       setEdit(null)
     } finally { ocupado.current = false }
   }
@@ -97,6 +99,11 @@ export default function Dividas({ mes }: { mes: Mes }) {
         <FormRapido titulo="Dívida" onSalvar={salvar} onCancelar={() => setEdit(null)}>
           <label className="grid gap-1 text-sm">Nome
             <input value={edit.campos.nome} onChange={(e) => campo('nome', e.target.value)} className={entrada} />
+          </label>
+          <label className="grid gap-1 text-sm">O que foi financiado
+            <select value={edit.tipo} onChange={(e) => setEdit((x) => (x ? { ...x, tipo: TIPOS_BEM.find((t) => t === e.target.value) ?? 'outro' } : x))} className={entrada}>
+              {TIPOS_BEM.map((t) => <option key={t} value={t}>{ROTULO_BEM[t]}</option>)}
+            </select>
           </label>
           <label className="grid gap-1 text-sm">Valor financiado
             <input inputMode="numeric" value={edit.campos.valorFin} onChange={(e) => campo('valorFin', somenteDigitos(e.target.value))} className={`valor ${entrada}`} />

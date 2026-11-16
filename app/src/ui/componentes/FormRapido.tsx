@@ -31,10 +31,10 @@ export function FormRapido({ titulo, onSalvar, onCancelar, acoes, children }: {
     return () => { document.removeEventListener('keydown', tecla); origem?.focus() }
   }, [])
   return (
-    <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40" onClick={onCancelar}>
+    <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/40 md:justify-center md:px-4" onClick={onCancelar}>
       <form ref={painel} role="dialog" aria-modal="true" aria-label={titulo} onClick={(e) => e.stopPropagation()}
         onSubmit={(e) => { e.preventDefault(); onSalvar() }}
-        className="mx-auto grid max-h-[92dvh] w-full max-w-md gap-3 overflow-y-auto rounded-t-[2rem] bg-[var(--superficie)] p-5 pb-8">
+        className="mx-auto grid max-h-[92dvh] w-full max-w-md gap-3 overflow-y-auto rounded-t-[2rem] bg-[var(--superficie)] p-5 pb-8 md:max-w-lg md:rounded-[2rem]">
         <h2 className="text-lg font-semibold">{titulo}</h2>
         {children}
         {acoes ?? (

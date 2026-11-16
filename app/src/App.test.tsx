@@ -29,7 +29,7 @@ describe('App: cabeçalho por rota', () => {
   it.each([['#/contas', 'Contas'], ['#/fontes', 'Fontes de renda'], ['#/categorias', 'Categorias'], ['#/backup', 'Backup']])(
     '%s mostra o título "%s" e não o seletor', async (rota, titulo) => {
       const h = await cabecalho(rota)
-      expect(h.getByText(titulo)).toBeTruthy()
+      expect(h.getByText(titulo, { selector: 'header span' })).toBeTruthy()
       expect(h.queryByRole('button', { name: 'Mês anterior' })).toBeNull()
       expect(h.queryByRole('button', { name: 'Próximo mês' })).toBeNull()
     })

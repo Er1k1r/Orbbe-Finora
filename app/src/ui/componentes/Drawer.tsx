@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
-import { House, Bank, Receipt, Scales, Lightbulb, Tag, Briefcase, FloppyDisk } from '@phosphor-icons/react'
+import { SquaresFour, House, Bank, Receipt, Scales, Lightbulb, Tag, Briefcase, FloppyDisk } from '@phosphor-icons/react'
 
 const ITENS = [
   { para: '/', rotulo: 'Resumo', Icone: House },
+  { para: '/painel', rotulo: 'Painel', Icone: SquaresFour },
   { para: '/contas', rotulo: 'Contas', Icone: Bank },
   { para: '/lancamentos', rotulo: 'Lançamentos', Icone: Receipt },
   { para: '/dividas', rotulo: 'Dívidas', Icone: Scales },

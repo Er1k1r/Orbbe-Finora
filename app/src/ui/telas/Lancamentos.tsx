@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Trash } from '@phosphor-icons/react'
+import { PencilSimple, Trash } from '@phosphor-icons/react'
+import { EditorLancamento } from '../componentes/EditorLancamento'
 import { Moldura } from '../componentes/Moldura'
 import { useDados } from '../hooks/useDados'
 import { repo } from '../../data/repo'
@@ -34,6 +35,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
   const [perguntaExcluir, setPerguntaExcluir] = useState<Lancamento | null>(null)
 
   const [aviso, setAviso] = useState('')
+  const [editando, setEditando] = useState<Lancamento | null>(null)
 
   async function aplicarEdicao(e: EdicaoExclusao, mensagem = '') {
     await db.transaction('rw', db.lancamentos, async () => {
@@ -116,6 +118,9 @@ export default function Lancamentos({ mes }: { mes: string }) {
                     Cancelar recorrência
                   </button>
                 )}
+                <button aria-label="Editar lançamento" className="size-11 grid place-items-center text-suave" onClick={() => setEditando(l)}>
+                  <PencilSimple size={20} weight="light" />
+                </button>
                 <button aria-label="Excluir lançamento" className="size-11 grid place-items-center text-suave" onClick={() => excluir(l)}>
                   <Trash size={20} weight="light" />
                 </button>
@@ -139,6 +144,7 @@ export default function Lancamentos({ mes }: { mes: string }) {
         </ul>
         {previstos.length > 0 && <p className="mt-2 text-xs text-suave">Gerado automaticamente quando o mês chegar.</p>}
       </Moldura>
+      {editando && <EditorLancamento key={editando.id} lancamento={editando} fechar={() => setEditando(null)} />}
       {perguntaExcluir && (
         <FormRapido titulo="Excluir lançamento recorrente" onSalvar={() => {}} onCancelar={() => setPerguntaExcluir(null)}
           acoes={
