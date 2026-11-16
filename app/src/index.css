@@ -38,7 +38,7 @@ h1, h2, h3 { font-family: var(--font-display); font-stretch: 88%; font-weight: 8
 ::selection { background: var(--destaque); color: #14161c; }
 html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); caret-color: var(--azul-texto); }
 a { text-underline-offset: 3px; }
-/* Pendente: chip amarelo com texto normal. */
+/* Pendente: chip neutro (o amarelo é só de hoje e do botão de lançar); vencido: chip vermelho. */
 .chip-pendente { background: var(--casca); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 600; }
 .chip-vencido { background: var(--vermelho-bg); color: var(--vermelho-texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 700; }
 .aviso { background: var(--casca); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }

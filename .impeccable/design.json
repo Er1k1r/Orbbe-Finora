@@ -1,0 +1,303 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-16T12:07:48.753667-03:00",
+  "title": "Design System: Finanças Pessoais",
+  "extensions": {
+    "colorMeta": {
+      "cobalto": {
+        "role": "primary",
+        "displayName": "Cobalto de Carimbo",
+        "canonical": "#1f3fbf",
+        "tonalRamp": [
+          "#0a1a5c",
+          "#102580",
+          "#16309a",
+          "#1f3fbf",
+          "#4c6bff",
+          "#7f95ff",
+          "#b9c6ff",
+          "#e8ecff"
+        ]
+      },
+      "marca-texto": {
+        "role": "secondary",
+        "displayName": "Marca-texto",
+        "canonical": "#ffd23f",
+        "tonalRamp": [
+          "#5c4600",
+          "#8a6a00",
+          "#b89200",
+          "#e6b800",
+          "#ffd23f",
+          "#ffe07a",
+          "#fff3c4",
+          "#fffbe6"
+        ]
+      },
+      "verde": {
+        "role": "tertiary",
+        "displayName": "Verde Conferido",
+        "canonical": "#1d8a4e",
+        "tonalRamp": [
+          "#0a3d22",
+          "#11592f",
+          "#157a43",
+          "#1d8a4e",
+          "#2fae68",
+          "#6fdc9f",
+          "#b4f0cf",
+          "#e3f4ea"
+        ]
+      },
+      "vermelho": {
+        "role": "tertiary",
+        "displayName": "Vermelho de Domingo",
+        "canonical": "#d6332a",
+        "tonalRamp": [
+          "#5c120e",
+          "#8a1b15",
+          "#c0271f",
+          "#d6332a",
+          "#e4473d",
+          "#ff8f87",
+          "#ffcdc9",
+          "#fde8e6"
+        ]
+      },
+      "papel": {
+        "role": "neutral",
+        "displayName": "Papel de Parede",
+        "canonical": "#eef0f4",
+        "tonalRamp": [
+          "#0c0f1a",
+          "#151a2b",
+          "#262d45",
+          "#555c6b",
+          "#a3abc2",
+          "#dde1e9",
+          "#e6e9f0",
+          "#eef0f4"
+        ]
+      },
+      "tinta": {
+        "role": "neutral",
+        "displayName": "Tinta",
+        "canonical": "#14161c",
+        "tonalRamp": [
+          "#14161c",
+          "#2a2e38",
+          "#3f4452",
+          "#555c6b",
+          "#7b8294",
+          "#a3abc2",
+          "#dde1e9",
+          "#f3f5f9"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "numeral": {
+        "displayName": "Numeral",
+        "purpose": "Dias e sobra do mês, wdth 68, peso 850."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Título de tela e nome do mês, caixa-alta condensada."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "h1 a h3 de folha, wdth 88, peso 800."
+      },
+      "valor": {
+        "displayName": "Valor",
+        "purpose": "Valores em reais, tabular, wdth 82."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Frases e campos."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Dias da semana em caixa-alta."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sombra-folha",
+        "value": "0 10px 24px -16px rgba(20,22,28,0.35)",
+        "purpose": "Única elevação de cada folha (escuro: 0 12px 28px -16px rgba(0,0,0,0.7))."
+      },
+      {
+        "name": "sombra-fab",
+        "value": "0 14px 28px -10px rgba(20,22,28,0.55)",
+        "purpose": "Só o botão de lançar."
+      },
+      {
+        "name": "aro-hoje",
+        "value": "inset 0 0 0 3px #ffd23f",
+        "purpose": "Marca o dia de hoje na folhinha."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Easing padrão de transições e da folha arrancada."
+      },
+      {
+        "name": "arrancar-folha",
+        "value": "0.42s; saída rotateX 55deg e y 26px; entrada rotateX 25deg e y 18px; origem no topo; perspectiva 600px",
+        "purpose": "Troca de mês no cabeçalho."
+      },
+      {
+        "name": "aparecer-folha",
+        "value": "0.45s a 0.6s cubic-bezier(0.32, 0.72, 0, 1), atraso 40ms por item",
+        "purpose": "Entrada das folhas do Painel."
+      },
+      {
+        "name": "reduzir-movimento",
+        "value": "MotionConfig reducedMotion=user; CSS 0.01ms",
+        "purpose": "Respeita a preferência do sistema."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Folha",
+      "kind": "card",
+      "refersTo": "folha",
+      "description": "Folha branca com uma sombra; base de todo cartão.",
+      "html": "<div class=\"ds-folha\"><h3>Esta semana</h3><p>Nada para pagar nesta semana.</p></div>",
+      "css": ".ds-folha{background:var(--superficie,#fff);color:var(--texto,#14161c);border-radius:16px;padding:20px;box-shadow:0 10px 24px -16px rgba(20,22,28,.35);font-family:'Archivo Variable',system-ui,sans-serif}.ds-folha h3{margin:0;font-size:19px;font-weight:800;font-stretch:88%;letter-spacing:-.01em}.ds-folha p{margin:8px 0 0;font-size:14px;color:#555c6b}"
+    },
+    {
+      "name": "Folha herói",
+      "kind": "card",
+      "refersTo": "folha-heroi",
+      "description": "Folha cobalto com a sobra do mês em numeral.",
+      "html": "<div class=\"ds-heroi\"><h2>Sobra do mês</h2><p class=\"ds-num\">R$ 1.240<small>,00</small></p></div>",
+      "css": ".ds-heroi{background:#1f3fbf;color:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 24px -16px rgba(20,22,28,.35);font-family:'Archivo Variable',system-ui,sans-serif}.ds-heroi h2{margin:0;font-size:15px;font-weight:700;color:#c8d2ff}.ds-num{margin:8px 0 0;font-size:64px;font-weight:850;font-stretch:68%;line-height:.85;font-variant-numeric:tabular-nums}.ds-num small{font-size:.45em}"
+    },
+    {
+      "name": "Casa de hoje",
+      "kind": "custom",
+      "refersTo": "casa-de-hoje",
+      "description": "Casa da folhinha com o aro marca-texto de hoje.",
+      "html": "<button class=\"ds-casa ds-hoje\"><span>16</span><i></i></button>",
+      "css": ".ds-casa{display:flex;flex-direction:column;width:96px;height:96px;padding:8px;border:0;border-radius:10px;background:#f3f5f9;color:#14161c;text-align:left;cursor:pointer;transition:box-shadow .2s,background-color .2s}.ds-casa:hover{background:#e6e9f0}.ds-casa:focus-visible{outline:2px solid #1f3fbf;outline-offset:2px}.ds-hoje{box-shadow:inset 0 0 0 3px #ffd23f}.ds-casa span{font-family:'Archivo Variable',system-ui,sans-serif;font-size:28px;font-weight:850;font-stretch:68%;line-height:.85}.ds-casa i{margin-top:auto;width:6px;height:6px;border-radius:50%;background:#d6332a}"
+    },
+    {
+      "name": "Cabeçalho",
+      "kind": "nav",
+      "refersTo": "cabecalho",
+      "description": "Faixa cobalto com dia em numeral e setas de mês.",
+      "html": "<header class=\"ds-cab\"><span class=\"ds-d\">16</span><span class=\"ds-m\">NOVEMBRO<small>2026 · segunda-feira</small></span><button aria-label=\"Mês anterior\">&lsaquo;</button><button aria-label=\"Próximo mês\">&rsaquo;</button></header>",
+      "css": ".ds-cab{display:flex;align-items:flex-end;gap:12px;background:#1f3fbf;color:#fff;border-radius:16px;padding:16px 24px;font-family:'Archivo Variable',system-ui,sans-serif}.ds-d{font-size:76px;font-weight:850;font-stretch:68%;line-height:.85}.ds-m{flex:1;font-size:28px;font-weight:800;font-stretch:68%;line-height:.95}.ds-m small{display:block;font-size:15px;font-weight:600;font-stretch:100%;color:#c8d2ff}.ds-cab button{width:44px;height:44px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px;cursor:pointer;transition:transform .2s}.ds-cab button:active{transform:scale(.95)}.ds-cab button:focus-visible{outline:2px solid #ffd23f;outline-offset:2px}"
+    },
+    {
+      "name": "Botão de lançar",
+      "kind": "button",
+      "refersTo": "fab",
+      "description": "Marca-texto, único botão amarelo do app.",
+      "html": "<button class=\"ds-fab\" aria-label=\"Novo lançamento\"><svg width=\"30\" height=\"30\" viewBox=\"0 0 256 256\" aria-hidden=\"true\"><path d=\"M40 128h176M128 40v176\" stroke=\"currentColor\" stroke-width=\"32\" stroke-linecap=\"round\" fill=\"none\"/></svg></button>",
+      "css": ".ds-fab{display:grid;place-items:center;width:64px;height:64px;border:0;border-radius:20px;background:#ffd23f;color:#14161c;box-shadow:0 14px 28px -10px rgba(20,22,28,.55);cursor:pointer;transition:transform .3s cubic-bezier(.16,1,.3,1)}.ds-fab:hover{transform:translateY(-2px)}.ds-fab:active{transform:scale(.95)}.ds-fab:focus-visible{outline:2px solid #14161c;outline-offset:2px}"
+    },
+    {
+      "name": "Chip vencido",
+      "kind": "chip",
+      "refersTo": "chip-vencido",
+      "description": "Vence hoje ou venceu.",
+      "html": "<span class=\"ds-chip-v\">venceu</span>",
+      "css": ".ds-chip-v{display:inline-block;background:#fde8e6;color:#c0271f;border-radius:9999px;padding:2px 10px;font-family:'Archivo Variable',system-ui,sans-serif;font-size:12px;font-weight:700}"
+    },
+    {
+      "name": "Chip pendente",
+      "kind": "chip",
+      "refersTo": "chip-pendente",
+      "description": "Situação neutra em aberto.",
+      "html": "<span class=\"ds-chip-p\">a pagar</span>",
+      "css": ".ds-chip-p{display:inline-block;background:#e6e9f0;color:#14161c;border-radius:9999px;padding:2px 10px;font-family:'Archivo Variable',system-ui,sans-serif;font-size:12px;font-weight:600}"
+    },
+    {
+      "name": "Item da barra",
+      "kind": "nav",
+      "refersTo": "barra-lateral-item-ativo",
+      "description": "Item ativo da barra cobalto.",
+      "html": "<nav class=\"ds-nav\"><a class=\"on\" href=\"#\">Resumo</a><a href=\"#\">Contas</a></nav>",
+      "css": ".ds-nav{display:grid;gap:4px;width:240px;padding:12px;background:#1f3fbf;border-radius:16px;font-family:'Archivo Variable',system-ui,sans-serif}.ds-nav a{display:flex;align-items:center;min-height:48px;padding:0 16px;border-radius:10px;color:#c8d2ff;text-decoration:none}.ds-nav a.on{background:rgba(255,255,255,.15);color:#fff;font-weight:700}.ds-nav a:hover{background:rgba(255,255,255,.08)}.ds-nav a:focus-visible{outline:2px solid #ffd23f;outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Folhinha de Parede",
+    "overview": "O mês do dinheiro é a folhinha da cozinha: cada dia mostra o que entra e o que vence, e hoje está marcado a caneta. A interface é uma parede de papel claro com folhas brancas penduradas, um cabeçalho e uma barra lateral em azul-cobalto, tinta quase preta e numerais condensados e pesados que fazem o papel de dias e valores. O sistema recusa o app de banco branco com um azul, saldo gigante e atalhos em ícones.\n\nA cor trabalha como sinal, não como enfeite. O cobalto ancora a estrutura (cabeçalho, barra, folha-herói). O vermelho é o vermelho de domingo da folhinha: serve para vencido, negativo e domingo. O verde é pago e entrada. O amarelo marca-texto aparece em dois lugares só: o dia de hoje e o botão de lançar. Essa escassez é o que faz o olho achar \"hoje\" e \"lançar\" sem procurar.\n\nA densidade é de calendário: casas pequenas e regulares, números grandes, texto curto. Serve a quem tem pouca leitura financeira e usa o celular para lançar; no computador a mesma folhinha ganha casas com nomes e valores.\n\n",
+    "keyCharacteristics": [
+      "Numerais condensados (wdth 68 a 82, peso 700 a 850) em dias e valores; corpo em largura normal.",
+      "Cobalto estrutural, papel claro, folhas brancas, tinta quase preta; tema escuro com a mesma lógica.",
+      "Cor semântica fixa: amarelo = hoje e lançar; vermelho = vencido, negativo, domingo; verde = pago, entrada.",
+      "Uma elevação só por folha; o resto é tom sobre tom.",
+      "Assinatura: a folha do mês \"arranca\" ao trocar de mês; bens financiados giram em 3D sobre um anel pago/aberto."
+    ],
+    "rules": [
+      {
+        "name": "The Hoje Rule",
+        "body": "O amarelo marca-texto existe para duas coisas: hoje e o botão de lançar. Qualquer terceiro uso dilui os dois.",
+        "section": "colors"
+      },
+      {
+        "name": "The Domingo Rule",
+        "body": "Vermelho é vencido, negativo e domingo. Não é erro de formulário genérico nem decoração; pago nunca é vermelho.",
+        "section": "colors"
+      },
+      {
+        "name": "The Texto Claro Rule",
+        "body": "Texto colorido usa as variantes `-texto` (verde, vermelho, cobalto); os tons cheios são para preenchimento, pontos e barras. Dentro de `.heroi` as variantes `-texto` são redefinidas para ficar legíveis sobre o cobalto.",
+        "section": "colors"
+      },
+      {
+        "name": "The Numeral Rule",
+        "body": "Número que é dia ou dinheiro usa a largura condensada e `tabular-nums`; frase nunca usa o numeral condensado.",
+        "section": "typography"
+      },
+      {
+        "name": "The Domingo Tipográfico Rule",
+        "body": "DOM em vermelho nos rótulos de dia e no numeral, sempre.",
+        "section": "typography"
+      },
+      {
+        "name": "The Uma-Sombra Rule",
+        "body": "Cada cartão leva uma elevação, a da folha. Cartão dentro de cartão usa tom (Casca, Casa), nunca outra sombra.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** reservar o amarelo #ffd23f para hoje e para o botão de lançar, e nada mais.",
+      "**Do** usar vermelho para vencido, negativo e domingo; verde para pago e entrada; sempre com a variante `-texto` quando for texto.",
+      "**Do** escrever dias e valores com `.numeral` ou `.valor` (condensado, tabular); reais grandes e centavos a 0.45em.",
+      "**Do** dar a cada folha uma só sombra (`--sombra`) e usar tom (Casca, Casa) para níveis internos.",
+      "**Do** manter toques de 44px, contraste AA e a lógica `.heroi` para texto sobre cobalto.",
+      "**Do** manter o gesto de arrancar a folha ao trocar de mês e desligá-lo com reduzir movimento."
+    ],
+    "donts": [
+      "**Don't** usar o amarelo como texto sobre fundo claro nem como cor de destaque genérica.",
+      "**Don't** pintar pago de vermelho nem usar vermelho para erros que não sejam vencido, negativo ou domingo.",
+      "**Don't** empilhar sombras nem pôr cartão com sombra dentro de cartão com sombra.",
+      "**Don't** usar o numeral condensado em frases, nem uma segunda família tipográfica.",
+      "**Don't** voltar ao app de banco: cartão branco anônimo, saldo gigante isolado e fileira de atalhos em ícones.",
+      "**Don't** usar o cobalto de preenchimento (#4c6bff) como texto no tema escuro; texto usa #9fb2ff."
+    ]
+  }
+}
