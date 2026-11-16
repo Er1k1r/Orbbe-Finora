@@ -114,7 +114,7 @@ export function RoscaRecorrencia({ r }: { r: Reparticao }) {
         </svg>
         <span className="absolute inset-0 grid place-content-center text-center">
           <span className="valor text-lg">{formatarBRL(total)}</span>
-          <span className="text-[11px] text-suave">saídas do mês</span>
+          <span className="text-xs text-suave">saídas do mês</span>
         </span>
       </div>
       <ul className="grid gap-1.5 text-sm">
@@ -134,7 +134,7 @@ export function RoscaRecorrencia({ r }: { r: Reparticao }) {
 const LinhaDre = ({ rotulo, v, sinal }: { rotulo: string; v: Centavos; sinal: '+' | '−' }) => (
   <div className="flex items-baseline justify-between gap-3 py-1.5 text-sm">
     <span className="inline-flex items-center gap-2 text-suave">
-      <span aria-hidden className={`grid size-4 place-items-center rounded-full text-[11px] font-bold text-white ${sinal === '+' ? 'bg-[var(--verde)]' : 'bg-[var(--texto-suave)]'}`}>{sinal}</span>{rotulo}
+      <span aria-hidden className={`grid size-4 place-items-center rounded-full text-xs font-bold text-white ${sinal === '+' ? 'bg-[var(--verde)]' : 'bg-[var(--texto-suave)]'}`}>{sinal}</span>{rotulo}
     </span>
     <span className={`valor ${sinal === '+' ? 'text-positivo' : 'text-negativo'}`}>{sinal === '−' ? '−' : ''} {formatarBRL(v)}</span>
   </div>

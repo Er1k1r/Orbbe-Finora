@@ -95,7 +95,7 @@ export default function Contas() {
   return (
     <div className="grid gap-5">
       {d.contas.length > 0 && (
-        <Moldura className="!p-0 overflow-hidden">
+        <Moldura preenchimento="p-0" className="overflow-hidden">
           <h2 className="px-5 pt-4 text-[19px] leading-tight">Movimento de {NOMES_MES[Number(mesAtual.slice(5)) - 1].toLowerCase()}</h2>
           <div className="mt-2 overflow-x-auto">
             <table className="w-full min-w-[46rem] text-sm">

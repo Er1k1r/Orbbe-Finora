@@ -1,9 +1,14 @@
 import type { ReactNode } from 'react'
 
-/** Folha da folhinha em vidro sobre o fundo ambiente: raio 16, uma elevação. `heroi`: vidro cobalto com texto claro. */
-export function Moldura({ children, className = '', heroi = false }: { children: ReactNode; className?: string; heroi?: boolean }) {
+/**
+ * Folha da folhinha em vidro sobre o fundo ambiente: raio 16, uma elevação. `heroi`: vidro verde com texto claro.
+ * `preenchimento` troca o p-5 padrão (tabelas usam p-0) sem precisar de !important.
+ */
+export function Moldura({ children, className = '', heroi = false, preenchimento = 'p-5' }: {
+  children: ReactNode; className?: string; heroi?: boolean; preenchimento?: string
+}) {
   return (
-    <div className={`vidro rounded-[16px] p-5 ${heroi ? 'heroi text-[var(--texto)]' : ''} ${className}`}>
+    <div className={`vidro rounded-[16px] ${preenchimento} ${heroi ? 'heroi text-[var(--texto)]' : ''} ${className}`}>
       {children}
     </div>
   )

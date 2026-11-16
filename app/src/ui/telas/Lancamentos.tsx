@@ -28,7 +28,7 @@ const FILTROS: { id: Filtro; rotulo: string; aceita: (l: Lancamento) => boolean 
   { id: 'transferencias', rotulo: 'Transferências e ajustes', aceita: (l) => l.especie !== undefined },
 ]
 // Colunas da tabela no computador; no celular cada linha vira um bloco.
-const GRADE = 'md:grid md:grid-cols-[5.5rem_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.9fr)_7.5rem_7.5rem_4rem_5.5rem] md:items-center md:gap-3'
+const GRADE = 'md:grid md:grid-cols-[5.5rem_minmax(0,2.2fr)_minmax(0,1fr)_minmax(0,0.9fr)_7.5rem_7.5rem_4rem_6.25rem] md:items-center md:gap-3'
 
 function Barra({ rotulo, feito, total, cor, feitoRotulo }: { rotulo: string; feito: number; total: number; cor: string; feitoRotulo: string }) {
   const f = total > 0 ? Math.min(feito / total, 1) : 0
@@ -133,14 +133,14 @@ export default function Lancamentos({ mes, abrirLancamento }: { mes: string; abr
       <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 lg:mx-0 lg:flex-wrap lg:px-0" role="group" aria-label="Filtrar lançamentos">
         {FILTROS.map((f) => (
           <button key={f.id} onClick={() => setFiltro(f.id)} aria-pressed={filtro === f.id}
-            className={`vidro min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition-colors ${filtro === f.id ? '!bg-[var(--azul)] text-white' : 'text-marca-texto hover:!bg-[var(--casca)]'}`}>
+            className={`min-h-11 shrink-0 rounded-full px-4 text-sm font-semibold transition-colors ${filtro === f.id ? 'bg-[var(--azul)] text-white' : 'vidro text-marca-texto hover:bg-[var(--casca)]'}`}>
             {f.rotulo}
           </button>
         ))}
       </div>
       {aviso && <p role="status" className="text-sm text-suave">{aviso}</p>}
 
-      <Moldura className="!p-0 overflow-hidden">
+      <Moldura preenchimento="p-0" className="overflow-hidden">
         <div className={`hidden border-b border-[var(--linha)] px-5 py-3 text-xs font-bold text-suave ${GRADE}`} aria-hidden>
           <span>Data</span><span>Descrição</span><span>Categoria</span><span>Conta</span><span>Tipo</span><span className="text-right">Valor</span><span>Pago?</span><span />
         </div>
@@ -170,10 +170,10 @@ export default function Lancamentos({ mes, abrirLancamento }: { mes: string; abr
                     {modelo?.recorrenciaAte && <span>até {rotuloMes(modelo.recorrenciaAte)}</span>}
                     {l.observacao && <span className="truncate">{l.observacao}</span>}
                     {l.parcelamento && parcelasRestantesDoGrupo(d.lancamentos, l.parcelamento.grupoId).length > 0 && (
-                      <button className="font-semibold underline-offset-2 hover:underline" onClick={() => excluirRestantes(l.parcelamento!.grupoId)}>Excluir parcelas restantes</button>
+                      <button className="inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline" onClick={() => excluirRestantes(l.parcelamento!.grupoId)}>Excluir parcelas restantes</button>
                     )}
                     {modelo && ativo(modelo) && (
-                      <button className="font-semibold underline-offset-2 hover:underline" onClick={() => cancelar(modelo)}>Cancelar recorrência</button>
+                      <button className="inline-flex min-h-11 items-center font-semibold underline-offset-2 hover:underline" onClick={() => cancelar(modelo)}>Cancelar recorrência</button>
                     )}
                   </span>
                 </span>
@@ -191,16 +191,17 @@ export default function Lancamentos({ mes, abrirLancamento }: { mes: string; abr
                 </span>
                 <span className="order-2 flex justify-end md:order-none md:justify-start">
                   <button role="switch" aria-checked={l.status === 'pago'} aria-label={`Pago: ${titulo}`} disabled={l.especie !== undefined}
-                    onClick={() => alternarPago(l)}
-                    className={`relative h-7 w-12 rounded-full transition-colors duration-300 disabled:opacity-50 ${l.status === 'pago' ? 'bg-[var(--verde)]' : 'bg-[var(--linha)]'}`}>
-                    <span className={`absolute top-1 size-5 rounded-full bg-white shadow transition-[left] duration-300 ease-[var(--ease)] ${l.status === 'pago' ? 'left-6' : 'left-1'}`} />
+                    onClick={() => alternarPago(l)} className="group grid h-11 w-14 place-items-center rounded-full disabled:opacity-50">
+                    <span aria-hidden className={`relative block h-7 w-12 rounded-full transition-colors duration-300 ${l.status === 'pago' ? 'bg-[var(--verde)]' : 'bg-[var(--borda-ui)]'}`}>
+                      <span className={`absolute top-1 size-5 rounded-full bg-white transition-[left] duration-300 ease-[var(--ease)] ${l.status === 'pago' ? 'left-6' : 'left-1'}`} />
+                    </span>
                   </button>
                 </span>
                 <span className="order-3 col-start-2 -my-1 flex justify-end gap-0.5 md:order-none md:col-start-auto md:my-0">
-                  <button aria-label="Editar lançamento" className="grid size-11 place-items-center rounded-[10px] text-suave hover:bg-[var(--casca)]" onClick={() => setEditando(l)}>
+                  <button aria-label="Editar lançamento" className="grid size-11 shrink-0 place-items-center rounded-[10px] text-suave hover:bg-[var(--casca)]" onClick={() => setEditando(l)}>
                     <PencilSimple size={20} />
                   </button>
-                  <button aria-label="Excluir lançamento" className="grid size-11 place-items-center rounded-[10px] text-suave hover:bg-[var(--casca)] hover:text-negativo" onClick={() => excluir(l)}>
+                  <button aria-label="Excluir lançamento" className="grid size-11 shrink-0 place-items-center rounded-[10px] text-suave hover:bg-[var(--casca)] hover:text-negativo" onClick={() => excluir(l)}>
                     <Trash size={20} />
                   </button>
                 </span>

@@ -163,7 +163,7 @@ export default function LancamentoRapido({ fechar }: { fechar: () => void }) {
         <div className="mt-4 grid grid-cols-4 gap-2">
           {categorias.map((c) => (
             <button key={c.id} onClick={() => salvar(c)}
-              className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--casca)] p-2 text-center text-[11px] leading-tight transition-transform duration-300 ease-[var(--ease)] active:scale-95">
+              className="flex min-h-20 flex-col items-center justify-center gap-1 rounded-2xl bg-[var(--casca)] p-2 text-center text-xs leading-tight transition-transform duration-300 ease-[var(--ease)] active:scale-95">
               <Icone nome={c.icone} />
               {c.nome}
             </button>

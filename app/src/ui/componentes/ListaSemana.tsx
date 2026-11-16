@@ -33,7 +33,7 @@ export function ListaSemana({ hoje }: { hoje: string }) {
             <li key={e.id} className="grid grid-cols-[2.75rem_1fr_auto] items-center gap-3 border-t border-[var(--linha)] py-2.5 first:border-t-0">
               <span className="text-center leading-none">
                 <span className={`numeral block text-[28px] ${e.situacao === 'vencido' || domingo ? 'text-negativo' : ''}`}>{Number(e.data.slice(8))}</span>
-                <span className="text-[10px] font-bold uppercase text-suave">{DIA[diaDaSemana(e.data)]}</span>
+                <span className="text-xs font-bold text-suave">{DIA[diaDaSemana(e.data)]}</span>
               </span>
               <span className="min-w-0">
                 <span className={`block truncate font-semibold ${e.situacao === 'pago' ? 'text-suave line-through decoration-1' : ''}`}>{e.nome}</span>
