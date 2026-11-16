@@ -215,6 +215,8 @@ Celular primeiro, com o mesmo peso para o computador. No celular: cabeçalho cob
 
 A folhinha do mês é uma grade de 7 colunas com gap de 4px (6px a partir de sm); casas com altura mínima de 64px no celular e 96px a partir de sm. No celular a casa mostra só pontos (verde entra, vermelho sai); a partir de sm mostra até dois lançamentos com nome e valor. Tocar num dia abre a lista dele embaixo.
 
+Largura: todas as telas usam até 1280px (`xl:max-w-7xl`), menos Fontes, Categorias e Backup, que ficam em uma coluna de 672px. Resumo: grade de 1/2/3 colunas (sobra e visão geral largas, "Esta semana" ao lado da sobra). Lançamentos: tabela no computador (Data, Descrição, Categoria, Conta, Tipo, Valor, Pago?, ações) com chips de filtro, linha tracejada "Novo lançamento", interruptor Pago? e rodapé de totais; no celular cada linha vira bloco. Contas: tabela "Movimento do mês" (saldo inicial, receitas, despesas, transferências, saldo, previsto, total) e as folhas de cada conta em grade.
+
 Ritmo de espaço: 4, 8, 16, 20 (padding da folha), 24. Toques de no mínimo 44px (size-11, min-h-11), itens de menu de 48px. Respeita `env(safe-area-inset-top)`.
 
 ## Elevation & Depth
@@ -226,8 +228,13 @@ Híbrido contido: profundidade por tom (papel, folha branca, casca) e uma única
 - **Sombra do botão de lançar** (`box-shadow: 0 14px 28px -10px rgba(20,22,28,0.55)`): só o FAB, que flutua acima da página.
 - **Marcação de dia** (`box-shadow: inset 0 0 0 3px var(--destaque)`): hoje na folhinha; dia escolhido soma `inset 0 0 0 2px var(--azul)` (5px quando é hoje). É contorno, não elevação.
 
+### Vidro e fundo ambiente (pedido do dono, 2026-11-16)
+As folhas são vidro: classe `.vidro` com `background: var(--vidro)` (claro `rgba(255,255,255,.64)`, escuro `rgba(21,26,43,.6)`), `backdrop-filter: blur(22px) saturate(1.5)` e `box-shadow: var(--sombra), inset 0 1px 0 var(--vidro-brilho)`. O brilho de cima é luz, não contorno: nada de borda de 1px. Cabeçalho, barra lateral e cartão-herói são vidro cobalto (`.heroi` troca `--vidro` por `--vidro-cobalto`, `rgba(31,63,191,.9)`). Atrás de tudo, `.ambiente`: três campos desfocados (cobalto, marca-texto, verde; `--ambiente-1..3`) à deriva em 32–44s, parados com "reduzir movimento". As casas da folhinha (`--casa`) também são translúcidas.
+
 ### Named Rules
 **The Uma-Sombra Rule.** Cada cartão leva uma elevação, a da folha. Cartão dentro de cartão usa tom (Casca, Casa), nunca outra sombra.
+
+**The Vidro-Com-Fundo Rule.** Vidro só sobre o fundo ambiente; sem campos de cor atrás, o desfoque não tem o que mostrar e vira cinza. Texto sobre vidro segue as cores `-texto`.
 
 ## Shapes
 

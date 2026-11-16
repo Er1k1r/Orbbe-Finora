@@ -29,7 +29,14 @@
   --sobre-marinho: #ffffff;
   --sobre-marinho-suave: #c8d2ff;
   --casca: var(--superficie-2);
-  --casa: #f3f5f9; /* casa (dia) da folhinha sobre a folha branca */
+  --casa: rgba(236, 239, 246, 0.72); /* casa (dia) da folhinha sobre a folha de vidro */
+  /* Vidro: folhas translúcidas sobre o fundo ambiente (campos de cobalto, marca-texto e verde desfocados). */
+  --vidro: rgba(255, 255, 255, 0.64);
+  --vidro-brilho: rgba(255, 255, 255, 0.9);
+  --vidro-cobalto: rgba(31, 63, 191, 0.9);
+  --ambiente-1: rgba(31, 63, 191, 0.22);
+  --ambiente-2: rgba(255, 210, 63, 0.28);
+  --ambiente-3: rgba(29, 138, 78, 0.16);
   --sombra: 0 10px 24px -16px rgba(20, 22, 28, 0.35);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -52,7 +59,13 @@
     --vermelho-texto: #ff9d95;
     --vermelho-bg: #3a1619;
     --amarelo-bg: #3b3210;
-    --casa: #1b2135;
+    --casa: rgba(30, 36, 56, 0.7);
+    --vidro: rgba(21, 26, 43, 0.6);
+    --vidro-brilho: rgba(255, 255, 255, 0.09);
+    --vidro-cobalto: rgba(27, 51, 160, 0.82);
+    --ambiente-1: rgba(76, 107, 255, 0.28);
+    --ambiente-2: rgba(255, 210, 63, 0.12);
+    --ambiente-3: rgba(47, 174, 104, 0.14);
     --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
   }
 }
@@ -74,11 +87,19 @@
   --vermelho-texto: #ff9d95;
   --vermelho-bg: #3a1619;
   --amarelo-bg: #3b3210;
-  --casa: #1b2135;
+  --casa: rgba(30, 36, 56, 0.7);
+  --vidro: rgba(21, 26, 43, 0.6);
+  --vidro-brilho: rgba(255, 255, 255, 0.09);
+  --vidro-cobalto: rgba(27, 51, 160, 0.82);
+  --ambiente-1: rgba(76, 107, 255, 0.28);
+  --ambiente-2: rgba(255, 210, 63, 0.12);
+  --ambiente-3: rgba(47, 174, 104, 0.14);
   --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
 }
 /* Cartão-herói: folha sobre o cobalto, texto claro. */
 .heroi {
+  --vidro: var(--vidro-cobalto);
+  --vidro-brilho: rgba(255, 255, 255, 0.28);
   --superficie: var(--marinho);
   --superficie-2: var(--marinho-2);
   --texto: #ffffff;

@@ -66,7 +66,7 @@ export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, virar = true
   const trocar = (n: number) => { setDirecao(n); setMes(mesAnterior(mes, -n)) }
 
   return (
-    <header data-sobre-marinho className="bg-[var(--marinho)] px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] text-[var(--sobre-marinho)] lg:mx-0 lg:mt-6 lg:rounded-[16px] lg:px-6 lg:pb-5 lg:pt-4">
+    <header data-sobre-marinho className="heroi vidro px-4 pb-4 pt-[max(0.75rem,env(safe-area-inset-top))] text-[var(--sobre-marinho)] lg:mx-0 lg:mt-6 lg:rounded-[16px] lg:px-6 lg:pb-5 lg:pt-4">
       <div className="mx-auto max-w-3xl lg:max-w-none">
       <div className="flex items-center justify-between lg:hidden">
         <button aria-label="Abrir menu" aria-expanded={menuAberto} aria-controls={ID_MENU} className="grid size-11 place-items-center rounded-xl lg:hidden" onClick={abrirMenu}>
