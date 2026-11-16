@@ -24,7 +24,7 @@ Se `DESIGN.md` discordar do código, valem o código e as notas do topo de `DESI
 | Regra | Na prática |
 |---|---|
 | Verde-cédula, gelo e menta, na proporção 60 · 30 · 10 | A menta marca **hoje**, o botão de lançar e no máximo um destaque por tela. Nunca vira texto sobre fundo claro nem preenche área grande. O texto sobre menta é sempre `--sobre-destaque` (#0b2b27). |
-| Uma fonte | Hanken Grotesk Variable em tudo. Numerais em 800, `tabular-nums`, tracking −0,04em. Sem itálico, sem segunda fonte, sem título em CAIXA ALTA miúda. |
+| Uma fonte | Geist Variable em tudo (a Hanken Grotesk foi trocada por parecer infantil). Títulos em 700; numerais em 700, `tabular-nums`, tracking −0,05em. Sem itálico, sem segunda fonte, sem título em CAIXA ALTA miúda. |
 | Folha de vidro | Cartão com raio de 16 px e uma elevação só: sombra mais brilho interno, sem borda de 1 px. O vidro só aparece sobre o fundo ambiente. A transparência do cabeçalho e da barra não pode baixar dos níveis atuais. (O vidro foi pedido do dono; o cfc não usa.) |
 | Enfeite do assunto | A folhinha de parede (dia em numeral, domingo em vermelho, hoje marcado) e os bens em 3D sobre o anel pago/aberto. Nada de robô, foguete ou gráfico genérico. |
 | Estado por forma | Pago: interruptor ligado e risco no nome da casa. Vencido: chip vermelho com a palavra. A pagar: contorno. Atrasado: cheio. A cor nunca carrega o sentido sozinha. |
@@ -50,6 +50,16 @@ Regras de uso:
 - **Cabeçalho, barra lateral e gaveta:** usam a classe `.barra` (`--vidro-barra`). No claro são verdes; no escuro são grafite.
 - **Fundo ambiente no escuro:** quase apagado, com o verde a 12%.
 
+**Escuro em verde-petróleo, não preto (E2, 16/11).** A versão em grafite ficou preta demais. A referência do dono foi uma tela escura em verde-petróleo, com folhas um degrau mais claras, contorno sutil e acento menta. Os valores agora:
+- fundo #0b1513;
+- folha #111d1a com contorno de 1 px (`--contorno-folha`, branco a 7%) e superfície-2 #162521;
+- herói #0f2b26;
+- botão #14745f;
+- texto em verde #9ad8c6;
+- menta #6fe3c2, só no hoje e no botão de lançar.
+
+O cabeçalho e a barra ficam no próprio petróleo, com o contorno. No claro, nada muda.
+
 Medido em 16/11:
 
 | Tema | Par | Contraste |
@@ -61,13 +71,14 @@ Medido em 16/11:
 | Claro | branco / `--azul` | 7,9 |
 | Claro | verde-texto | 6,9 |
 | Claro | texto / menta | 12,7 |
-| Escuro | tinta | 15,9 |
-| Escuro | tinta suave | 7,6 |
+| Escuro | tinta | 16,8 |
+| Escuro | tinta suave | 8,4 |
 | Escuro | branco / `--azul` | 5,7 |
-| Escuro | verde-texto | 10,1 |
-| Escuro | cinza | 5,8 |
-| Escuro | borda de controle | 6,0 |
-| Escuro | branco / herói | 11,9 |
+| Escuro | verde-texto | 10,7 |
+| Escuro | cinza | 6,5 |
+| Escuro | borda de controle | 5,5 |
+| Escuro | branco / herói | 13,6 |
+| Escuro | texto / menta | 9,7 |
 
 ## 4. Tipo, espaço e tamanhos
 

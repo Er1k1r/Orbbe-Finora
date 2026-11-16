@@ -145,6 +145,8 @@ components:
 > - **Foco:** 3px de `--azul-texto` com folga de 3px; menta sobre o verde.
 > - **Diferenças do cfc:** cartões em vidro sem borda de 1px (pedido do dono) e dívida em tinta neutra.
 
+> Atualização 2026-11-16 (noite): fonte trocada para **Geist Variable**, que substitui a Hanken Grotesk e vale onde este documento ainda cita Hanken. O tema escuro foi para verde-petróleo: fundo #0b1513, folha #111d1a com contorno de 1 px a 7%, menta #6fe3c2. Ver GUIA_VISUAL.md §3.
+
 ## Overview
 
 **Creative North Star: "A Folhinha de Parede"**
