@@ -112,7 +112,7 @@ const REGRAS: Record<Tabela, { obrig: Record<string, Regra>; opc: Record<string,
       nome: ehTexto, valorFinanciado: ehIntMin(1), valorParcela: ehIntMin(1), totalParcelas: ehIntEntre(1, 1200),
       sistema: ehEnum('SAC', 'PRICE'), taxaMensal: ehFinitoMin0, primeiraParcela: ehDataReal, parcelasPagasAntes: ehIntMin(0),
     },
-    opc: { tipo: ehEnum('carro', 'moto', 'casa', 'outro') },
+    opc: { tipo: ehEnum('carro', 'moto', 'casa', 'outro'), contaId: ehTexto },
   },
   planos: {
     obrig: {

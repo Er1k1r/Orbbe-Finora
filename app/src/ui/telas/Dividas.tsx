@@ -21,7 +21,7 @@ const vazio = (): CamposCarne => ({ nome: '', valorFin: '', valorParc: '', total
 
 export default function Dividas({ mes }: { mes: Mes }) {
   const d = useDados()
-  const [edit, setEdit] = useState<{ id: string; campos: CamposCarne; tipo: TipoBem } | null>(null)
+  const [edit, setEdit] = useState<{ id: string; campos: CamposCarne; tipo: TipoBem; contaId: string } | null>(null)
   const [erros, setErros] = useState<string[]>([])
   const ocupado = useRef(false)
   const futuro = mes > mesDe(hojeLocal())
@@ -32,8 +32,8 @@ export default function Dividas({ mes }: { mes: Mes }) {
       ? { id: f.id, campos: {
           nome: f.nome, valorFin: String(f.valorFinanciado), valorParc: String(f.valorParcela), total: String(f.totalParcelas),
           pagas: String(f.parcelasPagasAntes), primeira: f.primeiraParcela, sistema: f.sistema, taxaTexto: '',
-        }, tipo: f.tipo ?? 'outro' }
-      : { id: novoId(), campos: vazio(), tipo: 'outro' })
+        }, tipo: f.tipo ?? 'outro', contaId: f.contaId ?? '' }
+      : { id: novoId(), campos: vazio(), tipo: 'outro', contaId: '' })
   }
   const campo = <K extends keyof CamposCarne>(k: K, v: CamposCarne[K]) => setEdit((e) => (e ? { ...e, campos: { ...e.campos, [k]: v } } : e))
 
@@ -44,7 +44,7 @@ export default function Dividas({ mes }: { mes: Mes }) {
     if (analise.erros.length > 0) { setErros(analise.erros); return }
     ocupado.current = true
     try {
-      await repo.financiamentos.salvar({ ...analise.contrato, id: edit.id, nome: edit.campos.nome.trim(), tipo: edit.tipo })
+      await repo.financiamentos.salvar({ ...analise.contrato, id: edit.id, nome: edit.campos.nome.trim(), tipo: edit.tipo, ...(edit.contaId ? { contaId: edit.contaId } : {}) })
       setEdit(null)
     } finally { ocupado.current = false }
   }
@@ -104,6 +104,13 @@ export default function Dividas({ mes }: { mes: Mes }) {
             <select value={edit.tipo} onChange={(e) => setEdit((x) => (x ? { ...x, tipo: TIPOS_BEM.find((t) => t === e.target.value) ?? 'outro' } : x))} className={entrada}>
               {TIPOS_BEM.map((t) => <option key={t} value={t}>{ROTULO_BEM[t]}</option>)}
             </select>
+          </label>
+          <label className="grid gap-1 text-sm">Conta de onde a parcela sai (opcional)
+            <select value={edit.contaId} onChange={(e) => setEdit((x) => (x ? { ...x, contaId: e.target.value } : x))} className={entrada}>
+              <option value="">Nenhuma</option>
+              {d.contas.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>
+            <span className="text-xs text-suave">Com a conta escolhida, o previsto dela já desconta as parcelas do contrato.</span>
           </label>
           <label className="grid gap-1 text-sm">Valor financiado
             <input inputMode="numeric" value={edit.campos.valorFin} onChange={(e) => campo('valorFin', somenteDigitos(e.target.value))} className={`valor ${entrada}`} />

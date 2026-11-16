@@ -19,7 +19,7 @@ import type { Conta } from '../../domain/tipos'
 export default function Contas() {
   const d = useDados()
   const mesAtual = mesDe(hojeLocal())
-  const situacao = new Map(situacaoContas(d.contas, d.lancamentos, mesAtual).map((s) => [s.contaId, s]))
+  const situacao = new Map(situacaoContas(d.contas, d.lancamentos, mesAtual, d.financiamentos).map((s) => [s.contaId, s]))
   const reserva = saldoReserva(d.contas, d.lancamentos) // só `usandoTodas` interessa aqui
   // Saldo de HOJE da conta (pagos com data <= hoje): é o que se confere com o banco; o cartão mostra o do fim do mês.
   const saldoHoje = (c: Conta) => saldoContas([c], d.lancamentos.filter((l) => l.contaId === c.id), hojeLocal())

@@ -1,6 +1,6 @@
-import { saldoContas } from './fluxo'
+import { estadoFinanciamento, saldoContas } from './fluxo'
 import { fimDoMes, mesDe } from './meses'
-import type { Centavos, Conta, Lancamento, Mes } from './tipos'
+import type { Centavos, Conta, Financiamento, Lancamento, Mes } from './tipos'
 
 export interface SituacaoConta {
   contaId: string
@@ -17,13 +17,24 @@ export interface SituacaoConta {
  * Situação de cada conta no mês. O saldo vem de `saldoContas` (pagos até o fim do mês).
  * `previsto` soma os pendentes da conta com mês <= `mes`, inclusive movimentos internos pendentes:
  * mesmo pendente, uma transferência ainda vai mexer no saldo daquela conta.
+ * Financiamento com `contaId`: as parcelas em aberto do contrato (até o mês) saem DAQUELA conta, inclusive as ainda
+ * não lançadas; o pagamento de parcela pendente (de qualquer conta) deixa de contar à parte para não somar duas
+ * vezes. Antecipação pendente segue contando pelo próprio lançamento. Sem `contaId` nada muda.
  */
-export function situacaoContas(contas: Conta[], lancs: Lancamento[], mes: Mes): SituacaoConta[] {
+export function situacaoContas(contas: Conta[], lancs: Lancamento[], mes: Mes, financiamentos: Financiamento[] = []): SituacaoConta[] {
+  const comConta = financiamentos.filter((f) => f.contaId !== undefined)
+  const idsComConta = new Set(comConta.map((f) => f.id))
+  const ehParcelaDeContrato = (l: Lancamento) =>
+    l.financiamentoId !== undefined && idsComConta.has(l.financiamentoId) && l.pagamentoFinanciamento !== 'antecipacao'
   return contas.map((c) => {
     const daConta = lancs.filter((l) => l.contaId === c.id)
     const saldo = saldoContas([c], daConta, fimDoMes(mes))
-    const pendentes = daConta.filter((l) => l.status === 'pendente' && mesDe(l.data) <= mes)
-    const previsto = pendentes.reduce((s, l) => s + (l.tipo === 'entrada' ? l.valor : -l.valor), saldo)
+    const pendentes = daConta.filter((l) => l.status === 'pendente' && mesDe(l.data) <= mes && !ehParcelaDeContrato(l))
+    const parcelasDoContrato = comConta
+      .filter((f) => f.contaId === c.id)
+      .reduce((s, f) => s + estadoFinanciamento(f, lancs, fimDoMes(mes)).restantes
+        .filter((p) => mesDe(p.vencimento) <= mes).reduce((t, p) => t + p.parcela, 0), 0)
+    const previsto = pendentes.reduce((s, l) => s + (l.tipo === 'entrada' ? l.valor : -l.valor), saldo - parcelasDoContrato)
     const usoLimite = Math.max(0, -saldo)
     return {
       contaId: c.id,

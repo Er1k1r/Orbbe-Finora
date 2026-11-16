@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { criarAjuste, criarTransferencia, saldoReserva, situacaoContas } from './contas'
-import type { Conta, Lancamento } from './tipos'
+import type { Conta, Financiamento, Lancamento } from './tipos'
 
 const conta = (id: string, p: Partial<Conta> = {}): Conta => ({ id, nome: id, tipo: 'banco', saldoInicial: 0, ...p })
 let seq = 0
@@ -117,4 +117,32 @@ describe('criarAjuste', () => {
   it('real menor: saída da diferença', () =>
     expect(criarAjuste({ ...base, saldoApp: 30000, saldoReal: -12000 })).toMatchObject({ tipo: 'saida', valor: 42000 }))
   it('iguais: null', () => expect(criarAjuste({ ...base, saldoReal: -12000 })).toBeNull())
+})
+
+describe('situacaoContas com financiamento ligado a uma conta', () => {
+  // SAC sem juros: 4 parcelas de 25.000 (set a dez/26), 1 paga antes do app; visto em novembro => out (atrasada) e nov em aberto.
+  const fin: Financiamento = {
+    id: 'f1', nome: 'Carro', valorFinanciado: 100000, valorParcela: 25000, totalParcelas: 4, sistema: 'SAC',
+    taxaMensal: 0, primeiraParcela: '2026-09-05', parcelasPagasAntes: 1, contaId: 'a',
+  }
+  const contas = [conta('a', { saldoInicial: 100000 }), conta('b', { saldoInicial: 100000 })]
+
+  it('desconta do previsto da conta as parcelas em aberto até o mês, mesmo sem lançamento', () => {
+    const [a, b] = situacaoContas(contas, [], '2026-11', [fin])
+    // out 25.000 + nov 25.000 em aberto; dez ainda não conta no mês de novembro.
+    expect(a.previsto).toBe(100000 - 50000)
+    expect(b.previsto).toBe(100000)
+    expect(a.saldo).toBe(100000)
+  })
+  it('sem contaId nada muda; pagamento pendente da parcela não conta duas vezes', () => {
+    const sem = { ...fin }
+    delete sem.contaId
+    expect(situacaoContas(contas, [], '2026-11', [sem])[0].previsto).toBe(100000)
+    const pend = lanc({ valor: 25000, data: '2026-11-05', status: 'pendente', financiamentoId: 'f1', pagamentoFinanciamento: 'parcela' })
+    expect(situacaoContas(contas, [pend], '2026-11', [fin])[0].previsto).toBe(100000 - 50000) // continua 50.000, não 75.000
+  })
+  it('antecipação pendente continua pelo lançamento', () => {
+    const ant = lanc({ valor: 10000, data: '2026-11-05', status: 'pendente', financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao' })
+    expect(situacaoContas(contas, [ant], '2026-11', [fin])[0].previsto).toBe(100000 - 50000 - 10000)
+  })
 })

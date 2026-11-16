@@ -83,4 +83,5 @@ export interface Financiamento extends Contrato {
   id: string
   nome: string
   tipo?: TipoBem
+  contaId?: string // conta de onde a parcela sai: sem ela o previsto POR CONTA não enxerga parcela ainda não lançada
 }

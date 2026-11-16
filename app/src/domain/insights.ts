@@ -130,7 +130,7 @@ export function gerarInsights(ctx: ContextoInsights): Insight[] {
   }
 
   // 4b. contas negativas (cheque especial) e contas que vão ficar negativas até o fim do mês
-  for (const sc of situacaoContas(ctx.contas, ctx.lancamentos, ctx.mes)) {
+  for (const sc of situacaoContas(ctx.contas, ctx.lancamentos, ctx.mes, ctx.financiamentos)) {
     const nome = ctx.contas.find((c) => c.id === sc.contaId)?.nome ?? sc.contaId
     if (sc.negativa) {
       const juros = sc.jurosEstimadoMes > 0 ? ` Juros estimados do cheque especial: ${formatarBRL(sc.jurosEstimadoMes)} no mês.` : ''

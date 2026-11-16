@@ -21,6 +21,18 @@ describe('backup', () => {
   })
 })
 
+describe('backup: financiamento com tipo e conta', () => {
+  it('guarda e devolve tipo e contaId', async () => {
+    const f = { id: 'f1', nome: 'Carro', tipo: 'carro' as const, contaId: 'c1', valorFinanciado: 100000, valorParcela: 25000, totalParcelas: 4,
+      sistema: 'SAC' as const, taxaMensal: 0, primeiraParcela: '2026-09-05', parcelasPagasAntes: 0 }
+    await repo.financiamentos.salvar(f)
+    const json = await exportar()
+    await db.delete(); await db.open()
+    await importar(json)
+    expect(await repo.financiamentos.listar()).toEqual([f])
+  })
+})
+
 describe('backup: importação segura', () => {
   const conta = { id: 'c1', nome: 'Banco', tipo: 'banco' as const, saldoInicial: 1000 }
   const vazio = { contas: [], fontes: [], categorias: [], lancamentos: [], financiamentos: [], planos: [] }
@@ -104,6 +116,8 @@ describe('backup: importação segura', () => {
       await rejeita({ financiamentos: [{ ...fin, totalParcelas: 1201 }] })
       await rejeita({ financiamentos: [{ ...fin, valorFinanciado: 0 }] })
       await rejeita({ financiamentos: [{ ...fin, valorParcela: 0.5 }] })
+      await rejeita({ financiamentos: [{ ...fin, tipo: 'nave' }] })
+      await rejeita({ financiamentos: [{ ...fin, contaId: 7 }] })
       await rejeita({ financiamentos: [{ ...fin, primeiraParcela: '2026-02-30' }] })
       await rejeita({ financiamentos: [{ ...fin, parcelasPagasAntes: -1 }] })
       await rejeita({ financiamentos: [{ ...fin, saldoDevedor: 1000, prazoRestante: 12, diaVencimento: 5, valorFinanciado: undefined }] })
