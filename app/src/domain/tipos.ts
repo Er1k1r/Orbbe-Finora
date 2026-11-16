@@ -1,0 +1,87 @@
+export type Centavos = number
+export type Mes = string // 'YYYY-MM'
+export type TipoLancamento = 'entrada' | 'saida'
+export type Natureza = 'fixo' | 'variavel'
+export type StatusLancamento = 'pago' | 'pendente'
+export type TipoFonte = 'fixa' | 'variavel' | 'eventual'
+export type SistemaAmortizacao = 'SAC' | 'PRICE'
+export type EfeitoAporte = 'reduzir_prazo' | 'reduzir_parcela'
+
+export type EspecieLancamento = 'transferencia' | 'ajuste'
+export type PagamentoFinanciamento = 'parcela' | 'antecipacao'
+export interface Parcelamento { grupoId: string; numero: number; total: number }
+
+export interface Conta {
+  id: string
+  nome: string
+  tipo: 'banco' | 'caixa' | 'carteira'
+  saldoInicial: Centavos
+  limiteChequeEspecial?: Centavos
+  taxaChequeEspecial?: number // fração ao mês
+  reserva?: boolean
+}
+export interface FonteDeRenda {
+  id: string
+  nome: string
+  tipo: TipoFonte
+  valorEsperado: Centavos
+  diaPagamento?: number
+}
+export interface Categoria {
+  id: string
+  nome: string
+  icone: string
+  tipo: TipoLancamento
+  natureza: Natureza
+  essencial: boolean
+  sistema?: boolean // categorias internas, fora da grade de lançamento
+}
+export interface Lancamento {
+  id: string
+  valor: Centavos
+  data: string // 'YYYY-MM-DD'
+  tipo: TipoLancamento
+  categoriaId: string
+  natureza: Natureza
+  contaId: string
+  fonteId?: string
+  observacao?: string
+  status: StatusLancamento
+  recorrencia?: 'mensal'
+  origemId?: string // lançamento-modelo de uma recorrência
+  financiamentoId?: string // marca o lançamento como pagamento da parcela deste financiamento
+  geradoAte?: Mes // marca d'água: recorrência já gerada até este mês (inclusive)
+  descricao?: string
+  especie?: EspecieLancamento
+  transferenciaId?: string
+  pagamentoFinanciamento?: PagamentoFinanciamento
+  parcelamento?: Parcelamento
+  recorrenciaAte?: Mes // último mês em que a recorrência ainda gera cópia
+}
+export interface PlanoAmortizacao {
+  id: string
+  financiamentoId: string
+  aporteExtraMensal: Centavos
+  efeito: EfeitoAporte
+}
+
+export interface Contrato {
+  valorFinanciado: Centavos
+  valorParcela: Centavos // Price: parcela fixa; SAC: 1ª parcela
+  totalParcelas: number
+  sistema: SistemaAmortizacao
+  taxaMensal: number // calculada do carnê (taxaImplicita)
+  primeiraParcela: string // 'YYYY-MM-DD'
+  parcelasPagasAntes: number // pagas antes de usar o app (não geram lançamento)
+}
+
+/** O que o contrato financia; só muda o desenho da dívida (carro, moto, casa...), nunca a conta. */
+export type TipoBem = 'carro' | 'moto' | 'casa' | 'outro'
+export const TIPOS_BEM: readonly TipoBem[] = ['carro', 'moto', 'casa', 'outro']
+
+export interface Financiamento extends Contrato {
+  id: string
+  nome: string
+  tipo?: TipoBem
+  contaId?: string // conta de onde a parcela sai: sem ela o previsto POR CONTA não enxerga parcela ainda não lançada
+}

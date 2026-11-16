@@ -1,0 +1,540 @@
+import { describe, it, expect } from 'vitest'
+import { saldoContas, resumoMes, parcelaDoMes, estadoFinanciamento, aporteVigente } from './fluxo'
+import { taxaImplicita } from './contrato'
+import { gerarCronograma } from './amortizacao'
+import { criarParcelamento } from './parcelamento'
+import { situacaoContas } from './contas'
+import type { Conta, Contrato, Lancamento, Financiamento } from './tipos'
+
+const contratoDe = (S: number, i: number, n: number, sistema: 'SAC' | 'PRICE' = 'SAC', primeiraParcela = '2026-10-05'): Contrato => ({
+  valorFinanciado: S, totalParcelas: n, taxaMensal: i, sistema, parcelasPagasAntes: 0, primeiraParcela,
+  valorParcela: gerarCronograma({ saldo: S, taxa: i, prazo: n, sistema })[0]?.parcela ?? 0,
+})
+
+const conta: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 100000 }
+const l = (p: Partial<Lancamento>): Lancamento => ({
+  id: Math.random().toString(36).slice(2),
+  valor: 0, data: '2026-10-10', tipo: 'saida', categoriaId: 'x', natureza: 'variavel',
+  contaId: 'c1', status: 'pago', ...p,
+})
+const fin: Financiamento = { id: 'f1', nome: 'Carro', ...contratoDe(120000, 0.01, 4) }
+
+describe('saldoContas', () => {
+  it('ignora pendentes', () => {
+    const ls = [
+      l({ tipo: 'entrada', valor: 50000 }),
+      l({ valor: 20000 }),
+      l({ valor: 99999, status: 'pendente' }),
+    ]
+    expect(saldoContas([conta], ls)).toBe(100000 + 50000 - 20000)
+  })
+})
+
+describe('parcelaDoMes', () => {
+  it('primeira parcela sem aporte', () => expect(parcelaDoMes(fin, '2026-10', [])).toBe(31200))
+})
+
+describe('resumoMes', () => {
+  const ls = [
+    l({ tipo: 'entrada', valor: 300000 }),
+    l({ valor: 80000 }),
+    l({ valor: 20000, status: 'pendente' }),
+    l({ tipo: 'entrada', valor: 10000, status: 'pendente' }),
+    l({ valor: 5000, data: '2026-09-10' }), // outro mês
+  ]
+  const r = resumoMes({ mes: '2026-10', contas: [conta], lancamentos: ls, financiamentos: [fin], aporteExtra: 10000 })
+  it('receitas e despesas do mês', () => {
+    expect(r.receitas).toBe(310000)
+    expect(r.despesas).toBe(100000)
+    expect(r.parcelas).toBe(31200)
+  })
+  it('sobras', () => {
+    expect(r.sobraNormal).toBe(310000 - 100000 - 31200)
+    expect(r.sobraOtimizada).toBe(r.sobraNormal - 10000)
+  })
+  it('saldo, previsto e saldo seguro', () => {
+    // saldo = 100000 + 300000 - 80000 - 5000 = 315000
+    expect(r.saldo).toBe(315000)
+    // parcela do mês (31200) ainda não paga entra em previsto e saldoSeguro
+    expect(r.parcelasPendentes).toBe(31200)
+    expect(r.previsto).toBe(315000 + 10000 - 20000 - 31200)
+    expect(r.saldoSeguro).toBe(315000 - 20000 - 31200)
+    expect(r.inicial).toBe(100000 - 5000)
+  })
+})
+
+describe('parcelas de financiamento no saldo (financiamentoId)', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  // SAC 3.600.000 / 24 = 150.000 amortização + 1% de 3.600.000 = 36.000 juros => parcela 186.000
+  const grande: Financiamento = { ...fin, ...contratoDe(3600000, 0.01, 24) }
+  const entrada = l({ tipo: 'entrada', valor: 500000 })
+  const resumo = (ls: Lancamento[]) =>
+    resumoMes({ mes: '2026-10', contas: [conta2], lancamentos: ls, financiamentos: [grande], aporteExtra: 0 })
+  it('parcela do mês', () => expect(parcelaDoMes(grande, '2026-10', [])).toBe(186000))
+  it('(a) nada registrado: parcela pendente reduz previsto e saldoSeguro', () => {
+    const r = resumo([entrada])
+    expect(r.sobraNormal).toBe(500000 - 186000) // 314.000
+    expect(r.saldo).toBe(1500000)
+    expect(r.parcelasPendentes).toBe(186000)
+    expect(r.previsto).toBe(1500000 - 186000) // 1.314.000
+    expect(r.saldoSeguro).toBe(1314000)
+  })
+  it('(b) saída paga com financiamentoId não conta em dobro', () => {
+    const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1' })])
+    expect(r.despesas).toBe(0)
+    expect(r.sobraNormal).toBe(314000)
+    expect(r.saldo).toBe(1314000)
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.previsto).toBe(1314000)
+    expect(r.saldoSeguro).toBe(1314000)
+  })
+  it('(c) saída pendente com financiamentoId é excluída das despesas pendentes', () => {
+    const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1', status: 'pendente' })])
+    expect(r.despesasPendentes).toBe(0)
+    expect(r.parcelasPendentes).toBe(186000)
+    expect(r.previsto).toBe(1314000)
+  })
+  const f2: Financiamento = { ...grande, id: 'f2' }
+  const resumo2 = (ls: Lancamento[], mes = '2026-10') =>
+    resumoMes({ mes, contas: [conta2], lancamentos: ls, financiamentos: [grande, f2], aporteExtra: 0 })
+  it('(f) pagamento vinculado a um financiamento não abate a parcela de outro', () => {
+    const r = resumo2([entrada, l({ valor: 186000, financiamentoId: 'f1' })])
+    expect(r.parcelas).toBe(372000)
+    expect(r.parcelasPendentes).toBe(186000) // só f2 segue pendente
+  })
+  it('(g) pagamento acima da parcela zera as pendentes (sem negativo) e o excesso vira despesa', () => {
+    const r = resumo([entrada, l({ valor: 200000, financiamentoId: 'f1' })])
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(14000)
+    expect(r.sobraNormal).toBe(500000 - 14000 - 186000) // 300.000
+    expect(r.saldo).toBe(1300000)
+    expect(r.previsto).toBe(1300000)
+  })
+  it('(h) pagamento feito antes do vencimento já cobre a parcela', () => {
+    // Pagamento feito em setembro cobre a parcela #1 (outubro): nada em aberto em outubro.
+    const r = resumo([entrada, l({ valor: 186000, financiamentoId: 'f1', data: '2026-09-10' })])
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(0)
+  })
+  it('(d) parcela vencida e não paga (contrato iniciado em setembro) continua devida em previsto e saldoSeguro', () => {
+    // Contrato começa em 2026-09-05, nenhuma parcela paga; visto em outubro.
+    // Parcela #1 (setembro) = 36.000 + 150.000 = 186.000 => atrasada.
+    // Parcela #2 (outubro) = 1% de 3.450.000 = 34.500 + 150.000 = 184.500 => pendente.
+    // previsto = 1.500.000 - 186.000 - 184.500 = 1.129.500
+    const desde = { ...grande, primeiraParcela: '2026-09-05' }
+    const pendenteLigado = l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-09-10' })
+    const r = resumoMes({ mes: '2026-10', contas: [conta2], lancamentos: [entrada, pendenteLigado], financiamentos: [desde], aporteExtra: 0 })
+    expect(r.saldo).toBe(1500000)
+    expect(r.despesasPendentes).toBe(0) // o pendente ligado não é contado em dobro
+    expect(r.parcelasAtrasadas).toBe(186000)
+    expect(r.parcelasPendentes).toBe(184500)
+    expect(r.previsto).toBe(1129500)
+    expect(r.saldoSeguro).toBe(1500000 - 186000 - 184500)
+  })
+  it('(e) parcela pendente do mês visto ou de mês posterior não entra como atrasada', () => {
+    const r = resumo([
+      entrada,
+      l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-10-20' }),
+      l({ valor: 186000, financiamentoId: 'f1', status: 'pendente', data: '2026-11-10' }),
+    ])
+    expect(r.parcelasAtrasadas).toBe(0)
+    expect(r.previsto).toBe(1314000)
+  })
+})
+
+describe('contrato visto em outros meses e antecipação', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  // SAC 3.600.000 / 24, 1ª parcela em 2026-10-05: parcela #k = 150.000 + 1% do saldo anterior.
+  const grande: Financiamento = { ...fin, ...contratoDe(3600000, 0.01, 24) }
+  const entrada = l({ tipo: 'entrada', valor: 500000 })
+  const ver = (mes: string, ls: Lancamento[]) =>
+    resumoMes({ mes, contas: [conta2], lancamentos: ls, financiamentos: [grande], aporteExtra: 0 })
+  it('mês passado (antes do contrato) não tem parcela', () => {
+    expect(parcelaDoMes(grande, '2026-09', [])).toBe(0)
+    expect(ver('2026-09', []).parcelas).toBe(0)
+  })
+  it('mês futuro: parcela do cronograma daquele mês', () => {
+    // #3 em dezembro: saldo 3.300.000 => juros 33.000 + 150.000
+    expect(parcelaDoMes(grande, '2026-12', [])).toBe(183000)
+  })
+  it('depois do fim do contrato a parcela é 0', () => {
+    expect(parcelaDoMes(grande, '2028-10', [])).toBe(0) // #25 não existe
+    expect(parcelaDoMes(grande, '2028-09', [])).toBe(151500) // #24: juros 1% de 150.000 = 1.500 + 150.000
+  })
+  it('mês passado já pago continua com o valor original da parcela', () => {
+    const pg = l({ valor: 186000, financiamentoId: 'f1', data: '2026-10-05' })
+    expect(parcelaDoMes(grande, '2026-10', [pg])).toBe(186000)
+    expect(ver('2026-11', [pg]).parcelas).toBe(184500)
+  })
+  it('antecipação paga: fica em antecipacoes, reduz o saldo e não muda sobraNormal', () => {
+    // Parcela do mês paga primeiro (dia 5); a antecipação (dia 12) só reduz o saldo devedor.
+    const pg = l({ valor: 186000, financiamentoId: 'f1', data: '2026-10-05' })
+    const base = ver('2026-10', [entrada, pg])
+    const ant = l({ valor: 300000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-10-12' })
+    const r = ver('2026-10', [entrada, pg, ant])
+    expect(r.antecipacoes).toBe(300000)
+    expect(base.antecipacoes).toBe(0)
+    expect(r.despesas).toBe(0)
+    expect(r.sobraNormal).toBe(base.sobraNormal)
+    expect(r.sobraNormal).toBe(500000 - 186000)
+    expect(r.saldo).toBe(base.saldo - 300000)
+  })
+})
+
+describe('pendente e excesso pelo estado do contrato', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  const grande: Financiamento = { ...fin, ...contratoDe(3600000, 0.01, 24) } // #1 = 186.000 em 2026-10-05
+  const price = (primeiraParcela: string, pagasAntes: number): Financiamento => {
+    const base = { valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE' as const }
+    return { id: 'f1', nome: 'P', ...base, taxaMensal: taxaImplicita(base)!, primeiraParcela, parcelasPagasAntes: pagasAntes }
+  }
+  const ver = (mes: string, ls: Lancamento[], f: Financiamento) =>
+    resumoMes({ mes, contas: [conta2], lancamentos: ls, financiamentos: [f], aporteExtra: 0 })
+  it('pagamento antecipado (28/09 para outubro): outubro sem pendente, setembro sem excesso', () => {
+    const pg = l({ valor: 186000, financiamentoId: 'f1', data: '2026-09-28' })
+    const out = ver('2026-10', [pg], grande)
+    expect(out.parcelasPendentes).toBe(0)
+    expect(out.despesas).toBe(0)
+    const set = ver('2026-09', [pg], grande)
+    expect(set.despesas).toBe(0) // excesso = 186.000 - 186.000 (passo #1) = 0; parcela do mês de setembro = 0
+    expect(set.parcelasPendentes).toBe(0)
+  })
+  it('mês coberto por parcelasPagasAntes não tem pendente (Price, março de 2026, 9 pagas antes)', () => {
+    const r = ver('2026-03', [], price('2026-01-10', 9))
+    expect(r.parcelas).toBe(95000) // #3 reproduzida = parcela fixa
+    expect(r.parcelasPendentes).toBe(0)
+  })
+  it('FIFO: setembro (#9) em aberto, pagamento em outubro quita #9; outubro segue pendente', () => {
+    const f = price('2026-01-10', 8)
+    const pg = l({ valor: 95000, financiamentoId: 'f1', data: '2026-10-10' })
+    const r = ver('2026-10', [pg], f)
+    expect(r.parcelas).toBe(95000) // #10 = parcela fixa
+    expect(r.parcelasPendentes).toBe(95000)
+    expect(r.despesas).toBe(0) // excesso do passo #9 = 95.000 - 95.000 = 0
+    expect(r.parcelasAtrasadas).toBe(0)
+    expect(r.saldo).toBe(1000000 - 95000)
+    expect(r.previsto).toBe(r.saldo - 95000)
+  })
+  it('SAC: antecipação antes da parcela reduz a parcela e o pagamento a quita (sem fantasma)', () => {
+    // antec 300.000 (02/10): saldo 3.300.000; passo #1 = 33.000 + 150.000 = 183.000; saldo final 3.150.000
+    const ls = [
+      l({ valor: 300000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-10-02' }),
+      l({ valor: 183000, financiamentoId: 'f1', data: '2026-10-05' }),
+    ]
+    const r = ver('2026-10', ls, grande)
+    expect(r.parcelas).toBe(183000)
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(0)
+    expect(r.antecipacoes).toBe(300000)
+    expect(estadoFinanciamento(grande, ls, '2026-10-31').saldoDevedor).toBe(3150000)
+  })
+  it('pagamento 97.000 de uma parcela de 95.000: excesso 2.000 é despesa', () => {
+    const r = ver('2026-10', [l({ valor: 97000, financiamentoId: 'f1', data: '2026-10-10' })], price('2026-10-10', 0))
+    expect(r.parcelasPendentes).toBe(0)
+    expect(r.despesas).toBe(2000)
+  })
+  it('pagamento datado depois do mês visto não conta para o mês', () => {
+    const pgNov = l({ valor: 186000, financiamentoId: 'f1', data: '2026-11-10' })
+    const r = ver('2026-10', [pgNov], grande)
+    expect(r.parcelasPendentes).toBe(186000)
+    // antecipação de novembro não altera a parcela de outubro (186.000, não 183.000)
+    const antNov = l({ valor: 300000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-11-03' })
+    expect(parcelaDoMes(grande, '2026-10', [antNov])).toBe(186000)
+    expect(estadoFinanciamento(grande, [antNov], '2026-10-31').saldoDevedor).toBe(3600000)
+  })
+})
+
+describe('pagamento ligado sem parcela para consumir', () => {
+  const conta2: Conta = { id: 'c1', nome: 'Banco', tipo: 'banco', saldoInicial: 1000000 }
+  // SAC 200000/1%/2 em 2026-10-05: #1 = 100000 + 2000 = 102000; #2 = 100000 + 1000 = 101000
+  const dois: Financiamento = { ...fin, ...contratoDe(200000, 0.01, 2) }
+  const pgs = [
+    l({ valor: 102000, financiamentoId: 'f1', data: '2026-10-05' }),
+    l({ valor: 101000, financiamentoId: 'f1', data: '2026-11-05' }),
+  ]
+  const ver = (ls: Lancamento[]) => resumoMes({ mes: '2026-12', contas: [conta2], lancamentos: ls, financiamentos: [dois], aporteExtra: 0 })
+  it('terceira parcela de um contrato de 2 entra como despesa (50.000) e reduz a sobra', () => {
+    const r = ver([...pgs, l({ valor: 50000, financiamentoId: 'f1', data: '2026-12-05' })])
+    expect(r.parcelas).toBe(0)
+    expect(r.despesas).toBe(50000)
+    expect(r.sobraNormal).toBe(-50000)
+    expect(r.saldo).toBe(1000000 - 102000 - 101000 - 50000)
+  })
+  it('antecipação acima do saldo: antecipacoes 100.000 e despesas 30.000', () => {
+    const rr = resumoMes({
+      mes: '2026-10', contas: [conta2], financiamentos: [dois], aporteExtra: 0,
+      lancamentos: [pgs[0], l({ valor: 130000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-10-10' })],
+    })
+    // após #1 (102.000) o saldo é 100.000; 130.000 abate 100.000 e 30.000 viram despesa
+    expect(rr.antecipacoes).toBe(100000)
+    expect(rr.despesas).toBe(30000)
+    expect(rr.sobraNormal).toBe(-30000 - 102000) // despesas 30.000 + parcela #1 de outubro 102.000
+    expect(rr.saldo).toBe(1000000 - 102000 - 130000)
+  })
+  it('antecipação com saldo zerado entra como despesa (30.000), não em antecipacoes', () => {
+    const r = ver([...pgs, l({ valor: 30000, financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao', data: '2026-12-10' })])
+    expect(r.despesas).toBe(30000)
+    expect(r.antecipacoes).toBe(0)
+    expect(r.sobraNormal).toBe(-30000)
+  })
+})
+
+describe('financiamentoId órfão (financiamento apagado)', () => {
+  const r = (ls: Lancamento[], fs: Financiamento[] = []) =>
+    resumoMes({ mes: '2026-10', contas: [conta], lancamentos: ls, financiamentos: fs, aporteExtra: 0 })
+  it('saída paga órfã é despesa comum e reduz a sobra', () => {
+    const x = r([l({ valor: 50000, financiamentoId: 'apagado' })])
+    expect(x.despesas).toBe(50000)
+    expect(x.sobraNormal).toBe(-50000)
+    expect(x.saldo).toBe(50000)
+  })
+  it('saída pendente órfã entra nas despesas pendentes e em previsto', () => {
+    const x = r([l({ valor: 50000, financiamentoId: 'apagado', status: 'pendente' })])
+    expect(x.despesasPendentes).toBe(50000)
+    expect(x.previsto).toBe(50000)
+  })
+  it('órfã de mês anterior pendente não vira parcela atrasada, só despesa pendente', () => {
+    const x = r([l({ valor: 50000, financiamentoId: 'apagado', status: 'pendente', data: '2026-09-10' })])
+    expect(x.parcelasAtrasadas).toBe(0)
+    expect(x.despesasPendentes).toBe(50000)
+  })
+  it('com o financiamento existente continua sendo vínculo', () => {
+    const x = r([l({ valor: 31200, financiamentoId: 'f1' })], [fin])
+    expect(x.despesas).toBe(0)
+  })
+})
+
+describe('saldo até o fim do mês visualizado', () => {
+  const c = { ...conta, saldoInicial: 100000 }
+  const ls = [
+    l({ tipo: 'entrada', valor: 50000, data: '2026-08-10' }),
+    l({ valor: 30000, data: '2026-10-10' }),
+  ]
+  const ver = (mes: string, lancamentos: Lancamento[] = ls) =>
+    resumoMes({ mes, contas: [c], lancamentos, financiamentos: [], aporteExtra: 0 })
+  it('mês passado mostra o saldo do fim daquele mês', () => {
+    const r = ver('2026-08')
+    expect(r.inicial).toBe(100000)
+    expect(r.saldo).toBe(150000)
+  })
+  it('mês seguinte parte do saldo anterior', () => {
+    const r = ver('2026-10')
+    expect(r.inicial).toBe(150000)
+    expect(r.saldo).toBe(120000)
+  })
+  it('saldoContas com ate ignora datas posteriores', () => {
+    expect(saldoContas([c], ls, '2026-09-30')).toBe(150000)
+    expect(saldoContas([c], ls)).toBe(120000)
+  })
+  it('pendente de mês anterior conta em previsto e saldoSeguro', () => {
+    const r = ver('2026-10', [l({ valor: 20000, data: '2026-09-15', status: 'pendente' })])
+    expect(r.despesasPendentes).toBe(20000)
+    expect(r.previsto).toBe(80000)
+    expect(r.saldoSeguro).toBe(80000)
+  })
+  it('pendente de mês posterior não conta', () => {
+    const r = ver('2026-10', [l({ valor: 20000, data: '2026-11-15', status: 'pendente' })])
+    expect(r.despesasPendentes).toBe(0)
+    expect(r.previsto).toBe(100000)
+    expect(r.saldoSeguro).toBe(100000)
+  })
+  it('entradas vazias', () => {
+    const r = resumoMes({ mes: '2026-10', contas: [], lancamentos: [], financiamentos: [], aporteExtra: 0 })
+    expect(r).toMatchObject({ receitas: 0, despesas: 0, parcelas: 0, parcelasPendentes: 0, sobraNormal: 0, saldo: 0, inicial: 0, previsto: 0, saldoSeguro: 0 })
+    expect(saldoContas([], [])).toBe(0)
+    expect(saldoContas([c, { ...c, id: 'c2', saldoInicial: 5000 }], [])).toBe(105000)
+  })
+})
+
+describe('movimentos internos (transferência e ajuste)', () => {
+  const contaA: Conta = { id: 'A', nome: 'A', tipo: 'banco', saldoInicial: 100000 }
+  const contaB: Conta = { id: 'B', nome: 'B', tipo: 'banco', saldoInicial: 0 }
+  const base = [
+    l({ tipo: 'entrada', valor: 50000, contaId: 'A', data: '2026-10-05' }),
+    l({ tipo: 'saida', valor: 30000, contaId: 'A', data: '2026-10-06', especie: 'transferencia', transferenciaId: 't1' }),
+    l({ tipo: 'entrada', valor: 30000, contaId: 'B', data: '2026-10-06', especie: 'transferencia', transferenciaId: 't1' }),
+    l({ tipo: 'entrada', valor: 7000, contaId: 'A', data: '2026-10-07', especie: 'ajuste' }),
+  ]
+  const resumo = (ls: Lancamento[]) =>
+    resumoMes({ mes: '2026-10', contas: [contaA, contaB], lancamentos: ls, financiamentos: [], aporteExtra: 0 })
+  it('não entram em receitas/despesas/sobra; o saldo inclui o ajuste e a transferência soma zero', () => {
+    const r = resumo(base)
+    expect(r.receitas).toBe(50000)
+    expect(r.despesas).toBe(0)
+    expect(r.sobraNormal).toBe(50000)
+    expect(r.saldo).toBe(157000)
+  })
+  it('ajuste pendente não entra em receitasPendentes', () => {
+    const r = resumo([...base, l({ tipo: 'entrada', valor: 9000, status: 'pendente', especie: 'ajuste' })])
+    expect(r.receitasPendentes).toBe(0)
+    expect(r.despesasPendentes).toBe(0)
+  })
+})
+
+describe('estadoFinanciamento memorizado', () => {
+  const pago = l({ id: 'p1', valor: 31200, data: '2026-10-05', financiamentoId: 'f1' })
+  it('mesmas entradas devolvem a mesma instância', () => {
+    const ls = [pago]
+    expect(estadoFinanciamento(fin, ls)).toBe(estadoFinanciamento(fin, ls))
+    expect(estadoFinanciamento(fin, ls, '2026-10-31')).toBe(estadoFinanciamento(fin, ls, '2026-10-31'))
+  })
+  it('`ate` diferente, nova lista de lançamentos ou novo financiamento recalculam', () => {
+    const ls = [pago]
+    const a = estadoFinanciamento(fin, ls)
+    expect(estadoFinanciamento(fin, ls, '2026-09-30')).not.toBe(a)
+    expect(estadoFinanciamento(fin, [pago])).not.toBe(a)
+    expect(estadoFinanciamento({ ...fin }, ls)).not.toBe(a)
+    expect(estadoFinanciamento(fin, [pago]).parcelasPagas).toBe(1)
+    expect(estadoFinanciamento(fin, [], undefined).parcelasPagas).toBe(0)
+  })
+})
+
+// Família usada na revisão final (visão de outubro/novembro de 2026).
+describe('resumoMes: família completa (recorrências sem cópia e antecipações pendentes)', () => {
+  const contasF: Conta[] = [
+    { id: 'banco', nome: 'Banco', tipo: 'banco', saldoInicial: -20000, limiteChequeEspecial: 200000, taxaChequeEspecial: 0.08 },
+    { id: 'caixa', nome: 'Caixa', tipo: 'caixa', saldoInicial: 10000 },
+    { id: 'reserva', nome: 'Reserva', tipo: 'banco', saldoInicial: 300000, reserva: true },
+  ]
+  const modelo = (id: string, valor: number, tipo: 'entrada' | 'saida', extra: Partial<Lancamento> = {}): Lancamento =>
+    l({ id, valor, tipo, data: '2026-07-05', contaId: 'banco', categoriaId: id, natureza: 'fixo', recorrencia: 'mensal', geradoAte: '2026-10', ...extra })
+  const modelos = [
+    modelo('salario', 500000, 'entrada'),
+    modelo('aluguel', 150000, 'saida'),
+    modelo('netflix', 4000, 'saida', { recorrenciaAte: '2026-12' }),
+  ]
+  // cópias de ago a out, já pagas (o app as gerou e o usuário baixou)
+  const copias = modelos.flatMap((m) =>
+    ['2026-08', '2026-09', '2026-10'].map((mes) => ({ ...m, id: `${m.id}:${mes}`, data: `${mes}-05`, status: 'pago' as const, origemId: m.id, recorrencia: undefined, geradoAte: undefined, recorrenciaAte: undefined })),
+  )
+  const oculos = criarParcelamento({
+    grupoId: 'ocl', valorParcela: 5000, total: 12, parcelaAtual: 4, dataParcelaAtual: '2026-10-15', statusAtual: 'pago',
+    base: { tipo: 'saida', categoriaId: 'saude', natureza: 'variavel', contaId: 'caixa' },
+  })
+  const carro: Financiamento = {
+    id: 'carro', nome: 'Carro', valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE',
+    taxaMensal: taxaImplicita({ valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE' }) as number,
+    primeiraParcela: '2026-01-10', parcelasPagasAntes: 9,
+  }
+  const pagCarro = [
+    l({ id: 'par10', valor: 95000, data: '2026-10-10', financiamentoId: 'carro', contaId: 'banco' }),
+    l({ id: 'ant', valor: 200000, data: '2026-10-20', financiamentoId: 'carro', contaId: 'reserva', pagamentoFinanciamento: 'antecipacao' }),
+  ]
+  const todos = [...modelos, ...copias, ...oculos, ...pagCarro]
+  const resumo = (mes: string, ls: Lancamento[] = todos) =>
+    resumoMes({ mes, contas: contasF, lancamentos: ls, financiamentos: [carro], aporteExtra: 0 })
+
+  it('novembro sem cópias: recorrências entram como pendentes virtuais', () => {
+    const r = resumo('2026-11')
+    // receitas: salário virtual 500000. despesas: aluguel 150000 + netflix 4000 virtuais + óculos #5 (nov, pendente) 5000 = 159000
+    expect(r.receitas).toBe(500000)
+    expect(r.despesas).toBe(159000)
+    // sobraNormal = 500000 - 159000 - parcela do carro (95000, a #11) = 246000
+    expect(r.parcelas).toBe(95000)
+    expect(r.sobraNormal).toBe(246000)
+    // pendentes até nov: só os de novembro (ago-out estão pagos)
+    expect(r.receitasPendentes).toBe(500000)
+    expect(r.despesasPendentes).toBe(159000)
+  })
+  it('respeita recorrenciaAte e não ressuscita cópia apagada (marca d\'água)', () => {
+    // netflix termina em 2026-12: em janeiro já não entra; salário e aluguel continuam
+    const jan = resumo('2027-01')
+    expect(jan.despesas).toBe(150000 + 5000)
+    // cópia de setembro do aluguel apagada: geradoAte 2026-10 cobre o mês, nada de ressurgir
+    const semSet = resumo('2026-11', todos.filter((x) => x.id !== 'aluguel:2026-09'))
+    expect(semSet.despesasPendentes).toBe(159000)
+  })
+  it('meses anteriores sem cópia também contam nos pendentes (do mês seguinte ao do modelo até o visto)', () => {
+    const m = modelo('academia', 10000, 'saida', { geradoAte: undefined })
+    const r = resumoMes({ mes: '2026-10', contas: contasF, lancamentos: [m], financiamentos: [], aporteExtra: 0 })
+    // ago, set e out virtuais: 3 x 10000 pendentes; só out é despesa do mês
+    expect(r.despesasPendentes).toBe(30000)
+    expect(r.despesas).toBe(10000)
+  })
+  it('antecipação pendente ate o mês abate previsto e saldoSeguro', () => {
+    const base = resumo('2026-10')
+    const pend = l({ id: 'ant2', valor: 300000, data: '2026-10-30', status: 'pendente', financiamentoId: 'carro', contaId: 'reserva', pagamentoFinanciamento: 'antecipacao' })
+    const r = resumo('2026-10', [...todos, pend])
+    expect(r.antecipacoesPendentes).toBe(300000)
+    expect(base.antecipacoesPendentes).toBe(0)
+    expect(r.previsto).toBe(base.previsto - 300000)
+    expect(r.saldoSeguro).toBe(base.saldoSeguro - 300000)
+    // saldo e despesas não mudam (ainda não saiu dinheiro)
+    expect(r.saldo).toBe(base.saldo)
+    expect(r.despesas).toBe(base.despesas)
+  })
+  it('antecipação pendente de mês posterior ao visto não conta', () => {
+    const pend = l({ id: 'ant3', valor: 300000, data: '2026-11-30', status: 'pendente', financiamentoId: 'carro', contaId: 'reserva', pagamentoFinanciamento: 'antecipacao' })
+    expect(resumo('2026-10', [...todos, pend]).antecipacoesPendentes).toBe(0)
+  })
+  it('a soma do saldo das contas (situacaoContas) é o saldo do resumo', () => {
+    const soma = situacaoContas(contasF, todos, '2026-10').reduce((s, c) => s + c.saldo, 0)
+    expect(soma).toBe(resumo('2026-10').saldo)
+  })
+})
+
+describe('aporteVigente', () => {
+  // `fin`: Price/SAC 120.000 em 4 parcelas desde 2026-10-05. Quitado: 4 pagas antes do app => saldo 0.
+  const quitado: Financiamento = { id: 'q', nome: 'Velho', ...contratoDe(120000, 0.01, 4), parcelasPagasAntes: 4 }
+  const pl = (financiamentoId: string, aporteExtraMensal: number) => ({ id: 'p' + financiamentoId, financiamentoId, aporteExtraMensal, efeito: 'reduzir_prazo' as const })
+  it('soma só os planos de financiamentos com saldo devedor', () => {
+    // fin tem saldo 120.000 > 0 (conta 30.000); quitado tem saldo 0 (ignorado)
+    expect(aporteVigente([pl('f1', 30000), pl('q', 70000)], [fin, quitado], [], '2026-10')).toBe(30000)
+  })
+  it('plano de contrato quitado não conta; sem planos vigentes = 0', () => {
+    expect(aporteVigente([pl('q', 70000)], [fin, quitado], [], '2026-10')).toBe(0)
+    expect(aporteVigente([], [fin], [], '2026-10')).toBe(0)
+  })
+  it('plano órfão (financiamento removido) não conta', () => {
+    expect(aporteVigente([pl('x', 5000)], [fin], [], '2026-10')).toBe(0)
+  })
+  it('o saldo é medido no fim do mês visto: quitado por pagamentos até então', () => {
+    // 4 parcelas pagas em out..jan: em 2026-12 ainda há saldo (2 restantes); em 2027-01 zerou.
+    const pagos = [0, 1, 2, 3].map((k) => l({ valor: 31200, data: `${k < 3 ? '2026-' + (10 + k) : '2027-01'}-05`, financiamentoId: 'f1', pagamentoFinanciamento: 'parcela' }))
+    expect(aporteVigente([pl('f1', 30000)], [fin], pagos, '2026-12')).toBe(30000)
+    expect(aporteVigente([pl('f1', 30000)], [fin], pagos, '2027-01')).toBe(0)
+  })
+})
+
+describe('estadoFinanciamento até hoje (Quitar hoje na tela de detalhe)', () => {
+  // pagamento da 1ª parcela com data futura (2026-12-05); fin = SAC 120.000 em 4x a 1%: saldo 120.000 -> 90.000 após 1 parcela
+  const futuro = [l({ valor: 31200, data: '2026-12-05', financiamentoId: 'f1', pagamentoFinanciamento: 'parcela' })]
+  it('pagamento datado no futuro não conta em "hoje"; sem corte ele conta', () => {
+    const hoje = estadoFinanciamento(fin, futuro, '2026-10-19')
+    expect(hoje.parcelasPagas).toBe(0)
+    expect(hoje.saldoDevedor).toBe(120000)
+    const semCorte = estadoFinanciamento(fin, futuro)
+    expect(semCorte.parcelasPagas).toBe(1)
+    expect(semCorte.saldoDevedor).toBe(90000)
+  })
+})
+
+describe('pinos do motor: receita virtual sem cópia e antecipação pendente anterior', () => {
+  it('modelo de receita sem cópia visto meses depois: só o mês visto entra em receitas; os anteriores em receitasPendentes', () => {
+    // salário 500.000 (modelo pago em 2026-07-05, geradoAte 2026-09, nenhuma cópia). Visto: 2026-12.
+    // virtuais = meses de ago a dez fora da marca d'água (<= set): out, nov e dez => 3 itens pendentes de 500.000.
+    const modelo = l({ id: 'sal', tipo: 'entrada', valor: 500000, data: '2026-07-05', recorrencia: 'mensal', geradoAte: '2026-09' })
+    const r = resumoMes({ mes: '2026-12', contas: [conta], lancamentos: [modelo], financiamentos: [], aporteExtra: 0 })
+    expect(r.receitas).toBe(500000) // só o virtual de dez (out e nov não são receita do mês visto)
+    expect(r.receitasPendentes).toBe(1500000) // 3 x 500.000 (out, nov e dez)
+    // saldo = 100.000 + 500.000 (modelo pago de jul) = 600.000; previsto = 600.000 + 1.500.000
+    expect(r.saldo).toBe(600000)
+    expect(r.previsto).toBe(2100000)
+    expect(r.saldoSeguro).toBe(600000) // receita pendente não entra no saldo seguro
+  })
+
+  it('antecipação pendente de mês anterior ao visto reduz previsto e saldo seguro (antecipacoesPendentes)', () => {
+    // fin: SAC 120.000 em 4x a 1%, 1ª parcela 2026-10-05 => parcela de out = 30.000 + 1.200 = 31.200.
+    // Antecipação de 20.000 pendente, datada 2026-09-15 (set), vista em out.
+    const ant = l({ id: 'ant', valor: 20000, data: '2026-09-15', status: 'pendente', financiamentoId: 'f1', pagamentoFinanciamento: 'antecipacao' })
+    const r = resumoMes({ mes: '2026-10', contas: [conta], lancamentos: [ant], financiamentos: [fin], aporteExtra: 0 })
+    expect(r.antecipacoesPendentes).toBe(20000)
+    expect(r.parcelasPendentes).toBe(31200)
+    // saldo 100.000 (pendente não conta); previsto = saldoSeguro = 100.000 - 31.200 - 20.000 = 48.800
+    expect(r.saldo).toBe(100000)
+    expect(r.previsto).toBe(48800)
+    expect(r.saldoSeguro).toBe(48800)
+    const sem = resumoMes({ mes: '2026-10', contas: [conta], lancamentos: [], financiamentos: [fin], aporteExtra: 0 })
+    expect(sem.previsto).toBe(68800) // sem a antecipação: 100.000 - 31.200
+  })
+})

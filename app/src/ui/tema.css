@@ -1,0 +1,75 @@
+@import '@fontsource/red-hat-display/500.css';
+@import '@fontsource/red-hat-display/700.css';
+@import '@fontsource/figtree/400.css';
+@import '@fontsource/figtree/600.css';
+
+:root {
+  color-scheme: light dark;
+  --fundo: #f1f5f4;
+  --superficie: #ffffff;
+  --superficie-2: #edf3f2;
+  --texto: #10262b;
+  --texto-suave: #4a6168;
+  --linha: #dce8e6;
+  --marinho: #0d2b30;
+  --azul: #0b6b73;
+  --azul-texto: #0b6b73;
+  --destaque: #c6ef4f;
+  --verde: #15803d;
+  --verde-texto: #126b2f;
+  --verde-bg: #e4f5ea;
+  --vermelho: #c62828;
+  --vermelho-texto: #c62828;
+  --vermelho-bg: #fdecec;
+  --amarelo-bg: #fff4dd;
+  --sobre-marinho: #e4f2f0; /* texto sobre --marinho (derivado: = --texto do escuro) */
+  --casca: var(--superficie-2); /* fundo de campos e trilhos */
+  --sombra: 0 24px 48px -24px rgba(13, 43, 48, 0.18);
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+/* Escuro: padrão do sistema (a menos que o usuário tenha escolhido claro), ou escolhido no botão. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='claro']) {
+    --fundo: #09171a;
+    --superficie: #102226;
+    --superficie-2: #163035;
+    --texto: #e4f2f0;
+    --texto-suave: #9db8b6;
+    --linha: #1f3c40;
+    --marinho: #0b2a2f;
+    --azul: #0f7f88;
+    --azul-texto: #62d6d8;
+    --destaque: #d4f55a;
+    --verde: #2f9e5c;
+    --verde-texto: #5bd58a;
+    --verde-bg: #12301f;
+    --vermelho: #c7352d;
+    --vermelho-texto: #ff8f85;
+    --vermelho-bg: #3a1a1f;
+    --amarelo-bg: #3a2c12;
+    --sombra: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+  }
+}
+:root[data-theme='escuro'],
+.heroi { /* o cartão-herói usa sempre a paleta escura sobre --marinho */
+  --fundo: #09171a;
+  --superficie: #102226;
+  --superficie-2: #163035;
+  --texto: #e4f2f0;
+  --texto-suave: #9db8b6;
+  --linha: #1f3c40;
+  --marinho: #0b2a2f;
+  --azul: #0f7f88;
+  --azul-texto: #62d6d8;
+  --destaque: #d4f55a;
+  --verde: #2f9e5c;
+  --verde-texto: #5bd58a;
+  --verde-bg: #12301f;
+  --vermelho: #c7352d;
+  --vermelho-texto: #ff8f85;
+  --vermelho-bg: #3a1a1f;
+  --amarelo-bg: #3a2c12;
+  --sombra: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+}
+:root[data-theme='escuro'] { color-scheme: dark; }
+:root[data-theme='claro'] { color-scheme: light; }

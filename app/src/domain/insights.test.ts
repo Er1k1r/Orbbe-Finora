@@ -1,0 +1,487 @@
+import { describe, it, expect } from 'vitest'
+import { gerarInsights, type ContextoInsights } from './insights'
+import { gerarCronograma, simularAporte } from './amortizacao'
+import { estadoFinanciamento } from './fluxo'
+import { taxaImplicita } from './contrato'
+import { criarTransferencia } from './contas'
+import { formatarBRL } from './dinheiro'
+import type { Categoria, Conta, Contrato, Financiamento, FonteDeRenda, Lancamento } from './tipos'
+
+
+const contratoDe = (S: number, i: number, n: number, sistema: 'SAC' | 'PRICE' = 'SAC', primeiraParcela = '2026-10-05'): Contrato => ({
+  valorFinanciado: S, totalParcelas: n, taxaMensal: i, sistema, parcelasPagasAntes: 0, primeiraParcela,
+  valorParcela: gerarCronograma({ saldo: S, taxa: i, prazo: n, sistema })[0]?.parcela ?? 0,
+})
+const cat = (id: string, p: Partial<Categoria> = {}): Categoria => ({
+  id, nome: id, icone: 'x', tipo: 'saida', natureza: 'variavel', essencial: false, ...p,
+})
+const conta: Conta = { id: 'c', nome: 'B', tipo: 'banco', saldoInicial: 0 }
+const sai = (categoriaId: string, data: string, valor: number, natureza: 'fixo' | 'variavel' = 'variavel'): Lancamento => ({
+  id: categoriaId + data + valor, valor, data, tipo: 'saida', categoriaId, natureza, contaId: 'c', status: 'pago',
+})
+// aluguel recorrente de 100.000 pago em ago (modelo), set e out (copias): custo essencial de referencia = 100.000
+// (out: copia lancada; nov e dez: modelo projetado sem copia), mas 300.000 saem do saldo.
+const aluguelRecorrente = (): Lancamento[] => [
+  { ...sai('alu', '2026-08-05', 100000, 'fixo'), id: 'alu', recorrencia: 'mensal' },
+  { ...sai('alu', '2026-09-05', 100000, 'fixo'), id: 'alu:2026-09', origemId: 'alu' },
+  { ...sai('alu', '2026-10-05', 100000, 'fixo'), id: 'alu:2026-10', origemId: 'alu' },
+]
+const ent = (data: string, valor: number, fonteId = 'f1'): Lancamento => ({
+  id: 'e' + data + valor, valor, data, tipo: 'entrada', categoriaId: 'sal', natureza: 'fixo',
+  contaId: 'c', fonteId, status: 'pago',
+})
+const fonteFixa: FonteDeRenda = { id: 'f1', nome: 'Salário', tipo: 'fixa', valorEsperado: 500000 }
+const base = (p: Partial<ContextoInsights>): ContextoInsights => ({
+  mes: '2026-10', lancamentos: [], categorias: [cat('mer'), cat('alu', { natureza: 'fixo', essencial: true })],
+  fontes: [fonteFixa], financiamentos: [], planos: [], contas: [conta], ...p,
+})
+const tipos = (c: ContextoInsights) => gerarInsights(c).map((i) => i.tipo)
+
+describe('gasto_crescendo', () => {
+  const hist = [sai('mer', '2026-07-03', 100000), sai('mer', '2026-08-03', 100000), sai('mer', '2026-09-03', 100000)]
+  it('dispara com +30%', () =>
+    expect(tipos(base({ lancamentos: [...hist, sai('mer', '2026-10-03', 130000)] }))).toContain('gasto_crescendo'))
+  it('não dispara com +10%', () =>
+    expect(tipos(base({ lancamentos: [...hist, sai('mer', '2026-10-03', 110000)] }))).not.toContain('gasto_crescendo'))
+})
+
+describe('pico_atipico', () => {
+  const hist = ['01', '02', '03', '04'].map((d) => sai('mer', `2026-09-${d}`, 10000))
+  it('dispara acima de 3x a mediana', () =>
+    expect(tipos(base({ lancamentos: [...hist, sai('mer', '2026-10-05', 40000)] }))).toContain('pico_atipico'))
+  it('não dispara em valor comum', () =>
+    expect(tipos(base({ lancamentos: [...hist, sai('mer', '2026-10-05', 12000)] }))).not.toContain('pico_atipico'))
+  it('não dispara com menos de 4 amostras', () => {
+    const poucas = hist.slice(0, 3)
+    expect(tipos(base({ lancamentos: [...poucas, sai('mer', '2026-10-05', 400000)] }))).not.toContain('pico_atipico')
+  })
+})
+
+describe('despesa_fixa_alta', () => {
+  it('dispara quando fixo passa de 5% da renda', () =>
+    expect(tipos(base({ lancamentos: [sai('alu', '2026-10-05', 150000, 'fixo')] }))).toContain('despesa_fixa_alta'))
+  it('não dispara quando é pequena', () =>
+    expect(tipos(base({ lancamentos: [sai('alu', '2026-10-05', 10000, 'fixo')] }))).not.toContain('despesa_fixa_alta'))
+})
+
+describe('reserva_baixa', () => {
+  const ls = [sai('alu', '2026-10-05', 200000, 'fixo')]
+  it('dispara com saldo abaixo da meta', () =>
+    expect(tipos(base({ lancamentos: [ent('2026-10-01', 500000), ...ls] }))).toContain('reserva_baixa'))
+  it('usa a referência dos próximos meses: lançamento único não vira custo mensal', () => {
+    // alu 200.000 só em out: referencia = (200.000 + 0 + 0) / 3 = 66.667, meta 6 * 66.667 = 400.002; saldo 700.000 - 200.000 = 500.000
+    const c = base({ lancamentos: ls, contas: [{ ...conta, saldoInicial: 700000 }] })
+    expect(tipos(c)).not.toContain('reserva_baixa')
+  })
+  it('recorrente ainda sem cópia entra na referência (meta 6 * 100.000)', () => {
+    const modelo = { ...sai('alu', '2026-08-05', 100000, 'fixo'), id: 'alu', recorrencia: 'mensal' as const }
+    // out, nov e dez projetados 100.000 cada: meta 600.000
+    expect(tipos(base({ lancamentos: [modelo], contas: [{ ...conta, saldoInicial: 700000 }] }))).not.toContain('reserva_baixa')
+    expect(tipos(base({ lancamentos: [modelo], contas: [{ ...conta, saldoInicial: 700000 - 200000 }] }))).toContain('reserva_baixa')
+  })
+  it('não dispara com saldo acima da meta', () => {
+    const c = base({ lancamentos: ls, contas: [{ ...conta, saldoInicial: 5000000 }] })
+    expect(tipos(c)).not.toContain('reserva_baixa')
+  })
+})
+
+describe('regra 5 simula a partir do estado do contrato', () => {
+  const lancs = (sistema: 'SAC' | 'PRICE') => [
+    ent('2026-10-01', 500000),
+    ...(sistema === 'SAC'
+      ? [{ ...sai('alu', '2026-10-01', 200000, 'fixo'), id: 'ant', financiamentoId: 'a', pagamentoFinanciamento: 'antecipacao' as const }]
+      : []),
+    { ...sai('alu', '2026-10-05', 95000, 'fixo'), id: 'pg', financiamentoId: 'a' },
+  ]
+  const economia = (f: Financiamento, ls: Lancamento[]) => {
+    const i = gerarInsights(base({ financiamentos: [f], lancamentos: ls })).find((x) => x.tipo === 'sobra_para_divida')!
+    return { i, estado: estadoFinanciamento(f, ls, '2026-10-31') }
+  }
+  it('PRICE com 9 parcelas pagas antes: parte do saldo, dos restantes e da parcela fixa', () => {
+    const d = { valorFinanciado: 3000000, valorParcela: 95000, totalParcelas: 48, sistema: 'PRICE' as const }
+    const f: Financiamento = { id: 'a', nome: 'a', ...d, taxaMensal: taxaImplicita(d)!, primeiraParcela: '2026-01-10', parcelasPagasAntes: 9 }
+    const ls = lancs('PRICE')
+    const { i, estado } = economia(f, ls)
+    expect(estado.restantes).toHaveLength(38)
+    const aporte = i.dados.aporte as number
+    const esperado = simularAporte({
+      saldo: estado.saldoDevedor, taxa: f.taxaMensal, prazo: 38, sistema: 'PRICE', aporte, efeito: 'reduzir_prazo', parcelaFixa: 95000,
+    }).economiaJuros
+    expect(i.dados.economia).toBe(esperado)
+    const ingenuo = simularAporte({
+      saldo: f.valorFinanciado, taxa: f.taxaMensal, prazo: f.totalParcelas, sistema: 'PRICE', aporte, efeito: 'reduzir_prazo',
+    }).economiaJuros
+    expect(esperado).not.toBe(ingenuo)
+  })
+  it('SAC com antecipação: usa a amortização fixa do contrato', () => {
+    const f: Financiamento = { id: 'a', nome: 'a', ...contratoDe(3600000, 0.01, 24, 'SAC', '2026-01-05'), parcelasPagasAntes: 9 }
+    const ls = lancs('SAC')
+    const { i, estado } = economia(f, ls)
+    // saldo = 3.600.000 - 9 x 150.000 - 200.000 - 150.000 = 1.900.000; amortização fixa 150.000 => 13 restantes (a última é menor)
+    expect(estado.saldoDevedor).toBe(1900000)
+    expect(estado.restantes).toHaveLength(13)
+    const aporte = i.dados.aporte as number
+    const sim = (extra: object) => simularAporte({ saldo: 1900000, taxa: 0.01, prazo: 13, sistema: 'SAC', aporte, efeito: 'reduzir_prazo', ...extra }).economiaJuros
+    const esperado = sim({ amortizacaoFixa: 150000 })
+    expect(i.dados.economia).toBe(esperado)
+    expect(esperado).not.toBe(sim({})) // sem a amortização fixa (1.900.000 / 13) o resultado difere
+  })
+})
+
+describe('regra 5 corta o estado no fim do mês visto', () => {
+  it('antecipação datada em novembro não entra na simulação de outubro', () => {
+    const f: Financiamento = { id: 'a', nome: 'a', ...contratoDe(3600000, 0.01, 24, 'SAC', '2026-01-05'), parcelasPagasAntes: 9 }
+    const ls = [
+      ent('2026-10-01', 500000),
+      { ...sai('alu', '2026-10-05', 100000, 'fixo'), id: 'pg', financiamentoId: 'a' },
+      { ...sai('alu', '2026-11-03', 2000000, 'fixo'), id: 'antNov', financiamentoId: 'a', pagamentoFinanciamento: 'antecipacao' as const },
+    ]
+    const i = gerarInsights(base({ financiamentos: [f], lancamentos: ls })).find((x) => x.tipo === 'sobra_para_divida')!
+    const aporte = i.dados.aporte as number
+    const sim = (ate?: string) => {
+      const e = estadoFinanciamento(f, ls, ate)
+      return simularAporte({
+        saldo: e.saldoDevedor, taxa: 0.01, prazo: e.restantes.length, sistema: 'SAC', aporte, efeito: 'reduzir_prazo', amortizacaoFixa: 150000,
+      }).economiaJuros
+    }
+    expect(i.dados.economia).toBe(sim('2026-10-31')) // saldo 2.100.000 (3.600.000 - 10 x 150.000)
+    expect(sim('2026-10-31')).not.toBe(sim()) // com a antecipação de novembro o saldo cairia a 100.000
+  })
+})
+
+describe('financiamentos', () => {
+  const f = (id: string, taxa: number): Financiamento => ({
+    id, nome: id, ...contratoDe(1200000, taxa, 24),
+  })
+  it('divida_mais_cara só com 2 ou mais', () => {
+    expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('divida_mais_cara')
+    expect(tipos(base({ financiamentos: [f('a', 0.01), f('b', 0.02)] }))).toContain('divida_mais_cara')
+  })
+  it('comprometimento_renda dispara acima de 30%', () => {
+    const grande = { ...f('a', 0.01), ...contratoDe(24000000, 0.01, 24) }
+    expect(tipos(base({ financiamentos: [grande] }))).toContain('comprometimento_renda')
+    expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('comprometimento_renda')
+  })
+  const achar = (c: ContextoInsights, t: string) => gerarInsights(c).find((i) => i.tipo === t)
+  // f('a', 0.01): SAC 1.200.000 / 24 = 50.000 amortização + 1% de 1.200.000 = 12.000 juros => parcela 62.000
+  // f('b', 0.02) com saldo 600.000: 600.000 / 24 = 25.000 + 2% de 600.000 = 12.000 => parcela 37.000
+  it('divida_mais_cara e sobra_para_divida apontam o financiamento de maior taxa', () => {
+    // sobra = 500.000 - (62.000 + 37.000) = 401.000; saldo 50.500.000 >= meta 6 * referencia 98.000 = 588.000 (reserva ok);
+    // referencia = media de out 99.000 (62.000 + 37.000), nov 98.000 (61.500 + 36.500) e dez 97.000 (61.000 + 36.000)
+    const c = base({
+      financiamentos: [f('a', 0.01), { ...f('b', 0.02), ...contratoDe(600000, 0.02, 24) }],
+      lancamentos: [ent('2026-10-01', 500000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    expect(achar(c, 'divida_mais_cara')?.dados.financiamento).toBe('b')
+    expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
+  })
+  it('sobra_para_divida com sobra positiva e reserva no alvo', () => {
+    // sobra = 500.000 - 62.000 = 438.000; saldo 50.500.000 >= meta 6 * referencia 61.500 = 369.000 (media de 62.000, 61.500 e 61.000)
+    const c = base({
+      financiamentos: [f('a', 0.01)],
+      lancamentos: [ent('2026-10-01', 500000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    const i = achar(c, 'sobra_para_divida')
+    expect(i?.titulo).toBe('Use a sobra para quitar mais rápido')
+    expect(i?.dados.aporte).toBe(438000)
+  })
+  it('sobra_para_divida com reserva baixa divide a sobra ao meio', () => {
+    // entrada pendente: sobra = 500.000 - 62.000 = 438.000, mas saldo = 0 < meta 6 * referencia 61.500 = 369.000
+    const c = base({
+      financiamentos: [f('a', 0.01)],
+      lancamentos: [{ ...ent('2026-10-01', 500000), status: 'pendente' }],
+    })
+    const i = achar(c, 'sobra_para_divida')
+    expect(i?.titulo).toBe('Divida a sobra entre reserva e dívida')
+    expect(i?.dados.aporte).toBe(Math.round(438000 / 2))
+  })
+  it('sobra_para_divida não dispara com sobra <= 0', () => {
+    // sem entradas: sobra = 0 - 62.000 = -62.000
+    expect(tipos(base({ financiamentos: [f('a', 0.01)] }))).not.toContain('sobra_para_divida')
+  })
+  it('sobra_para_divida não dispara sem financiamento', () => {
+    expect(tipos(base({ lancamentos: [ent('2026-10-01', 500000)] }))).not.toContain('sobra_para_divida')
+  })
+  it('com plano salvo, a sugestão parte da sobra otimizada e a economia é incremental', () => {
+    // sobraNormal = 376.000 - 62.000 = 314.000; plano existente 300.000 => sobraOtimizada 14.000
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 300000, efeito: 'reduzir_prazo' as const }
+    const c = base({
+      financiamentos: [f('a', 0.01)], planos: [plano],
+      lancamentos: [ent('2026-10-01', 376000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    const i = achar(c, 'sobra_para_divida')
+    expect(i?.dados.aporte).toBe(14000)
+    const s = (x: number) => simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito: 'reduzir_prazo' })
+    expect(i?.dados.economia).toBe(s(314000).economiaJuros - s(300000).economiaJuros)
+  })
+  it('sobra_para_divida limita o aporte ao saldo devedor', () => {
+    // sobra = 10.000.000 - 62.000 = 9.938.000 > saldo devedor 1.200.000
+    const c = base({
+      financiamentos: [f('a', 0.01)],
+      lancamentos: [ent('2026-10-01', 10000000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    expect(achar(c, 'sobra_para_divida')?.dados.aporte).toBe(1200000)
+  })
+  it('meses economizados no texto são incrementais ao plano salvo', () => {
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 300000, efeito: 'reduzir_prazo' as const }
+    const c = base({
+      financiamentos: [f('a', 0.01)], planos: [plano],
+      lancamentos: [ent('2026-10-01', 376000)],
+      contas: [{ ...conta, saldoInicial: 50000000 }],
+    })
+    const s = (x: number) => simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito: 'reduzir_prazo' })
+    const incremental = s(314000).mesesEconomizados - s(300000).mesesEconomizados
+    expect(incremental).not.toBe(s(314000).mesesEconomizados)
+    expect(achar(c, 'sobra_para_divida')?.detalhe).toContain(`e ${incremental} meses.`)
+  })
+  it('efeito segue o plano existente; sem plano usa reduzir_prazo', () => {
+    const s = (x: number, efeito: 'reduzir_prazo' | 'reduzir_parcela') =>
+      simularAporte({ saldo: 1200000, taxa: 0.01, prazo: 24, sistema: 'SAC', aporte: x, efeito })
+    const lancamentos = [ent('2026-10-01', 500000)]
+    const contas = [{ ...conta, saldoInicial: 50000000 }]
+    const comPlano = base({
+      financiamentos: [f('a', 0.01)], lancamentos, contas,
+      planos: [{ id: 'p1', financiamentoId: 'a', aporteExtraMensal: 0, efeito: 'reduzir_parcela' }],
+    })
+    const semPlano = base({ financiamentos: [f('a', 0.01)], lancamentos, contas })
+    // sobra = 500.000 - 62.000 = 438.000
+    expect(achar(comPlano, 'sobra_para_divida')?.dados.economia).toBe(s(438000, 'reduzir_parcela').economiaJuros)
+    expect(achar(semPlano, 'sobra_para_divida')?.dados.economia).toBe(s(438000, 'reduzir_prazo').economiaJuros)
+    expect(s(438000, 'reduzir_parcela').economiaJuros).not.toBe(s(438000, 'reduzir_prazo').economiaJuros)
+  })
+  it('sobra_para_divida não dispara quando o plano já consome a sobra', () => {
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 314000, efeito: 'reduzir_prazo' as const }
+    const c = base({ financiamentos: [f('a', 0.01)], planos: [plano], lancamentos: [ent('2026-10-01', 376000)] })
+    expect(tipos(c)).not.toContain('sobra_para_divida')
+  })
+  it('financiamento quitado (saldo 0) não é candidato', () => {
+    // contrato já encerrado: 24 parcelas pagas antes do app e vencimentos todos no passado => saldo 0, parcela 0
+    const quitado = { ...f('a', 0.05), parcelasPagasAntes: 24, primeiraParcela: '2020-01-05' }
+    const c = base({ financiamentos: [quitado, f('b', 0.01)], lancamentos: [ent('2026-10-01', 500000)] })
+    expect(tipos(c)).not.toContain('divida_mais_cara')
+    expect(achar(c, 'sobra_para_divida')?.dados.financiamento).toBe('b')
+  })
+  it('plano de contrato quitado não consome a sobra sugerida para a dívida ativa', () => {
+    // 'a' está quitado (saldo 0): seu plano de 300.000 não conta. 'b' = SAC 1.200.000/24 a 1%: parcela 62.000.
+    // sobraNormal = 500.000 - 62.000 = 438.000; sem plano vigente, sobraOtimizada = 438.000 (com o plano antigo seria 138.000);
+    // saldo 500.000 >= meta 6 * 61.500 (reserva ok) => aporte = 438.000 (< saldo devedor 1.200.000)
+    const quitado = { ...f('a', 0.05), parcelasPagasAntes: 24, primeiraParcela: '2020-01-05' }
+    const plano = { id: 'p1', financiamentoId: 'a', aporteExtraMensal: 300000, efeito: 'reduzir_prazo' as const }
+    const c = base({ financiamentos: [quitado, f('b', 0.01)], planos: [plano], lancamentos: [ent('2026-10-01', 500000)] })
+    expect(achar(c, 'sobra_para_divida')?.dados.aporte).toBe(438000)
+  })
+  it('sobra_para_divida não dispara quando a economia de juros é zero', () => {
+    const c = base({ financiamentos: [f('a', 0)], lancamentos: [ent('2026-10-01', 500000)] })
+    expect(tipos(c)).not.toContain('sobra_para_divida')
+  })
+  it('texto da taxa usa vírgula pt-BR', () => {
+    const c = base({ financiamentos: [f('a', 0.0199), f('b', 0.01)] })
+    expect(achar(c, 'divida_mais_cara')?.detalhe).toContain('1,99%')
+  })
+})
+
+describe('reserva_baixa: texto', () => {
+  it('usa vírgula decimal pt-BR nos meses cobertos', () => {
+    // referencia = 100.000 (ver aluguelRecorrente); saldo = 870.000 - 300.000 = 570.000; meta 6 * 100.000
+    const c = base({
+      lancamentos: aluguelRecorrente(),
+      contas: [{ ...conta, saldoInicial: 870000 }],
+    })
+    expect(gerarInsights(c).find((i) => i.tipo === 'reserva_baixa')?.detalhe).toContain('5,7 de 6 meses')
+  })
+})
+
+describe('mes_de_risco', () => {
+  const fontes: FonteDeRenda[] = [{ id: 'v', nome: 'Brownie', tipo: 'variavel', valorEsperado: 300000 }]
+  it('dispara quando receita < esperado e fixos não cobertos', () =>
+    expect(tipos(base({ fontes, lancamentos: [ent('2026-10-02', 50000, 'v'), sai('alu', '2026-10-05', 150000, 'fixo')] }))).toContain('mes_de_risco'))
+  it('não dispara sem renda variável', () =>
+    expect(tipos(base({ lancamentos: [sai('alu', '2026-10-05', 150000, 'fixo')] }))).not.toContain('mes_de_risco'))
+  it('fonte apenas fixa + eventual não conta como variável', () => {
+    const fs: FonteDeRenda[] = [fonteFixa, { id: 'ev', nome: 'Bico', tipo: 'eventual', valorEsperado: 100000 }]
+    expect(tipos(base({ fontes: fs, lancamentos: [sai('alu', '2026-10-05', 150000, 'fixo')] }))).not.toContain('mes_de_risco')
+  })
+  it('não dispara quando recebido >= renda esperada', () => {
+    const ls = [ent('2026-10-02', 300000, 'v'), sai('alu', '2026-10-05', 400000, 'fixo')]
+    expect(tipos(base({ fontes, lancamentos: ls }))).not.toContain('mes_de_risco')
+  })
+  it('não dispara quando fixos <= recebido', () => {
+    const ls = [ent('2026-10-02', 50000, 'v'), sai('alu', '2026-10-05', 40000, 'fixo')]
+    expect(tipos(base({ fontes, lancamentos: ls }))).not.toContain('mes_de_risco')
+  })
+})
+
+describe('pagamento de parcela (financiamentoId) fora das regras de despesa', () => {
+  // SAC 3.600.000 / 24 = 150.000 + 1% de 3.600.000 = 36.000 => parcela 186.000
+  const fin: Financiamento = {
+    id: 'X', nome: 'Casa', ...contratoDe(3600000, 0.01, 24),
+  }
+  const pg = (data: string, valor = 186000): Lancamento => ({ ...sai('alu', data, valor, 'fixo'), id: 'pg' + data + valor, financiamentoId: 'X' })
+  const fonteVar: FonteDeRenda[] = [{ id: 'v', nome: 'Brownie', tipo: 'variavel', valorEsperado: 500000 }]
+  it('regras 7 e 3: parcela paga não dobra os fixos nem vira despesa fixa alta', () => {
+    // fixos = 0 + parcela 186.000 < recebido 200.000 => sem alerta; renda 500.000 (sem histórico)
+    const c = base({ fontes: fonteVar, financiamentos: [fin], lancamentos: [ent('2026-10-02', 200000, 'v'), pg('2026-10-05')] })
+    expect(tipos(c)).not.toContain('mes_de_risco')
+    expect(tipos(c)).not.toContain('despesa_fixa_alta')
+  })
+  it('regras 1 e 2: pagamentos de parcela não geram gasto_crescendo nem pico_atipico', () => {
+    const hist = ['2026-07-03', '2026-08-03', '2026-09-03'].map((d) => pg(d, 100000))
+    const c = base({ financiamentos: [fin], lancamentos: [...hist, pg('2026-10-03', 130000)] })
+    expect(tipos(c)).not.toContain('gasto_crescendo')
+    const picos = ['01', '02', '03', '04'].map((d) => pg(`2026-09-${d}`, 10000))
+    const c2 = base({ financiamentos: [fin], lancamentos: [...picos, pg('2026-10-05', 40000)] })
+    expect(tipos(c2)).not.toContain('pico_atipico')
+  })
+  it('financiamentoId sem financiamento correspondente é saída comum (R4)', () => {
+    const hist = ['2026-07-03', '2026-08-03', '2026-09-03'].map((d) => pg(d, 100000))
+    const c = base({ financiamentos: [], lancamentos: [...hist, pg('2026-10-03', 130000)] })
+    expect(tipos(c)).toContain('gasto_crescendo')
+  })
+})
+
+describe('renda esperada zero (R2)', () => {
+  const v: FonteDeRenda[] = [{ id: 'v', nome: 'Brownie', tipo: 'variavel', valorEsperado: 500000 }]
+  // janela jul 300.000, ago 0, set 0 => mediana 0 => rendaEsperada 0
+  const hist = ent('2026-07-05', 300000, 'v')
+  const fixo = sai('alu', '2026-10-05', 150000, 'fixo')
+  it('regra 7 dispara com renda esperada 0 e fonte variável', () =>
+    expect(tipos(base({ fontes: v, lancamentos: [hist, fixo] }))).toContain('mes_de_risco'))
+  it('regra 7 não dispara quando recebido cobre o valor esperado da fonte variável', () => {
+    const c = base({ fontes: v, lancamentos: [hist, ent('2026-10-02', 500000, 'v'), sai('alu', '2026-10-05', 600000, 'fixo')] })
+    expect(tipos(c)).not.toContain('mes_de_risco')
+  })
+  it('regra 7 não dispara com renda esperada 0 se fixos <= recebido', () => {
+    const c = base({ fontes: v, lancamentos: [hist, ent('2026-10-02', 200000, 'v'), fixo] })
+    expect(tipos(c)).not.toContain('mes_de_risco')
+  })
+  it('regra 3 continua exigindo renda > 0', () =>
+    expect(tipos(base({ fontes: v, lancamentos: [hist, fixo] }))).not.toContain('despesa_fixa_alta'))
+  const f: Financiamento = { id: 'a', nome: 'Carro', ...contratoDe(1200000, 0.01, 24) }
+  it('regra 8 com renda 0 e parcelas > 0 avisa que não há renda cadastrada', () => {
+    const i = gerarInsights(base({ fontes: [], financiamentos: [f] })).find((x) => x.tipo === 'comprometimento_renda')
+    expect(i?.severidade).toBe('alerta')
+    expect(i?.titulo).toBe('Parcelas sem renda esperada cadastrada')
+    expect(i?.dados).toEqual({ parcelas: 62000, renda: 0 })
+  })
+  it('regra 8 não dispara com renda 0 e sem parcelas', () =>
+    expect(tipos(base({ fontes: [] }))).not.toContain('comprometimento_renda'))
+})
+
+describe('config', () => {
+  it('limite pode ser sobrescrito', () => {
+    const hist = [sai('mer', '2026-07-03', 100000), sai('mer', '2026-08-03', 100000), sai('mer', '2026-09-03', 100000)]
+    const c = base({ lancamentos: [...hist, sai('mer', '2026-10-03', 110000)], config: { crescimentoMinimo: 0.05 } })
+    expect(tipos(c)).toContain('gasto_crescendo')
+  })
+})
+
+describe('movimentos internos', () => {
+  it('transferência em categoria com histórico não dispara gasto_crescendo nem pico_atipico', () => {
+    const hist = [sai('mer', '2026-07-03', 100000), sai('mer', '2026-08-03', 100000), sai('mer', '2026-09-03', 100000)]
+    const transf: Lancamento = { ...sai('mer', '2026-10-03', 500000), especie: 'transferencia' }
+    const t = tipos(base({ lancamentos: [...hist, transf] }))
+    expect(t).not.toContain('gasto_crescendo')
+    expect(t).not.toContain('pico_atipico')
+  })
+  it('entrada de transferência não conta como recebido em mes_de_risco', () => {
+    const fonteVar: FonteDeRenda = { id: 'v', nome: 'Vendas', tipo: 'variavel', valorEsperado: 300000 }
+    const transf: Lancamento = { ...ent('2026-10-08', 500000, 'v'), id: 'tr', especie: 'transferencia' }
+    const r = gerarInsights(base({
+      fontes: [fonteVar],
+      lancamentos: [sai('alu', '2026-10-02', 150000, 'fixo'), ent('2026-10-05', 50000, 'v'), transf],
+    })).find((i) => i.tipo === 'mes_de_risco')
+    expect(r).toBeDefined()
+    expect(r?.dados.recebido).toBe(50000)
+  })
+})
+
+describe('contas negativas', () => {
+  const nega: Conta = { id: 'n', nome: 'Nubank', tipo: 'banco', saldoInicial: -5000 }
+  it('conta_negativa: título, detalhe com juros e frase do lançamento faltante', () => {
+    const c = base({ contas: [{ ...nega, taxaChequeEspecial: 0.08, limiteChequeEspecial: 100000 }] })
+    const i = gerarInsights(c).find((x) => x.tipo === 'conta_negativa')
+    expect(i?.id).toBe('conta-negativa-n')
+    expect(i?.severidade).toBe('alerta')
+    expect(i?.titulo).toBe(`Nubank está negativa em ${formatarBRL(5000)}`)
+    expect(i?.detalhe).toContain(formatarBRL(400))
+    expect(i?.detalhe).toContain('Se no banco ela não está negativa, falta lançar alguma entrada nesta conta.')
+  })
+  it('conta_negativa sem taxa: sem juros no detalhe', () => {
+    const i = gerarInsights(base({ contas: [nega] })).find((x) => x.tipo === 'conta_negativa')
+    expect(i?.detalhe).not.toContain('Juros')
+    expect(i?.detalhe).toContain('falta lançar alguma entrada')
+  })
+  it('ids únicos por conta', () => {
+    const c = base({ contas: [nega, { ...nega, id: 'm', nome: 'Itaú' }] })
+    const ids = gerarInsights(c).filter((x) => x.tipo === 'conta_negativa').map((x) => x.id)
+    expect(ids).toEqual(['conta-negativa-n', 'conta-negativa-m'])
+  })
+  it('conta positiva não gera', () =>
+    expect(tipos(base({ contas: [{ ...nega, saldoInicial: 5000 }] }))).not.toContain('conta_negativa'))
+  it('conta_ficara_negativa com o previsto', () => {
+    const pend: Lancamento = { ...sai('mer', '2026-10-20', 15000), status: 'pendente' }
+    const c = base({ contas: [{ ...conta, nome: 'Inter', saldoInicial: 10000 }], lancamentos: [pend] })
+    const todos = gerarInsights(c)
+    const i = todos.find((x) => x.tipo === 'conta_ficara_negativa')
+    expect(i?.id).toBe('conta-ficara-negativa-c')
+    expect(i?.severidade).toBe('alerta')
+    expect(i?.titulo).toBe('Inter vai ficar negativa até o fim do mês')
+    // saldo 10.000 (pagos até o fim do mês) - pendente 15.000 = -5.000; texto no fim do mês, sem "hoje"
+    expect(i?.detalhe).toBe(`Previsto no fim do mês: ${formatarBRL(-5000)} com os pendentes lançados.`)
+    expect(todos.map((x) => x.tipo)).not.toContain('conta_negativa')
+  })
+  it('insights presos ao mês visto', () => {
+    const futura = sai('mer', '2026-11-10', 8000) // paga em novembro: conta só negativa a partir daí
+    const c = base({ contas: [{ ...conta, saldoInicial: 5000 }], lancamentos: [futura] })
+    expect(tipos({ ...c, mes: '2026-10' })).not.toContain('conta_negativa')
+    expect(tipos({ ...c, mes: '2026-11' })).toContain('conta_negativa')
+  })
+  it('transferência que negativa a origem gera conta_negativa', () => {
+    const [s, e] = criarTransferencia({ id: 't', contaOrigemId: 'c', contaDestinoId: 'd', valor: 8000, data: '2026-10-03' })
+    const c = base({
+      contas: [{ ...conta, saldoInicial: 5000 }, { ...conta, id: 'd', nome: 'D' }], lancamentos: [s, e],
+    })
+    expect(tipos(c)).toContain('conta_negativa')
+  })
+})
+
+describe('reserva_baixa: corte no fim do mês visto e meta de 12 meses', () => {
+  it('pago em mês posterior ao visto não entra no saldo da reserva', () => {
+    // saldo em out: 800.000 - 300.000 = 500.000 < meta 600.000; entrada paga em novembro (1.000.000) não conta
+    const futura: Lancamento = { ...ent('2026-11-10', 1000000), contaId: 'c' }
+    const c = base({ lancamentos: [...aluguelRecorrente(), futura], contas: [{ ...conta, saldoInicial: 800000 }] })
+    const i = gerarInsights(c).find((x) => x.tipo === 'reserva_baixa')
+    expect(i?.dados.saldo).toBe(500000)
+  })
+  it('renda majoritariamente variável: meta = referência x 12', () => {
+    // referência 100.000 (aluguelRecorrente); saldo 1.200.000 - 300.000 = 900.000 < 12 x 100.000 = 1.200.000
+    const fontes: FonteDeRenda[] = [{ id: 'v', nome: 'Freela', tipo: 'variavel', valorEsperado: 500000 }]
+    const c = base({ lancamentos: aluguelRecorrente(), fontes, contas: [{ ...conta, saldoInicial: 1200000 }] })
+    const i = gerarInsights(c).find((x) => x.tipo === 'reserva_baixa')
+    expect(i?.dados.meses).toBe(12)
+    expect(i?.dados.meta).toBe(1200000)
+  })
+})
+
+describe('reserva_baixa com conta reserva', () => {
+  const ls = aluguelRecorrente()
+  const det = (contas: Conta[]) => gerarInsights(base({ lancamentos: ls, contas })).find((i) => i.tipo === 'reserva_baixa')
+  it('usa só a conta marcada e não mostra dica', () => {
+    // reserva: 800.000 - 300.000 = 500.000; outra conta (10.000.000) fica fora. meta 6 * 100.000 (referencia)
+    const i = det([
+      { ...conta, id: 'c', saldoInicial: 800000, reserva: true },
+      { ...conta, id: 'b', saldoInicial: 10000000 },
+    ])
+    expect(i?.detalhe).toContain('5,0 de 6 meses')
+    expect(i?.detalhe).not.toContain('Dica')
+    expect(i?.dados.saldo).toBe(500000)
+  })
+  it('sem conta marcada usa todas e termina com a dica', () => {
+    const i = det([{ ...conta, saldoInicial: 600000 }])
+    expect(i?.detalhe.endsWith(' Dica: marque a conta que é sua reserva para este cálculo ficar exato.')).toBe(true)
+  })
+})

@@ -1,0 +1,44 @@
+@import 'tailwindcss';
+@import './ui/tema.css';
+
+/* Cores utilitárias remapeadas para os tokens do spec §13. Preenchimentos usam --azul; TEXTO em petróleo usa --azul-texto. */
+@theme inline {
+  --font-sans: 'Figtree', system-ui, sans-serif;
+  --font-display: 'Red Hat Display', 'Figtree', system-ui, sans-serif;
+  --color-superficie: var(--superficie);
+  --color-tinta: var(--texto);
+  --color-suave: var(--texto-suave);
+  --color-marca: var(--azul); /* fundos: botão secundário, barras */
+  --color-marca-texto: var(--azul-texto); /* links e textos em petróleo */
+  --color-positivo: var(--verde-texto);
+  --color-negativo: var(--vermelho-texto);
+  --color-divida: var(--azul-texto); /* dívida = família azul; versão de texto, legível nos dois temas */
+  --color-destaque: var(--destaque); /* limão: só preenchimento, nunca texto sobre fundo claro */
+  --color-marinho: var(--marinho);
+}
+
+html, body, #root { min-height: 100dvh; }
+body {
+  background: var(--fundo);
+  color: var(--texto);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+/* Foco por teclado: petróleo em superfícies claras, limão sobre marinho (cabeçalho, drawer, herói, FAB). */
+:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+[data-sobre-marinho] :focus-visible, [data-sobre-marinho]:focus-visible, .heroi :focus-visible { outline-color: var(--destaque); }
+/* FAB fica sobre o fundo da página: anel marinho no claro; no escuro marinho some no fundo, então petróleo-texto (#62d6d8 sobre #09171a, contraste alto). */
+.fab:focus-visible { outline-color: var(--marinho); }
+:root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
+h1, h2, h3 { font-family: var(--font-display); }
+.valor { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+/* Pendente: chip amarelo com texto normal. */
+.chip-pendente { background: var(--amarelo-bg); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; }
+.aviso { background: var(--amarelo-bg); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
+/* Pontos da trilha de parcelas entram em cascata. */
+@keyframes ponto-aparece { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+.ponto-aparece { animation: ponto-aparece 0.35s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

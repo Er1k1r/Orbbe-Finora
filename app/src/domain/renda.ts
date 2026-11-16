@@ -1,0 +1,42 @@
+import { ehMovimentoInterno } from './fluxo'
+import { mesDe, mesesAnteriores } from './meses'
+import type { Centavos, FonteDeRenda, Lancamento, Mes } from './tipos'
+
+const media = (xs: number[]) => xs.reduce((s, x) => s + x, 0) / xs.length
+function mediana(xs: number[]): number {
+  const s = [...xs].sort((a, b) => a - b)
+  const m = Math.floor(s.length / 2)
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+}
+
+export function rendaEsperada(fontes: FonteDeRenda[], lancs: Lancamento[], mes: Mes): Centavos {
+  const anteriores = mesesAnteriores(mes, 3)
+  let total = 0
+  for (const f of fontes) {
+    if (f.tipo === 'fixa') total += f.valorEsperado
+    else if (f.tipo === 'variavel') {
+      // Só entradas efetivamente recebidas da fonte, antes do mês consultado.
+      const pagas = lancs.filter(
+        (l) => l.fonteId === f.id && !ehMovimentoInterno(l) && l.tipo === 'entrada' && l.status === 'pago' && mesDe(l.data) < mes,
+      )
+      if (pagas.length === 0) {
+        total += f.valorEsperado
+        continue
+      }
+      const primeiro = pagas.reduce((m, l) => (mesDe(l.data) < m ? mesDe(l.data) : m), mesDe(pagas[0].data))
+      // Meses sem recebimento dentro da janela (a partir do primeiro recebimento) contam como 0.
+      const porMes = anteriores
+        .filter((m) => m >= primeiro)
+        .map((m) => pagas.filter((l) => mesDe(l.data) === m).reduce((s, l) => s + l.valor, 0))
+      total += Math.round(Math.min(media(porMes), mediana(porMes)))
+    }
+  }
+  return total
+}
+
+export function reservaAlvoMeses(fontes: FonteDeRenda[]): 6 | 12 {
+  const total = fontes.reduce((s, f) => s + (f.tipo === 'eventual' ? 0 : f.valorEsperado), 0)
+  if (total === 0) return 12
+  const fixa = fontes.filter((f) => f.tipo === 'fixa').reduce((s, f) => s + f.valorEsperado, 0)
+  return fixa / total >= 0.5 ? 6 : 12
+}
