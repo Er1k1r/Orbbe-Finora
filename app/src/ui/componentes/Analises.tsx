@@ -84,10 +84,10 @@ export function Comparativo({ linhas, categorias }: { linhas: LinhaComparativo[]
 }
 
 const FATIAS = [
-  { chave: 'fixas', nome: 'Fixas', cor: 'var(--azul)' },
-  { chave: 'parceladas', nome: 'Parceladas', cor: 'var(--destaque)' },
-  { chave: 'financiamentos', nome: 'Financiamentos', cor: '#e2a84b' },
-  { chave: 'variaveis', nome: 'Variáveis', cor: 'var(--vermelho)' },
+  { chave: 'fixas', nome: 'Fixas', cor: 'var(--g-fixas)' },
+  { chave: 'parceladas', nome: 'Parceladas', cor: 'var(--g-parceladas)' },
+  { chave: 'financiamentos', nome: 'Financiamentos', cor: 'var(--g-financiamentos)' },
+  { chave: 'variaveis', nome: 'Variáveis', cor: 'var(--g-variaveis)' },
 ] as const
 
 /** Saídas do mês por recorrência: anel com o total no meio e a legenda com valores. */

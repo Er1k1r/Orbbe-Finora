@@ -135,6 +135,16 @@ components:
 
 > Atualização 2026-11-16: o dono trocou o azul-cobalto e a fonte. Paleta "verde-cédula e menta" (verde-escuro do dinheiro #0f4c45 no cabeçalho, barra e herói; menta #a1ffcb como marca-texto de hoje e do botão de lançar) e Hanken Grotesk Variable em tudo, numerais em 800 com tracking -0.04em (sem eixo de largura). Dívidas em tinta neutra, nunca em verde, para não parecer entrada de dinheiro. Nos nomes de token, "verde-cédula" substituiu "cobalto".
 
+> Sistema de cores (2026-11-16), copiado do cfc_platform e mantendo verde-cédula e menta:
+> - **60 · gelo e tinta:** fundo #edf2ef, folha #fbfcfb (sem branco puro), superfície-2 #e9efeb, faixa #e3ebe6, tinta #142824 (13,6:1), tinta suave #4a5f57 (6:1), linha #d6e2dc, linha forte #bccdc5, cinza #536a62, borda de controle #5f746c (4,9:1, todo campo tem contorno).
+> - **30 · verde-cédula:** cabeçalho, barra e herói #0f4c45; preenchimento `--azul` #0f5c52 com texto branco (7,9:1), hover #0b4840; texto/link/foco `--azul-texto` #0f5c52; tinta clara #e0f0ea para aviso e hover de contorno.
+> - **10 · menta:** #a1ffcb, só no hoje, no botão de lançar e num destaque por tela. O texto sobre menta é sempre #0b2b27 (12,7:1). Hover #7fe8ae, anel interno #2f8a5f no claro.
+> - **Estados fora da conta:** verde #15803d/#126b2f/#e4f5ea, vermelho #c62828/#fdecec, amarelo-bg #fff4dd.
+> - **Gráficos:** fixas #0f7f6e, parceladas #3a6fd8, financiamentos #a8620c, variáveis #b0402b, iguais nos dois temas e bem separados para quem tem daltonismo.
+> - **Escuro:** fundo #0b1412, folha #13201d, tinta #e6f2ec, preenchimento #18735f (5,7:1 com branco), texto verde #7fdcc0, menta #b0ffd5, sem anel na menta.
+> - **Foco:** 3px de `--azul-texto` com folga de 3px; menta sobre o verde.
+> - **Diferenças do cfc:** cartões em vidro sem borda de 1px (pedido do dono) e dívida em tinta neutra.
+
 ## Overview
 
 **Creative North Star: "A Folhinha de Parede"**

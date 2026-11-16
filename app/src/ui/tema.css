@@ -1,43 +1,70 @@
 @import '@fontsource-variable/hanken-grotesk/wght.css';
 
 /*
- * Folhinha de Parede, paleta verde-cédula e menta: verde-escuro do dinheiro no cabeçalho, na barra e no cartão-herói,
- * papel claro com folhas de vidro, tinta quase preta, vermelho para vencido/negativo/domingo, menta como marca-texto
- * (só HOJE e o botão de lançar, nunca como texto sobre fundo claro).
- * Nomes antigos mantidos como apelidos: --marinho = verde do cabeçalho, --destaque = menta, --azul = verde de preenchimento.
+ * Folhinha de Parede, paleta verde-cédula e menta, montada no sistema de cores do cfc_platform:
+ *   60%  gelo, superfícies e tinta (fundo, folhas, texto)
+ *   30%  verde-cédula: cabeçalho, barra, cartão-herói, botão principal, links, barras de dados
+ *   10%  menta: só HOJE, o botão de lançar e um destaque por tela; nunca texto sobre fundo claro,
+ *        nunca área grande, nunca texto branco em cima (o texto sobre menta é sempre --sobre-destaque)
+ * Estados (verde, vermelho, amarelo) e cores de gráfico ficam fora da conta.
+ * Pares preenchimento x texto: --azul é PREENCHIMENTO com texto branco; --azul-texto é texto, borda e foco sobre
+ * superfície. O mesmo vale para verde e vermelho. Nomes antigos mantidos: --marinho = verde do cabeçalho,
+ * --azul = verde de preenchimento, --destaque = menta.
+ * Contraste (claro): tinta 13:1, tinta suave 6:1, cinza 5:1, borda de controle 4.6:1, branco sobre --azul 7.9:1.
  */
 :root {
   color-scheme: light dark;
-  --fundo: #f1f2ef;
-  --superficie: #ffffff;
-  --superficie-2: #e6e9e6;
-  --texto: #1d2321;
-  --texto-suave: #56605c;
-  --linha: #dfe4e1;
+  /* 60: gelo esverdeado suave (sem branco puro, sem preto puro) */
+  --fundo: #edf2ef;
+  --superficie: #fbfcfb;
+  --superficie-2: #e9efeb;
+  --faixa: #e3ebe6;
+  --texto: #142824;
+  --texto-suave: #4a5f57;
+  --linha: #d6e2dc;
+  --linha-forte: #bccdc5;
+  --cinza: #536a62;
+  --borda-ui: #5f746c; /* contorno de campo, chip e botão de contorno: 3:1 no mínimo */
+  /* 30: verde-cédula */
   --marinho: #0f4c45;
   --marinho-2: #0b3a35;
-  --azul: #0f4c45;
+  --azul: #0f5c52;
+  --azul-escuro: #0b4840;
   --azul-texto: #0f5c52;
+  --azul-claro: #e0f0ea;
+  --azul-claro-hover: #e9f6f1;
+  /* 10: menta */
   --destaque: #a1ffcb;
-  --verde: #1d8a4e;
-  --verde-texto: #13704a;
-  --verde-bg: #e1f4e8;
-  --vermelho: #c2362b;
-  --vermelho-texto: #b02a20;
-  --vermelho-bg: #fbe5e2;
-  --amarelo-bg: #fff3c4;
+  --destaque-escuro: #7fe8ae;
+  --destaque-borda: #2f8a5f; /* anel interno do botão menta no claro (menta pura some no gelo) */
+  --sobre-destaque: #0b2b27;
+  /* estados */
+  --verde: #15803d;
+  --verde-texto: #126b2f;
+  --verde-bg: #e4f5ea;
+  --vermelho: #c62828;
+  --vermelho-escuro: #9f1d1d;
+  --vermelho-texto: #c62828;
+  --vermelho-bg: #fdecec;
+  --amarelo-bg: #fff4dd;
+  /* gráficos (iguais nos dois temas; vizinhos bem separados para daltonismo) */
+  --g-fixas: #0f7f6e;
+  --g-parceladas: #3a6fd8;
+  --g-financiamentos: #a8620c;
+  --g-variaveis: #b0402b;
+  /* sobre o verde do cabeçalho */
   --sobre-marinho: #f4fbf7;
   --sobre-marinho-suave: #b9d6cc;
   --casca: var(--superficie-2);
-  --casa: rgba(232, 237, 233, 0.72); /* casa (dia) da folhinha sobre a folha de vidro */
-  /* Vidro: folhas translúcidas sobre o fundo ambiente (campos de verde, menta e pêssego desfocados). */
-  --vidro: rgba(255, 255, 255, 0.66);
+  --casa: rgba(233, 239, 235, 0.74); /* casa (dia) da folhinha sobre a folha de vidro */
+  /* vidro e fundo ambiente (pedido do dono; o cfc não usa vidro) */
+  --vidro: rgba(251, 252, 251, 0.68);
   --vidro-brilho: rgba(255, 255, 255, 0.9);
-  --vidro-cobalto: rgba(15, 76, 69, 0.92);
-  --ambiente-1: rgba(15, 76, 69, 0.22);
-  --ambiente-2: rgba(161, 255, 203, 0.5);
-  --ambiente-3: rgba(255, 205, 160, 0.2);
-  --sombra: 0 10px 24px -16px rgba(16, 32, 28, 0.35);
+  --vidro-cobalto: rgba(15, 76, 69, 0.93);
+  --ambiente-1: rgba(15, 76, 69, 0.2);
+  --ambiente-2: rgba(161, 255, 203, 0.45);
+  --ambiente-3: rgba(15, 92, 82, 0.1);
+  --sombra: 0 10px 24px -16px rgba(6, 30, 26, 0.3);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-color-scheme: dark) {
@@ -45,27 +72,38 @@
     --fundo: #0b1412;
     --superficie: #13201d;
     --superficie-2: #1a2a26;
-    --texto: #eaf3ef;
+    --faixa: #0e1a17;
+    --texto: #e6f2ec;
     --texto-suave: #9fb5ad;
     --linha: #23362f;
+    --linha-forte: #2f4a41;
+    --cinza: #85a399;
+    --borda-ui: #8aa89c;
     --marinho: #0e3f39;
-    --marinho-2: #0a302b;
-    --azul: #3fae94;
+    --marinho-2: #12463f;
+    --azul: #18735f;
+    --azul-escuro: #125e4e;
     --azul-texto: #7fdcc0;
-    --verde: #2fae68;
-    --verde-texto: #6fdc9f;
-    --verde-bg: #11291d;
-    --vermelho: #e04a3d;
-    --vermelho-texto: #ff9d92;
-    --vermelho-bg: #3a1716;
-    --amarelo-bg: #3b3210;
+    --azul-claro: #12302a;
+    --azul-claro-hover: #163a33;
+    --destaque: #b0ffd5;
+    --destaque-escuro: #8cefb8;
+    --destaque-borda: transparent;
+    --verde: #2f9e5c;
+    --verde-texto: #5bd58a;
+    --verde-bg: #12301f;
+    --vermelho: #c7352d;
+    --vermelho-escuro: #a32a24;
+    --vermelho-texto: #ff8f85;
+    --vermelho-bg: #3a1a1f;
+    --amarelo-bg: #3a2c12;
     --casa: rgba(30, 46, 42, 0.7);
-    --vidro: rgba(19, 32, 29, 0.6);
+    --vidro: rgba(19, 32, 29, 0.62);
     --vidro-brilho: rgba(255, 255, 255, 0.08);
-    --vidro-cobalto: rgba(14, 63, 57, 0.86);
-    --ambiente-1: rgba(63, 174, 148, 0.24);
-    --ambiente-2: rgba(161, 255, 203, 0.1);
-    --ambiente-3: rgba(255, 205, 160, 0.08);
+    --vidro-cobalto: rgba(14, 63, 57, 0.88);
+    --ambiente-1: rgba(31, 138, 116, 0.22);
+    --ambiente-2: rgba(161, 255, 203, 0.08);
+    --ambiente-3: rgba(31, 138, 116, 0.08);
     --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
   }
 }
@@ -73,30 +111,41 @@
   --fundo: #0b1412;
   --superficie: #13201d;
   --superficie-2: #1a2a26;
-  --texto: #eaf3ef;
+  --faixa: #0e1a17;
+  --texto: #e6f2ec;
   --texto-suave: #9fb5ad;
   --linha: #23362f;
+  --linha-forte: #2f4a41;
+  --cinza: #85a399;
+  --borda-ui: #8aa89c;
   --marinho: #0e3f39;
-  --marinho-2: #0a302b;
-  --azul: #3fae94;
+  --marinho-2: #12463f;
+  --azul: #18735f;
+  --azul-escuro: #125e4e;
   --azul-texto: #7fdcc0;
-  --verde: #2fae68;
-  --verde-texto: #6fdc9f;
-  --verde-bg: #11291d;
-  --vermelho: #e04a3d;
-  --vermelho-texto: #ff9d92;
-  --vermelho-bg: #3a1716;
-  --amarelo-bg: #3b3210;
+  --azul-claro: #12302a;
+  --azul-claro-hover: #163a33;
+  --destaque: #b0ffd5;
+  --destaque-escuro: #8cefb8;
+  --destaque-borda: transparent;
+  --verde: #2f9e5c;
+  --verde-texto: #5bd58a;
+  --verde-bg: #12301f;
+  --vermelho: #c7352d;
+  --vermelho-escuro: #a32a24;
+  --vermelho-texto: #ff8f85;
+  --vermelho-bg: #3a1a1f;
+  --amarelo-bg: #3a2c12;
   --casa: rgba(30, 46, 42, 0.7);
-  --vidro: rgba(19, 32, 29, 0.6);
+  --vidro: rgba(19, 32, 29, 0.62);
   --vidro-brilho: rgba(255, 255, 255, 0.08);
-  --vidro-cobalto: rgba(14, 63, 57, 0.86);
-  --ambiente-1: rgba(63, 174, 148, 0.24);
-  --ambiente-2: rgba(161, 255, 203, 0.1);
-  --ambiente-3: rgba(255, 205, 160, 0.08);
+  --vidro-cobalto: rgba(14, 63, 57, 0.88);
+  --ambiente-1: rgba(31, 138, 116, 0.22);
+  --ambiente-2: rgba(161, 255, 203, 0.08);
+  --ambiente-3: rgba(31, 138, 116, 0.08);
   --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
 }
-/* Cartão-herói, cabeçalho e barra: vidro verde, texto claro. */
+/* Cartão-herói, cabeçalho e barra: vidro verde-cédula, texto claro (branco sobre o verde: 9:1). */
 .heroi {
   --vidro: var(--vidro-cobalto);
   --vidro-brilho: rgba(255, 255, 255, 0.24);
