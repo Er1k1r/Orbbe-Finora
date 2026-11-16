@@ -10,7 +10,7 @@ import type { TipoBem } from '../../domain/tipos'
 
 export interface OpcoesCena { tipo: TipoBem; pago: number; animar: boolean }
 
-const COR = { verde: 0x2f9e5c, vermelho: 0xc7352d, azul: 0x0f7f88, limao: 0xd4f55a, claro: 0xe4f2f0, escuro: 0x10262b }
+const COR = { verde: 0x1d8a4e, vermelho: 0xd6332a, azul: 0x1f3fbf, limao: 0xffd23f, claro: 0xf6f7f9, escuro: 0x14161c }
 const RAIO = 1.6
 
 const mat = (cor: number) => new MeshStandardMaterial({ color: cor, roughness: 0.55, metalness: 0.15 })

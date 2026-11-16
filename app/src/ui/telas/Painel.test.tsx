@@ -54,8 +54,8 @@ describe('Painel', () => {
 
   it('editar pelo painel grava o novo valor', async () => {
     render(comDados(mes, <Painel mes={mes} />))
-    await screen.findByText('Feira')
-    fireEvent.click(within(screen.getByText('Feira').closest('tr')!).getByRole('button', { name: 'Editar lançamento' }))
+    await screen.findAllByText('Feira')
+    fireEvent.click(within(screen.getAllByText('Feira').map((e) => e.closest('tr')).find(Boolean)!).getByRole('button', { name: 'Editar lançamento' }))
     const campo = await screen.findByLabelText(/^Valor/)
     fireEvent.change(campo, { target: { value: '7550' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))

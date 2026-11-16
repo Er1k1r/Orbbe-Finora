@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { HashRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
-import { List } from '@phosphor-icons/react'
-import { BotaoTema } from './ui/componentes/BotaoTema'
-import { Drawer, ID_MENU } from './ui/componentes/Drawer'
+import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
+import { BarraLateral, Drawer } from './ui/componentes/Drawer'
+import { Cabecalho } from './ui/componentes/Cabecalho'
 import { Fab } from './ui/componentes/Fab'
-import { SeletorMes } from './ui/componentes/SeletorMes'
 import { useDadosAoVivo } from './ui/hooks/useDados'
 import { DadosContext } from './ui/hooks/DadosContext'
 import { semearCategorias } from './data/seed'
@@ -38,7 +36,7 @@ function Shell() {
   const { pathname } = useLocation()
   const rota = infoDaRota(pathname) // o seletor de mês só aparece onde o mês importa
   // Largura por tela: o painel usa o espaço do computador; o resumo vira duas colunas; o resto fica estreito e centralizado.
-  const largura = pathname === '/painel' ? 'max-w-md md:max-w-3xl xl:max-w-6xl' : pathname === '/' ? 'max-w-md md:max-w-3xl' : 'max-w-md md:max-w-xl'
+  const largura = pathname === '/painel' || pathname === '/' ? 'max-w-md md:max-w-3xl xl:max-w-6xl' : 'max-w-md md:max-w-2xl'
 
   // Troca de rota começa no topo da tela.
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
@@ -78,26 +76,14 @@ function Shell() {
   // Telas são plugadas nas tarefas 9–12; rotas já declaradas aqui apontam para elas.
   return (
     <DadosContext.Provider value={valor}>
-    <div className="min-h-[100dvh] pb-28">
-      <header data-sobre-marinho className="sticky top-0 z-30 bg-[var(--marinho)] text-[var(--sobre-marinho)]">
-        <div className="mx-auto flex max-w-md items-center justify-between px-4 pb-3 pt-4 md:max-w-3xl xl:max-w-6xl">
-          <button aria-label="Abrir menu" aria-expanded={aberto} aria-controls={ID_MENU} className="size-11 grid place-items-center lg:hidden" onClick={() => setAberto(true)}>
-            <List size={26} weight="light" />
-          </button>
-          <nav aria-label="Atalhos" className="hidden items-center gap-1 text-sm lg:flex">
-            {[['/', 'Resumo'], ['/painel', 'Painel'], ['/lancamentos', 'Lançamentos'], ['/contas', 'Contas'], ['/dividas', 'Dívidas'], ['/insights', 'Insights']].map(([para, rotulo]) => (
-              <NavLink key={para} to={para} end={para === '/'}
-                className={({ isActive }) => `inline-flex min-h-11 items-center rounded-full px-4 ${isActive ? 'bg-white/10 font-semibold text-[var(--destaque)]' : ''}`}>{rotulo}</NavLink>
-            ))}
-            <button aria-label="Mais opções" className="size-11 grid place-items-center" onClick={() => setAberto(true)}><List size={22} weight="light" /></button>
-          </nav>
-          {rota.mostraMes
-            ? <SeletorMes mes={mes} onChange={setMes} />
-            : <span className="min-w-32 text-center font-semibold">{rota.titulo}</span>}
-          <BotaoTema />
-        </div>
-      </header>
-      <main className={`mx-auto px-4 pt-4 ${largura}`}>
+    <div className="min-h-[100dvh] pb-28 lg:pb-12">
+      <BarraLateral />
+      <div className="lg:pl-64">
+      <div className={`mx-auto lg:px-6 ${pathname === '/painel' || pathname === '/' ? 'lg:max-w-6xl' : 'lg:max-w-2xl'}`}>
+        <Cabecalho mes={mes} setMes={setMes} mostraMes={rota.mostraMes} titulo={rota.titulo} semana={pathname === '/'}
+          abrirMenu={() => setAberto(true)} menuAberto={aberto} />
+      </div>
+      <main className={`mx-auto px-4 pt-5 lg:px-6 ${largura}`}>
       {semConta && (
         <Link to="/contas" className="mb-4 grid min-h-11 place-items-center rounded-xl bg-[var(--amarelo-bg)] px-3 text-sm font-semibold text-[var(--texto)]">Cadastre uma conta para continuar</Link>
       )}
@@ -118,6 +104,7 @@ function Shell() {
       </Routes>
       )}
       </main>
+      </div>
       {!emOnboarding && <Fab onClick={() => setLancando(true)} />}
       <Drawer aberto={aberto} fechar={() => setAberto(false)} />
       {lancando && !emOnboarding && <LancamentoRapido fechar={() => setLancando(false)} />}

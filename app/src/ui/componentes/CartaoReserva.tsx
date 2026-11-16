@@ -8,7 +8,7 @@ export interface DadosReserva { saldo: Centavos; usandoTodas: boolean; custo: Ce
 export function CartaoReserva({ reserva: r, verMais = false }: { reserva: DadosReserva; verMais?: boolean }) {
   return (
     <Moldura>
-      <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Reserva</h3>
+      <h3 className="text-[19px] leading-tight font-extrabold">Reserva</h3>
       <p className="mt-2 valor text-2xl">{formatarNumero(r.cobertos)} <span className="text-base text-suave">de {r.alvo} meses</span></p>
       <div className="mt-3 h-2 rounded-full bg-[var(--linha)]" role="progressbar" aria-label="Progresso da reserva"
         aria-valuenow={Math.round(r.progresso)} aria-valuemin={0} aria-valuemax={100}>

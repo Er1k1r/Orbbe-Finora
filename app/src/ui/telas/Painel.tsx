@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { PencilSimple } from '@phosphor-icons/react'
 import { BemEmMovimento } from '../componentes/BemEmMovimento'
 import { EditorLancamento } from '../componentes/EditorLancamento'
+import { FolhinhaMes } from '../componentes/FolhinhaMes'
 import { Moldura } from '../componentes/Moldura'
 import { useDados } from '../hooks/useDados'
 import { useResumo } from '../hooks/useResumo'
@@ -13,7 +14,7 @@ import { estadoFinanciamento, ehMovimentoInterno, ehPagamentoParcela } from '../
 import { hojeLocal, mesDe, somarMeses } from '../../domain/meses'
 import { serieMensal, trilhaFinanciamento, type SituacaoParcela } from '../../domain/painel'
 import type { Lancamento, Mes } from '../../domain/tipos'
-import { rotuloMes } from '../rotulos'
+import { NOMES_MES, rotuloMes } from '../rotulos'
 import { ordenarLancamentos, rotuloParcelamento } from '../lancamento'
 
 const COR_PONTO: Record<SituacaoParcela, string> = {
@@ -33,7 +34,7 @@ function Aparecer({ children, atraso = 0, className = '' }: { children: ReactNod
 }
 
 const Titulo = ({ children }: { children: ReactNode }) => (
-  <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">{children}</h3>
+  <h3 className="text-[19px] leading-tight">{children}</h3>
 )
 
 function Legenda({ grafico = false }: { grafico?: boolean }) {
@@ -60,11 +61,11 @@ function Ponto({ situacao, titulo, i }: { situacao: SituacaoParcela; titulo: str
   )
 }
 
-function Kpi({ rotulo, valor, tom = '' }: { rotulo: string; valor: string; tom?: string }) {
+function Linha({ rotulo, valor, tom = '', forte = false }: { rotulo: string; valor: string; tom?: string; forte?: boolean }) {
   return (
-    <div className="rounded-[14px] bg-[var(--superficie)] p-3 ring-1 ring-[var(--linha)]">
-      <div className="text-[10px] uppercase tracking-[0.14em] text-suave">{rotulo}</div>
-      <div className={`valor mt-1 text-xl font-bold ${tom}`}>{valor}</div>
+    <div className="flex items-baseline justify-between gap-3 py-2.5">
+      <dt className="text-suave">{rotulo}</dt>
+      <dd className={`valor ${forte ? 'text-2xl' : 'text-base'} ${tom}`}>{valor}</dd>
     </div>
   )
 }
@@ -126,18 +127,59 @@ export default function Painel({ mes }: { mes: Mes }) {
   return (
     <MotionConfig reducedMotion="user">
       <div className="grid gap-5">
-        <Aparecer>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-            <Kpi rotulo="Receitas do mês" valor={formatarBRL(r.receitas)} tom="text-positivo" />
-            <Kpi rotulo="Despesas do mês" valor={formatarBRL(r.despesas)} tom="text-negativo" />
-            <Kpi rotulo="Financiamentos" valor={formatarBRL(r.parcelas)} tom="text-divida" />
-            <Kpi rotulo="Pago no mês" valor={formatarBRL(noMes?.pago ?? 0)} tom="text-positivo" />
-            <Kpi rotulo="Em aberto no mês" valor={formatarBRL(noMes?.aberto ?? 0)} tom={noMes && noMes.aberto > 0 ? 'text-negativo' : ''} />
-          </div>
-        </Aparecer>
-
         <div className="grid items-start gap-5 xl:grid-cols-3">
-          <Aparecer atraso={0.05} className="xl:col-span-2">
+          <Aparecer className="xl:col-span-2">
+            <Moldura>
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                <Titulo>Folhinha de {NOMES_MES[Number(mes.slice(5)) - 1].toLowerCase()}</Titulo>
+                <span className="text-xs text-suave">Toque num dia para ver e editar</span>
+              </div>
+              <FolhinhaMes mes={mes} editar={setEditando} />
+            </Moldura>
+          </Aparecer>
+          <div className="grid gap-5">
+            <Aparecer atraso={0.06}>
+              <Moldura>
+                <Titulo>O mês em números</Titulo>
+                <dl className="mt-2 divide-y divide-[var(--linha)] text-sm">
+                  <Linha rotulo="Receitas" valor={`+ ${formatarBRL(r.receitas)}`} tom="text-positivo" />
+                  <Linha rotulo="Despesas" valor={`− ${formatarBRL(r.despesas)}`} tom="text-negativo" />
+                  <Linha rotulo="Financiamentos" valor={`− ${formatarBRL(r.parcelas)}`} tom="text-divida" />
+                  <Linha rotulo="Já pago" valor={formatarBRL(noMes?.pago ?? 0)} />
+                  <Linha rotulo="Ainda em aberto" valor={formatarBRL(noMes?.aberto ?? 0)} tom={noMes && noMes.aberto > 0 ? 'text-negativo' : ''} />
+                  <Linha rotulo="Sobra" valor={formatarBRL(r.sobraNormal)} tom={r.sobraNormal < 0 ? 'text-negativo' : 'text-positivo'} forte />
+                </dl>
+              </Moldura>
+            </Aparecer>
+            <Aparecer atraso={0.12}>
+              <Moldura>
+                <Titulo>Compras parceladas</Titulo>
+                {grupos.length === 0 && <p className="mt-2 text-sm text-suave">Nenhuma compra parcelada em andamento.</p>}
+                <ul className="mt-2 grid gap-4">
+                  {grupos.map((g) => {
+                    const pagas = g.filter((l) => l.status === 'pago').length
+                    return (
+                      <li key={g[0].parcelamento!.grupoId}>
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="min-w-0 truncate font-semibold">{g[0].descricao ?? nomeCat(g[0].categoriaId)}</span>
+                          <span className="valor shrink-0 text-sm text-suave">{pagas}/{g.length} · {formatarBRL(g[0].valor)}</span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {g.map((l, i) => {
+                            const s: SituacaoParcela = l.status === 'pago' ? 'paga' : mesDe(l.data) < mesDe(hoje) ? 'atrasada' : 'a_pagar'
+                            return <Ponto key={l.id} i={i} situacao={s} titulo={`${rotuloParcelamento(l.parcelamento!)} · ${rotuloMes(mesDe(l.data))} · ${formatarBRL(l.valor)} · ${ROTULO_SITUACAO[s]}`} />
+                          })}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </Moldura>
+            </Aparecer>
+          </div>
+        </div>
+
+          <Aparecer atraso={0.18}>
             <Moldura>
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                 <Titulo>Saídas mês a mês</Titulo>
@@ -147,33 +189,6 @@ export default function Painel({ mes }: { mes: Mes }) {
               <p className="mt-3 text-xs text-suave">Inclui parcelas de financiamento, compras parceladas, repetições previstas e o que está pendente.</p>
             </Moldura>
           </Aparecer>
-
-          <Aparecer atraso={0.1}>
-            <Moldura>
-              <Titulo>Compras parceladas</Titulo>
-              {grupos.length === 0 && <p className="mt-2 text-sm text-suave">Nenhuma compra parcelada em andamento.</p>}
-              <ul className="mt-2 grid gap-4">
-                {grupos.map((g) => {
-                  const pagas = g.filter((l) => l.status === 'pago').length
-                  return (
-                    <li key={g[0].parcelamento!.grupoId}>
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="min-w-0 truncate font-semibold">{g[0].descricao ?? nomeCat(g[0].categoriaId)}</span>
-                        <span className="valor shrink-0 text-sm text-suave">{pagas}/{g.length} · {formatarBRL(g[0].valor)}</span>
-                      </div>
-                      <div className="mt-1.5 flex flex-wrap gap-1">
-                        {g.map((l, i) => {
-                          const s: SituacaoParcela = l.status === 'pago' ? 'paga' : mesDe(l.data) < mesDe(hoje) ? 'atrasada' : 'a_pagar'
-                          return <Ponto key={l.id} i={i} situacao={s} titulo={`${rotuloParcelamento(l.parcelamento!)} · ${rotuloMes(mesDe(l.data))} · ${formatarBRL(l.valor)} · ${ROTULO_SITUACAO[s]}`} />
-                        })}
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            </Moldura>
-          </Aparecer>
-        </div>
 
         <Aparecer atraso={0.15}>
           <div className="mb-2 flex items-baseline justify-between"><Titulo>Financiamentos</Titulo><Legenda /></div>

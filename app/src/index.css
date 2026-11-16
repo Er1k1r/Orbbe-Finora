@@ -3,8 +3,8 @@
 
 /* Cores utilitárias remapeadas para os tokens do spec §13. Preenchimentos usam --azul; TEXTO em petróleo usa --azul-texto. */
 @theme inline {
-  --font-sans: 'Figtree', system-ui, sans-serif;
-  --font-display: 'Red Hat Display', 'Figtree', system-ui, sans-serif;
+  --font-sans: 'Archivo Variable', system-ui, sans-serif;
+  --font-display: 'Archivo Variable', system-ui, sans-serif;
   --color-superficie: var(--superficie);
   --color-tinta: var(--texto);
   --color-suave: var(--texto-suave);
@@ -28,13 +28,19 @@ body {
 :focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
 [data-sobre-marinho] :focus-visible, [data-sobre-marinho]:focus-visible, .heroi :focus-visible { outline-color: var(--destaque); }
 /* FAB fica sobre o fundo da página: anel marinho no claro; no escuro marinho some no fundo, então petróleo-texto (#62d6d8 sobre #09171a, contraste alto). */
-.fab:focus-visible { outline-color: var(--marinho); }
+.fab:focus-visible { outline-color: var(--texto); }
 :root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
-h1, h2, h3 { font-family: var(--font-display); }
-.valor { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--font-display); font-stretch: 88%; font-weight: 800; letter-spacing: -0.01em; }
+/* Numerais da folhinha: condensados, pesados, tabulares. */
+.valor { font-variant-numeric: tabular-nums; font-stretch: 82%; font-weight: 700; letter-spacing: -0.005em; }
+.numeral { font-variant-numeric: tabular-nums; font-stretch: 68%; font-weight: 850; line-height: 0.85; letter-spacing: -0.01em; }
+::selection { background: var(--destaque); color: #14161c; }
+html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); caret-color: var(--azul-texto); }
+a { text-underline-offset: 3px; }
 /* Pendente: chip amarelo com texto normal. */
-.chip-pendente { background: var(--amarelo-bg); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; }
+.chip-pendente { background: var(--amarelo-bg); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 600; }
+.chip-vencido { background: var(--vermelho-bg); color: var(--vermelho-texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 700; }
 .aviso { background: var(--amarelo-bg); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
 /* Pontos da trilha de parcelas entram em cascata. */
 @keyframes ponto-aparece { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }

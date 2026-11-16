@@ -19,7 +19,7 @@ const Linha = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: st
 )
 const Col = ({ titulo, r }: { titulo: string; r: ReturnType<typeof resumirCronograma> }) => (
   <div className="grid gap-2 text-sm">
-    <div className="text-[10px] uppercase tracking-[0.2em] text-suave">{titulo}</div>
+    <div className="text-[19px] leading-tight font-extrabold">{titulo}</div>
     <div><div className="text-suave">Prazo</div><div className="valor">{r.prazo} meses</div></div>
     <div><div className="text-suave">1ª parcela</div><div className="valor">{formatarBRL(r.primeiraParcela)}</div></div>
     <div><div className="text-suave">Juros totais</div><div className="valor">{formatarBRL(r.jurosTotais)}</div></div>
@@ -100,7 +100,7 @@ export default function DividaDetalhe({ mes }: { mes: Mes }) {
 
       {estado.restantes.length > 0 && (
         <Moldura>
-          <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Antecipar as últimas parcelas</h3>
+          <h3 className="text-[19px] leading-tight font-extrabold">Antecipar as últimas parcelas</h3>
           <label className="mt-2 grid gap-1 text-sm">Quantas parcelas (de {formatarNumero(estado.restantes.length, 0)} restantes)?
             <input inputMode="numeric" value={nTexto} onChange={(e) => setNTexto(somenteDigitos(e.target.value))}
               className="valor min-h-11 rounded-xl bg-[var(--casca)] px-3" placeholder="1" />
