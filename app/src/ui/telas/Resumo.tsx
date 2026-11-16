@@ -1,4 +1,6 @@
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, useMemo, type ReactNode } from 'react'
+import { Comparativo, DreMes, RoscaRecorrencia, SaldoDegraus, Variacao } from '../componentes/Analises'
+import { comparativoCategorias, dreMes, reparticaoSaidas } from '../../domain/analise'
 import { ListaSemana } from '../componentes/ListaSemana'
 import { Link } from 'react-router-dom'
 import { ChecklistInicial } from '../componentes/ChecklistInicial'
@@ -12,7 +14,7 @@ import { nomeCompromisso, rotuloMes } from '../rotulos'
 import { topCategorias } from '../../domain/categorias'
 import { formatarBRL } from '../../domain/dinheiro'
 import { ehMovimentoInterno, ehPagamentoParcela } from '../../domain/fluxo'
-import { hojeLocal, mesDe } from '../../domain/meses'
+import { hojeLocal, mesAnterior, mesDe } from '../../domain/meses'
 import { linhasContas } from '../padroes'
 import type { Mes } from '../../domain/tipos'
 
@@ -27,9 +29,19 @@ const Titulo = ({ children }: { children: ReactNode }) => (
   <h3 className="text-[19px] leading-tight font-extrabold">{children}</h3>
 )
 
+/** Quantas colunas cada cartão ocupa: a sobra e a visão geral são largas; o resto divide a grade. */
+const LARGURA: Partial<Record<Cartao, string>> = {
+  sobra: 'md:col-span-2',
+  visaoGeral: 'md:col-span-2',
+}
+
 export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancamento: () => void }) {
   const { resumo: r, aporte, insights, alertasConta, compromissos, reserva, lancamentos, categorias, financiamentos, contas } = useResumo(mes)
   const prefs = usePrefs()
+  const { resumo: anterior } = useResumo(mesAnterior(mes, 1))
+  const comparativo = useMemo(() => comparativoCategorias(lancamentos, financiamentos, mes), [lancamentos, financiamentos, mes])
+  const reparticao = useMemo(() => reparticaoSaidas(lancamentos, financiamentos, mes), [lancamentos, financiamentos, mes])
+  const dre = useMemo(() => dreMes(lancamentos, financiamentos, mes), [lancamentos, financiamentos, mes])
   const nomeCat = (id: string) => categorias.find((c) => c.id === id)?.nome ?? ''
   const idsFin = new Set(financiamentos.map((f) => f.id))
 
@@ -73,11 +85,11 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
   const cartoes: Record<Cartao, ReactNode> = {
     sobra: (
       <Moldura heroi>
-        <FolhaSobra receitas={r.receitas} despesas={r.despesas} parcelas={r.parcelas} aporte={aporte} normal={r.sobraNormal} otimizada={r.sobraOtimizada} />
-        <div className="mt-5 grid grid-cols-3 border-t border-[var(--linha)] pt-4 text-sm">
-          <div><div className="text-[var(--texto-suave)]">Inicial</div><div className="valor text-lg">{formatarBRL(r.inicial)}</div></div>
-          <div><div className="text-[var(--texto-suave)]">Saldo</div><div className="valor text-lg">{formatarBRL(r.saldo)}</div></div>
-          <div><div className="text-[var(--texto-suave)]">Previsto</div><div className={`valor text-lg ${r.previsto < 0 ? 'text-negativo' : ''}`}>{formatarBRL(r.previsto)}</div></div>
+        <div className="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-center">
+          <FolhaSobra receitas={r.receitas} despesas={r.despesas} parcelas={r.parcelas} aporte={aporte} normal={r.sobraNormal} otimizada={r.sobraOtimizada} />
+          <div className="border-t border-[var(--linha)] pt-4 sm:border-l sm:border-t-0 sm:pl-6 sm:pt-0">
+            <SaldoDegraus inicial={r.inicial} saldo={r.saldo} previsto={r.previsto} />
+          </div>
         </div>
       </Moldura>
     ),
@@ -145,14 +157,42 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
       </Moldura>
     ),
     visaoGeral: (
+      <section aria-label="Visão geral">
+        <h3 className="mb-2 px-1 text-[19px] leading-tight font-extrabold">Visão geral</h3>
+        <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {[
+            { rotulo: 'Saldo nas contas', v: r.saldo, ant: anterior.saldo, bom: true, cor: '' },
+            { rotulo: 'Recebido no mês', v: r.receitas, ant: anterior.receitas, bom: true, cor: 'text-positivo' },
+            { rotulo: 'Gasto no mês', v: r.despesas, ant: anterior.despesas, bom: false, cor: 'text-negativo' },
+            { rotulo: 'Financiamentos', v: r.parcelas, ant: anterior.parcelas, bom: false, cor: 'text-divida' },
+          ].map((k) => (
+            <Moldura key={k.rotulo} className="!p-4">
+              <div className="text-xs text-suave">{k.rotulo}</div>
+              <div className={`valor mt-1 text-[22px] ${k.cor}`}>{formatarBRL(k.v)}</div>
+              <div className="mt-2"><Variacao atual={k.v} anterior={k.ant} bomSobe={k.bom} /></div>
+            </Moldura>
+          ))}
+        </div>
+        {r.antecipacoes > 0 && <p className="mt-2 px-1 text-xs text-suave">Antecipações pagas no mês: {formatarBRL(r.antecipacoes)} (não entram na sobra).</p>}
+      </section>
+    ),
+    comparativo: (
       <Moldura>
-        <Titulo>Visão geral</Titulo>
-        <Linha rotulo="Receitas" valor={`+ ${formatarBRL(r.receitas)}`} cor="text-positivo" />
-        <Linha rotulo="Despesas" valor={`− ${formatarBRL(r.despesas)}`} cor="text-negativo" />
-        <Linha rotulo="Financiamentos" valor={`− ${formatarBRL(r.parcelas)}`} cor="text-divida" />
-        {r.antecipacoes > 0 && (
-          <Linha rotulo="Antecipações pagas (não entram na sobra)" valor={`− ${formatarBRL(r.antecipacoes)}`} cor="text-divida" />
-        )}
+        <Titulo>Comparativo com o mês anterior</Titulo>
+        <p className="mt-1 text-xs text-suave">A barra é este mês; o traço marca o mês anterior.</p>
+        <Comparativo linhas={comparativo.slice(0, 7)} categorias={categorias} />
+      </Moldura>
+    ),
+    recorrencia: (
+      <Moldura>
+        <Titulo>Saídas por recorrência</Titulo>
+        <RoscaRecorrencia r={reparticao} />
+      </Moldura>
+    ),
+    dre: (
+      <Moldura>
+        <Titulo>Resultado previsto do mês</Titulo>
+        <DreMes d={dre} />
       </Moldura>
     ),
     destino: (
@@ -210,13 +250,13 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
   }
 
   return (
-    <div className="grid items-start gap-5 md:grid-cols-2">
-      {alertas.length > 0 && <div className="grid gap-5 md:col-span-2">{alertas}</div>}
+    <div className="grid items-start gap-5 md:grid-cols-2 xl:grid-cols-3">
+      {alertas.length > 0 && <div className="grid gap-5 md:col-span-2 xl:col-span-3">{alertas}</div>}
       {ordemCartoes(prefs.objetivos).map((c) => (
         <Fragment key={c}>
-          <div className={c === 'sobra' ? 'md:col-span-2' : ''}>{cartoes[c]}</div>
-          {c === 'sobra' && mes === mesDe(hojeLocal()) && <div className="md:col-span-2"><ListaSemana hoje={hojeLocal()} /></div>}
-          {c === 'sobra' && <div className="md:col-span-2 empty:hidden"><ChecklistInicial abrirLancamento={abrirLancamento} /></div>}
+          <div className={LARGURA[c] ?? ''}>{cartoes[c]}</div>
+          {c === 'sobra' && mes === mesDe(hojeLocal()) && <div className="md:col-span-2 xl:col-span-1 xl:row-span-2"><ListaSemana hoje={hojeLocal()} /></div>}
+          {c === 'sobra' && <div className="md:col-span-2 empty:hidden xl:col-span-3"><ChecklistInicial abrirLancamento={abrirLancamento} /></div>}
         </Fragment>
       ))}
     </div>

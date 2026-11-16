@@ -8,6 +8,8 @@ import { useDados } from '../hooks/useDados'
 import { repo, novoId } from '../../data/repo'
 import { db } from '../../data/db'
 import { saldoReserva, situacaoContas } from '../../domain/contas'
+import { movimentoContas } from '../../domain/analise'
+import { NOMES_MES } from '../rotulos'
 import { centavosDeDigitos, formatarBRL } from '../../domain/dinheiro'
 import { saldoContas } from '../../domain/fluxo'
 import { somenteDigitos } from '../validacao'
@@ -82,11 +84,70 @@ export default function Contas() {
     } catch (e) { alert((e as Error).message) } finally { ocupado.current = false } // mesma conta ou valor zero
   }
 
+  const movimento = movimentoContas(d.contas, d.lancamentos, mesAtual, d.financiamentos)
+  const total = movimento.reduce((t, m) => ({
+    inicial: t.inicial + m.inicial, receitas: t.receitas + m.receitas, despesas: t.despesas + m.despesas,
+    transfEntrada: t.transfEntrada + m.transfEntrada, transfSaida: t.transfSaida + m.transfSaida, saldo: t.saldo + m.saldo, previsto: t.previsto + m.previsto,
+  }), { inicial: 0, receitas: 0, despesas: 0, transfEntrada: 0, transfSaida: 0, saldo: 0, previsto: 0 })
+  const tom = (v: number) => (v < 0 ? 'text-negativo' : v > 0 ? 'text-positivo' : 'text-suave')
+  const celula = 'valor whitespace-nowrap px-3 py-3 text-right'
+
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-5">
+      {d.contas.length > 0 && (
+        <Moldura className="!p-0 overflow-hidden">
+          <h2 className="px-5 pt-4 text-[19px] leading-tight">Movimento de {NOMES_MES[Number(mesAtual.slice(5)) - 1].toLowerCase()}</h2>
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full min-w-[46rem] text-sm">
+              <thead>
+                <tr className="text-xs text-suave">
+                  <th className="px-5 py-2 text-left font-bold">Conta</th>
+                  <th className="px-3 text-right font-bold">Saldo inicial</th><th className="px-3 text-right font-bold">Receitas</th>
+                  <th className="px-3 text-right font-bold">Despesas</th><th className="px-3 text-right font-bold">Transf. recebidas</th>
+                  <th className="px-3 text-right font-bold">Transf. enviadas</th><th className="px-3 text-right font-bold">Saldo</th>
+                  <th className="px-5 text-right font-bold">Previsto</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--linha)]">
+                {movimento.map((m) => {
+                  const c = d.contas.find((x) => x.id === m.contaId)!
+                  return (
+                    <tr key={m.contaId} className="transition-colors hover:bg-[var(--casa)]">
+                      <td className="px-5 py-3">
+                        <span className="flex items-center gap-2 font-semibold">
+                          <span aria-hidden className="grid size-8 place-items-center rounded-[10px] bg-[var(--azul)] text-sm font-extrabold text-white">{c.nome.slice(0, 1).toUpperCase()}</span>
+                          {c.nome}{c.reserva && <span className="rounded-full border border-[var(--linha)] px-2 text-xs text-suave">reserva</span>}
+                        </span>
+                      </td>
+                      <td className={`${celula} ${m.inicial < 0 ? 'text-negativo' : ''}`}>{formatarBRL(m.inicial)}</td>
+                      <td className={`${celula} ${m.receitas ? 'text-positivo' : 'text-suave'}`}>{formatarBRL(m.receitas)}</td>
+                      <td className={`${celula} ${m.despesas ? 'text-negativo' : 'text-suave'}`}>{formatarBRL(m.despesas)}</td>
+                      <td className={`${celula} text-suave`}>{formatarBRL(m.transfEntrada)}</td>
+                      <td className={`${celula} text-suave`}>{formatarBRL(m.transfSaida)}</td>
+                      <td className={`${celula} text-base font-bold ${tom(m.saldo)}`}>{formatarBRL(m.saldo)}</td>
+                      <td className={`${celula} pr-5 ${tom(m.previsto)}`}>{formatarBRL(m.previsto)}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-[var(--linha)] font-bold">
+                  <td className="px-5 py-3">Total</td>
+                  <td className={celula}>{formatarBRL(total.inicial)}</td><td className={`${celula} text-positivo`}>{formatarBRL(total.receitas)}</td>
+                  <td className={`${celula} text-negativo`}>{formatarBRL(total.despesas)}</td><td className={celula}>{formatarBRL(total.transfEntrada)}</td>
+                  <td className={celula}>{formatarBRL(total.transfSaida)}</td><td className={`${celula} ${tom(total.saldo)}`}>{formatarBRL(total.saldo)}</td>
+                  <td className={`${celula} pr-5 ${tom(total.previsto)}`}>{formatarBRL(total.previsto)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p className="px-5 pb-4 pt-1 text-xs text-suave">Só o que já foi pago neste mês. O previsto inclui os pendentes e as parcelas dos financiamentos ligados à conta.</p>
+        </Moldura>
+      )}
       {reserva.usandoTodas && d.contas.length > 0 && (
         <p className="px-1 text-sm text-suave">Nenhuma conta marcada como reserva: a reserva usa todas as contas. Edite uma conta e marque "Esta é minha reserva".</p>
       )}
+      <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
       {d.contas.map((c) => {
         const s = situacao.get(c.id)
         return (
@@ -127,7 +188,8 @@ export default function Contas() {
           </Moldura>
         )
       })}
-      <button onClick={novo} className="min-h-12 rounded-full bg-marca font-semibold text-white">Adicionar conta</button>
+      </div>
+      <button onClick={novo} className="min-h-12 rounded-full bg-marca px-8 font-semibold text-white md:justify-self-start">Adicionar conta</button>
 
       {edit && (
         <FormRapido titulo="Conta" onSalvar={salvar} onCancelar={() => setEdit(null)}>

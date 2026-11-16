@@ -37,7 +37,8 @@ function Shell() {
   const { pathname } = useLocation()
   const rota = infoDaRota(pathname) // o seletor de mês só aparece onde o mês importa
   // Largura por tela: o painel usa o espaço do computador; o resumo vira duas colunas; o resto fica estreito e centralizado.
-  const largura = pathname === '/painel' || pathname === '/' ? 'max-w-md md:max-w-3xl xl:max-w-6xl' : 'max-w-md md:max-w-2xl'
+  const estreita = ['/fontes', '/categorias', '/backup'].includes(pathname) // formulários longos ficam numa coluna legível
+  const largura = estreita ? 'max-w-md md:max-w-2xl' : 'max-w-md md:max-w-3xl xl:max-w-7xl'
 
   // Troca de rota começa no topo da tela.
   useEffect(() => { window.scrollTo(0, 0) }, [pathname])
@@ -78,9 +79,10 @@ function Shell() {
   return (
     <DadosContext.Provider value={valor}>
     <div className="min-h-[100dvh] pb-28 lg:pb-12">
+      <div className="ambiente" aria-hidden><i /><i /><i /></div>
       <BarraLateral />
       <div className="lg:pl-64">
-      <div className={`mx-auto lg:px-6 ${pathname === '/painel' || pathname === '/' ? 'lg:max-w-6xl' : 'lg:max-w-2xl'}`}>
+      <div className={`mx-auto lg:px-6 ${estreita ? 'lg:max-w-2xl' : 'lg:max-w-7xl'}`}>
         <Cabecalho mes={mes} setMes={setMes} mostraMes={rota.mostraMes} titulo={rota.titulo} semana={pathname === '/'} virar={pathname !== '/painel'}
           abrirMenu={() => setAberto(true)} menuAberto={aberto} />
       </div>
@@ -93,7 +95,7 @@ function Shell() {
         <Route path="/" element={<Resumo mes={mes} abrirLancamento={() => setLancando(true)} />} />
         <Route path="/painel" element={<Painel mes={mes} />} />
         <Route path="/compromissos" element={<Compromissos mes={mes} />} />
-        <Route path="/lancamentos" element={<Lancamentos mes={mes} />} />
+        <Route path="/lancamentos" element={<Lancamentos mes={mes} abrirLancamento={() => setLancando(true)} />} />
         <Route path="/contas" element={<Contas />} />
         <Route path="/fontes" element={<Fontes />} />
         <Route path="/categorias" element={<Categorias />} />

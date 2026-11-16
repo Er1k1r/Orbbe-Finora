@@ -56,8 +56,8 @@ describe('Resumo: card Contas e Verificar', () => {
     const emCentavos = (t: string) => Math.round(Number(t.replace(/[^\d,-]/g, '').replace(',', '.')) * 100)
     const soma = card.getAllByRole('listitem').reduce((acc, li) => acc + emCentavos(li.querySelector('.valor')!.textContent!), 0)
     expect(soma).toBe(103000 - 3000 + 50000)
-    const rotulo = screen.getByText('Saldo', { selector: 'div' })
-    expect(rotulo.parentElement!.textContent).toBe(`Saldo${formatarBRL(soma)}`)
+    const rotulo = screen.getByText('Saldo atual') // degrau do meio no cartão da sobra
+    expect(rotulo.parentElement!.textContent).toBe(`${formatarBRL(soma)}Saldo atual`)
   })
 
   it('o card leva a /contas e Verificar leva a /lancamentos', async () => {

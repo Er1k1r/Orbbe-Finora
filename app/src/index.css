@@ -18,8 +18,9 @@
 }
 
 html, body, #root { min-height: 100dvh; }
+html { background: var(--fundo); }
 body {
-  background: var(--fundo);
+  background: transparent;
   color: var(--texto);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -45,6 +46,21 @@ a { text-underline-offset: 3px; }
 /* Pontos da trilha de parcelas entram em cascata. */
 @keyframes ponto-aparece { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
 .ponto-aparece { animation: ponto-aparece 0.35s var(--ease) both; }
+/* Vidro: a folha da folhinha translúcida. Uma elevação só (sombra), e o brilho de borda é luz, não contorno. */
+.vidro {
+  background: var(--vidro);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow: var(--sombra), inset 0 1px 0 var(--vidro-brilho);
+}
+/* Fundo ambiente: três campos de cor desfocados que o vidro deixa ver, à deriva bem devagar. */
+.ambiente { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: var(--fundo); }
+.ambiente i { position: absolute; border-radius: 50%; filter: blur(90px); will-change: transform; }
+.ambiente i:nth-child(1) { width: 60vw; height: 60vw; left: -18vw; top: -22vw; background: var(--ambiente-1); animation: deriva-1 32s ease-in-out infinite alternate; }
+.ambiente i:nth-child(2) { width: 46vw; height: 46vw; right: -14vw; top: 18vh; background: var(--ambiente-2); animation: deriva-2 38s ease-in-out infinite alternate; }
+.ambiente i:nth-child(3) { width: 52vw; height: 52vw; left: 22vw; bottom: -30vw; background: var(--ambiente-3); animation: deriva-1 44s ease-in-out infinite alternate-reverse; }
+@keyframes deriva-1 { to { transform: translate(10vw, 8vh) scale(1.12); } }
+@keyframes deriva-2 { to { transform: translate(-9vw, -10vh) scale(1.18); } }
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
