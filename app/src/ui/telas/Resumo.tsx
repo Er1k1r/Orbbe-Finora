@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
+import { ListaSemana } from '../componentes/ListaSemana'
 import { Link } from 'react-router-dom'
 import { ChecklistInicial } from '../componentes/ChecklistInicial'
 import { CartaoReserva } from '../componentes/CartaoReserva'
@@ -11,7 +12,7 @@ import { nomeCompromisso, rotuloMes } from '../rotulos'
 import { topCategorias } from '../../domain/categorias'
 import { formatarBRL } from '../../domain/dinheiro'
 import { ehMovimentoInterno, ehPagamentoParcela } from '../../domain/fluxo'
-import { mesDe } from '../../domain/meses'
+import { hojeLocal, mesDe } from '../../domain/meses'
 import { linhasContas } from '../padroes'
 import type { Mes } from '../../domain/tipos'
 
@@ -211,8 +212,13 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
   return (
     <div className="grid items-start gap-5 md:grid-cols-2">
       {alertas.length > 0 && <div className="grid gap-5 md:col-span-2">{alertas}</div>}
-      <div className="md:col-span-2 empty:hidden"><ChecklistInicial abrirLancamento={abrirLancamento} /></div>
-      {ordemCartoes(prefs.objetivos).map((c) => <div key={c} className={c === 'sobra' ? 'md:col-span-2' : ''}>{cartoes[c]}</div>)}
+      {ordemCartoes(prefs.objetivos).map((c) => (
+        <Fragment key={c}>
+          <div className={c === 'sobra' ? 'md:col-span-2' : ''}>{cartoes[c]}</div>
+          {c === 'sobra' && mes === mesDe(hojeLocal()) && <div className="md:col-span-2"><ListaSemana hoje={hojeLocal()} /></div>}
+          {c === 'sobra' && <div className="md:col-span-2 empty:hidden"><ChecklistInicial abrirLancamento={abrirLancamento} /></div>}
+        </Fragment>
+      ))}
     </div>
   )
 }

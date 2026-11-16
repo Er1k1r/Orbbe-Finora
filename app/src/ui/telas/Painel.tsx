@@ -1,10 +1,12 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { MotionConfig, motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { Link } from 'react-router-dom'
 import { PencilSimple } from '@phosphor-icons/react'
 import { BemEmMovimento } from '../componentes/BemEmMovimento'
 import { EditorLancamento } from '../componentes/EditorLancamento'
 import { FolhinhaMes } from '../componentes/FolhinhaMes'
+import { FolhaSobra } from '../componentes/FolhaSobra'
+import { linhasContas } from '../padroes'
 import { Moldura } from '../componentes/Moldura'
 import { useDados } from '../hooks/useDados'
 import { useResumo } from '../hooks/useResumo'
@@ -43,7 +45,8 @@ function Legenda({ grafico = false }: { grafico?: boolean }) {
       {grafico ? (
         <>
           <span className="inline-flex items-center gap-1.5"><i className="inline-block size-3 rounded-[4px] bg-[var(--verde)]" /> pago</span>
-          <span className="inline-flex items-center gap-1.5"><i className="inline-block size-3 rounded-[4px] bg-[var(--vermelho)]" /> em aberto</span>
+          <span className="inline-flex items-center gap-1.5"><i className="inline-block size-3 rounded-[4px] border-2 border-[var(--vermelho)]" /> a vencer</span>
+          <span className="inline-flex items-center gap-1.5"><i className="inline-block size-3 rounded-[4px] bg-[var(--vermelho)]" /> atrasado</span>
         </>
       ) : (['paga', 'a_pagar', 'atrasada'] as const).map((s) => (
         <span key={s} className="inline-flex items-center gap-1.5">
@@ -71,17 +74,18 @@ function Linha({ rotulo, valor, tom = '', forte = false }: { rotulo: string; val
 }
 
 function GraficoMeses({ pontos, atual }: { pontos: ReturnType<typeof serieMensal>; atual: Mes }) {
+  const hojeMes = mesDe(hojeLocal()) // em aberto de mês passado é atraso; deste mês em diante, ainda vai vencer
   const maximo = Math.max(...pontos.map((p) => p.pago + p.aberto), 1)
   return (
     <div>
-      <div className="flex h-44 items-end gap-1.5 sm:gap-2" role="img" aria-label="Saídas por mês: pago em verde, em aberto em vermelho">
+      <div className="flex h-44 items-end gap-1.5 sm:gap-2" role="img" aria-label="Saídas por mês: pago em verde, a vencer em contorno vermelho, atrasado em vermelho cheio">
         {pontos.map((p, i) => (
           <div key={p.mes} className="flex h-full flex-1 flex-col justify-end"
             title={`${rotuloMes(p.mes)} · pago ${formatarBRL(p.pago)} · em aberto ${formatarBRL(p.aberto)}`}>
             <motion.div className="flex flex-col justify-end overflow-hidden rounded-t-md"
               initial={{ height: 0 }} animate={{ height: `${((p.pago + p.aberto) / maximo) * 100}%` }}
               transition={{ duration: 0.6, delay: i * 0.04, ease: [0.32, 0.72, 0, 1] }}>
-              <div className="bg-[var(--vermelho)]" style={{ flexGrow: p.aberto }} />
+              <div className={p.mes < hojeMes ? 'bg-[var(--vermelho)]' : 'border-2 border-b-0 border-[var(--vermelho)] bg-[var(--vermelho-bg)]'} style={{ flexGrow: p.aberto }} />
               <div className="bg-[var(--verde)]" style={{ flexGrow: p.pago }} />
             </motion.div>
           </div>
@@ -100,7 +104,7 @@ function GraficoMeses({ pontos, atual }: { pontos: ReturnType<typeof serieMensal
 
 export default function Painel({ mes }: { mes: Mes }) {
   const d = useDados()
-  const { resumo: r } = useResumo(mes)
+  const { resumo: r, aporte } = useResumo(mes)
   const hoje = hojeLocal()
   const [editando, setEditando] = useState<Lancamento | null>(null)
   const nomeCat = (id: string) => d.categorias.find((c) => c.id === id)?.nome ?? ''
@@ -125,10 +129,13 @@ export default function Painel({ mes }: { mes: Mes }) {
   }, [d.lancamentos])
 
   return (
-    <MotionConfig reducedMotion="user">
+    <>
       <div className="grid gap-5">
         <div className="grid items-start gap-5 xl:grid-cols-3">
-          <Aparecer className="xl:col-span-2">
+          <Aparecer className="xl:col-span-2 [perspective:1200px]">
+            <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div key={mes} className="origin-top" initial={{ opacity: 0, rotateX: -18, y: 14 }} animate={{ opacity: 1, rotateX: 0, y: 0 }}
+              exit={{ opacity: 0, rotateX: 40, y: -30 }} transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}>
             <Moldura>
               <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
                 <Titulo>Folhinha de {NOMES_MES[Number(mes.slice(5)) - 1].toLowerCase()}</Titulo>
@@ -136,22 +143,56 @@ export default function Painel({ mes }: { mes: Mes }) {
               </div>
               <FolhinhaMes mes={mes} editar={setEditando} />
             </Moldura>
+            </motion.div>
+            </AnimatePresence>
           </Aparecer>
           <div className="grid gap-5">
             <Aparecer atraso={0.06}>
-              <Moldura>
-                <Titulo>O mês em números</Titulo>
-                <dl className="mt-2 divide-y divide-[var(--linha)] text-sm">
-                  <Linha rotulo="Receitas" valor={`+ ${formatarBRL(r.receitas)}`} tom="text-positivo" />
-                  <Linha rotulo="Despesas" valor={`− ${formatarBRL(r.despesas)}`} tom="text-negativo" />
-                  <Linha rotulo="Financiamentos" valor={`− ${formatarBRL(r.parcelas)}`} tom="text-divida" />
+              <Moldura heroi>
+                <FolhaSobra receitas={r.receitas} despesas={r.despesas} parcelas={r.parcelas} aporte={aporte} normal={r.sobraNormal} otimizada={r.sobraOtimizada} />
+                <dl className="mt-4 border-t border-[var(--linha)] pt-1 text-sm">
                   <Linha rotulo="Já pago" valor={formatarBRL(noMes?.pago ?? 0)} />
-                  <Linha rotulo="Ainda em aberto" valor={formatarBRL(noMes?.aberto ?? 0)} tom={noMes && noMes.aberto > 0 ? 'text-negativo' : ''} />
-                  <Linha rotulo="Sobra" valor={formatarBRL(r.sobraNormal)} tom={r.sobraNormal < 0 ? 'text-negativo' : 'text-positivo'} forte />
+                  <Linha rotulo="Em aberto" valor={formatarBRL(noMes?.aberto ?? 0)} />
                 </dl>
               </Moldura>
             </Aparecer>
-            <Aparecer atraso={0.12}>
+            <Aparecer atraso={0.09}>
+              <Moldura>
+                <Titulo>Contas</Titulo>
+                <dl className="mt-1 divide-y divide-[var(--linha)] text-sm">
+                  {linhasContas(d.contas, d.lancamentos, mes).map((c) => (
+                    <Linha key={c.id} rotulo={c.nome} valor={formatarBRL(c.saldo)} tom={c.negativa ? 'text-negativo' : ''} />
+                  ))}
+                </dl>
+              </Moldura>
+            </Aparecer>
+            {d.financiamentos.length > 0 && (
+              <Aparecer atraso={0.12}>
+                <Moldura>
+                  <Titulo>Financiamentos</Titulo>
+                  <ul className="mt-1 divide-y divide-[var(--linha)]">
+                    {d.financiamentos.map((f) => {
+                      const trilha = trilhaFinanciamento(f, d.lancamentos, hoje)
+                      const pagas = trilha.filter((p) => p.situacao === 'paga').length
+                      return (
+                        <li key={f.id}>
+                          <Link to={`/dividas/${f.id}`} className="flex items-center gap-3 py-1">
+                            <BemEmMovimento pequeno tipo={f.tipo ?? 'outro'} pago={f.totalParcelas > 0 ? pagas / f.totalParcelas : 0}
+                              rotulo={`${f.nome}: ${pagas} de ${f.totalParcelas} parcelas pagas`} />
+                            <span className="min-w-0">
+                              <span className="block truncate font-semibold">{f.nome}</span>
+                              <span className="valor block text-divida">{formatarBRL(estadoFinanciamento(f, d.lancamentos).saldoDevedor)}</span>
+                              <span className="text-xs text-suave">{pagas} de {f.totalParcelas} pagas</span>
+                            </span>
+                          </Link>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </Moldura>
+              </Aparecer>
+            )}
+            <Aparecer atraso={0.15}>
               <Moldura>
                 <Titulo>Compras parceladas</Titulo>
                 {grupos.length === 0 && <p className="mt-2 text-sm text-suave">Nenhuma compra parcelada em andamento.</p>}
@@ -191,7 +232,7 @@ export default function Painel({ mes }: { mes: Mes }) {
           </Aparecer>
 
         <Aparecer atraso={0.15}>
-          <div className="mb-2 flex items-baseline justify-between"><Titulo>Financiamentos</Titulo><Legenda /></div>
+          <div className="mb-2 flex items-baseline justify-between"><Titulo>Parcelas dos financiamentos</Titulo><Legenda /></div>
           {d.financiamentos.length === 0 && (
             <Moldura><p className="text-sm text-suave">Nenhum financiamento. <Link className="font-semibold text-marca-texto" to="/dividas">Cadastrar pelo carnê</Link></p></Moldura>
           )}
@@ -207,8 +248,6 @@ export default function Painel({ mes }: { mes: Mes }) {
               return (
                 <Moldura key={f.id}>
                   <div className="flex items-center gap-4">
-                    <BemEmMovimento tipo={f.tipo ?? 'outro'} pago={f.totalParcelas > 0 ? pagas / f.totalParcelas : 0}
-                      rotulo={`${f.nome}: ${pagas} de ${f.totalParcelas} parcelas pagas`} />
                     <div className="min-w-0 flex-1">
                       <Link to={`/dividas/${f.id}`} className="block truncate font-semibold">{f.nome}</Link>
                       <div className="text-xs text-suave">{pagas}/{f.totalParcelas} pagas · {f.sistema}</div>
@@ -276,6 +315,6 @@ export default function Painel({ mes }: { mes: Mes }) {
         </Aparecer>
       </div>
       {editando && <EditorLancamento key={editando.id} lancamento={editando} fechar={() => setEditando(null)} />}
-    </MotionConfig>
+    </>
   )
 }

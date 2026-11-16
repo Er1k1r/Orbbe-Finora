@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import './ui/tema.css';
 
-/* Cores utilitárias remapeadas para os tokens do spec §13. Preenchimentos usam --azul; TEXTO em petróleo usa --azul-texto. */
+/* Cores utilitárias da Folhinha: preenchimentos usam --azul (cobalto); TEXTO em cobalto usa --azul-texto. */
 @theme inline {
   --font-sans: 'Archivo Variable', system-ui, sans-serif;
   --font-display: 'Archivo Variable', system-ui, sans-serif;
@@ -9,11 +9,11 @@
   --color-tinta: var(--texto);
   --color-suave: var(--texto-suave);
   --color-marca: var(--azul); /* fundos: botão secundário, barras */
-  --color-marca-texto: var(--azul-texto); /* links e textos em petróleo */
+  --color-marca-texto: var(--azul-texto); /* links e textos em cobalto */
   --color-positivo: var(--verde-texto);
   --color-negativo: var(--vermelho-texto);
   --color-divida: var(--azul-texto); /* dívida = família azul; versão de texto, legível nos dois temas */
-  --color-destaque: var(--destaque); /* limão: só preenchimento, nunca texto sobre fundo claro */
+  --color-destaque: var(--destaque); /* marca-texto amarelo: só hoje e o botão de lançar, nunca texto sobre fundo claro */
   --color-marinho: var(--marinho);
 }
 
@@ -24,10 +24,10 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
-/* Foco por teclado: petróleo em superfícies claras, limão sobre marinho (cabeçalho, drawer, herói, FAB). */
+/* Foco por teclado: cobalto em superfícies claras, amarelo sobre o cobalto (cabeçalho, barra, herói). */
 :focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
 [data-sobre-marinho] :focus-visible, [data-sobre-marinho]:focus-visible, .heroi :focus-visible { outline-color: var(--destaque); }
-/* FAB fica sobre o fundo da página: anel marinho no claro; no escuro marinho some no fundo, então petróleo-texto (#62d6d8 sobre #09171a, contraste alto). */
+/* FAB amarelo sobre o papel: anel na cor do texto no claro; no escuro, cobalto claro (#9fb2ff sobre #0c0f1a). */
 .fab:focus-visible { outline-color: var(--texto); }
 :root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
@@ -39,9 +39,9 @@ h1, h2, h3 { font-family: var(--font-display); font-stretch: 88%; font-weight: 8
 html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); caret-color: var(--azul-texto); }
 a { text-underline-offset: 3px; }
 /* Pendente: chip amarelo com texto normal. */
-.chip-pendente { background: var(--amarelo-bg); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 600; }
+.chip-pendente { background: var(--casca); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 600; }
 .chip-vencido { background: var(--vermelho-bg); color: var(--vermelho-texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 700; }
-.aviso { background: var(--amarelo-bg); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
+.aviso { background: var(--casca); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
 /* Pontos da trilha de parcelas entram em cascata. */
 @keyframes ponto-aparece { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
 .ponto-aparece { animation: ponto-aparece 0.35s var(--ease) both; }

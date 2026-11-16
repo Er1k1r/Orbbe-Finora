@@ -39,7 +39,7 @@ afterEach(cleanup)
 describe('Painel', () => {
   it('pinta as parcelas do contrato: paga, atrasada e a pagar', async () => {
     render(comDados(mes, <Painel mes={mes} />))
-    await screen.findByText('Carro do teste')
+    await screen.findAllByText('Carro do teste')
     const situacoes = screen.getAllByRole('img', { name: /^\d\/4 · / }).map((e) => e.getAttribute('aria-label')!.split(' · ').pop())
     expect(situacoes).toEqual(['paga', 'atrasada', 'a pagar', 'a pagar'])
   })

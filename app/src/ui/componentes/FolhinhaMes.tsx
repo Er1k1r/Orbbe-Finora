@@ -47,9 +47,10 @@ export function FolhinhaMes({ mes, editar }: { mes: Mes; editar: (l: Lancamento)
           return (
             <button key={data} role="gridcell" aria-selected={dia === data} onClick={() => setEscolhido(dia === data ? null : data)}
               aria-label={`Dia ${Number(data.slice(8))}${ehHoje ? ', hoje' : ''}: ${ev.length === 0 ? 'nada marcado' : ev.map((e) => `${e.nome} ${formatarBRL(e.valor)}`).join(', ')}`}
+              style={{ boxShadow: [ehHoje && 'inset 0 0 0 3px var(--destaque)', dia === data && `inset 0 0 0 ${ehHoje ? 5 : 2}px var(--azul)`].filter(Boolean).join(', ') || undefined }}
               className={`group flex min-h-16 flex-col rounded-[10px] p-1.5 text-left transition-[box-shadow,background-color] duration-200 sm:min-h-24 sm:p-2
-                ${dia === data ? 'bg-[var(--casca)] shadow-[inset_0_0_0_2px_var(--azul)]' : 'bg-[var(--casa)] hover:bg-[var(--casca)]'}
-                ${ehHoje ? 'shadow-[inset_0_0_0_3px_var(--destaque)]' : ''}`}>
+                ${dia === data ? 'bg-[var(--casca)]' : 'bg-[var(--casa)] hover:bg-[var(--casca)]'}
+                `}>
               <span className={`numeral text-[22px] sm:text-[28px] ${domingo || vencido ? 'text-negativo' : ''}`}>{Number(data.slice(8))}</span>
               {/* celular: só pontos */}
               <span className="mt-auto flex gap-[3px] sm:hidden" aria-hidden>
@@ -57,13 +58,13 @@ export function FolhinhaMes({ mes, editar }: { mes: Mes; editar: (l: Lancamento)
                 {ev.some((e) => e.tipo === 'saida') && <i className={`size-1.5 rounded-full ${aberto.some((e) => e.tipo === 'saida') ? 'bg-[var(--vermelho)]' : 'bg-[var(--texto-suave)]'}`} />}
               </span>
               <span className="mt-auto hidden w-full gap-0.5 text-[11px] leading-tight sm:grid" aria-hidden>
-                {ev.slice(0, 3).map((e) => (
-                  <span key={e.id} className={`flex justify-between gap-1 ${COR[e.situacao]}`}>
+                {ev.slice(0, 2).map((e) => (
+                  <span key={e.id} className={`grid ${COR[e.situacao]}`}>
                     <span className={`truncate ${e.situacao === 'pago' ? 'line-through decoration-1' : ''}`}>{e.nome}</span>
-                    <span className={`valor shrink-0 ${e.tipo === 'entrada' ? 'text-positivo' : ''}`}>{e.tipo === 'entrada' ? '+' : '−'}{curto(e.valor)}</span>
+                    <span className={`valor ${e.tipo === 'entrada' ? 'text-positivo' : ''}`}>{e.tipo === 'entrada' ? '+' : '−'}{curto(e.valor)}</span>
                   </span>
                 ))}
-                {ev.length > 3 && <span className="text-suave">+{ev.length - 3}</span>}
+                {ev.length > 2 && <span className="text-suave">+{ev.length - 2}</span>}
               </span>
             </button>
           )

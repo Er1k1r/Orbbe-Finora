@@ -55,7 +55,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
             ) : (
               <li key={it.para}>
                 <NavLink to={it.para} end={it.para === '/'} onClick={fechar}
-                  className={({ isActive }) => `flex items-center gap-3 rounded-[10px] px-4 min-h-12 ${isActive ? 'bg-white/15 font-semibold shadow-[inset_3px_0_0_var(--destaque)]' : ''}`}>
+                  className={({ isActive }) => `flex items-center gap-3 rounded-[10px] px-4 min-h-12 ${isActive ? 'bg-white/15 font-bold text-white' : 'text-[var(--sobre-marinho-suave)]'}`}>
                   <it.Icone size={22} /> {it.rotulo}
                 </NavLink>
               </li>
@@ -79,7 +79,7 @@ export function BarraLateral() {
           ) : (
             <li key={it.para}>
               <NavLink to={it.para} end={it.para === '/'}
-                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[10px] px-4 text-[15px] font-semibold transition-colors ${isActive ? 'bg-white/15 shadow-[inset_3px_0_0_var(--destaque)]' : 'text-[var(--sobre-marinho-suave)] hover:bg-white/10 hover:text-white'}`}>
+                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[10px] px-4 text-[15px] font-semibold transition-colors ${isActive ? 'bg-white/15 font-bold text-white' : 'text-[var(--sobre-marinho-suave)] hover:bg-white/10 hover:text-white'}`}>
                 <it.Icone size={20} /> {it.rotulo}
               </NavLink>
             </li>

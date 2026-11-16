@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HashRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
+import { MotionConfig } from 'motion/react'
 import { BarraLateral, Drawer } from './ui/componentes/Drawer'
 import { Cabecalho } from './ui/componentes/Cabecalho'
 import { Fab } from './ui/componentes/Fab'
@@ -80,7 +81,7 @@ function Shell() {
       <BarraLateral />
       <div className="lg:pl-64">
       <div className={`mx-auto lg:px-6 ${pathname === '/painel' || pathname === '/' ? 'lg:max-w-6xl' : 'lg:max-w-2xl'}`}>
-        <Cabecalho mes={mes} setMes={setMes} mostraMes={rota.mostraMes} titulo={rota.titulo} semana={pathname === '/'}
+        <Cabecalho mes={mes} setMes={setMes} mostraMes={rota.mostraMes} titulo={rota.titulo} semana={pathname === '/'} virar={pathname !== '/painel'}
           abrirMenu={() => setAberto(true)} menuAberto={aberto} />
       </div>
       <main className={`mx-auto px-4 pt-5 lg:px-6 ${largura}`}>
@@ -114,5 +115,5 @@ function Shell() {
 }
 
 export default function App() {
-  return <HashRouter><Shell /></HashRouter>
+  return <MotionConfig reducedMotion="user"><HashRouter><Shell /></HashRouter></MotionConfig>
 }

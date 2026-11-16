@@ -55,8 +55,8 @@ function Semana({ hoje }: { hoje: string }) {
  * Cabeçalho-folhinha: número grande (dia de hoje no mês corrente, o número do mês nos outros), nome do mês e as
  * setas. Trocar de mês "arranca a folha": a atual sobe e some, a nova assenta.
  */
-export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, abrirMenu, menuAberto }: {
-  mes: string; setMes: (m: string) => void; mostraMes: boolean; titulo: string; semana: boolean
+export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, virar = true, abrirMenu, menuAberto }: {
+  mes: string; setMes: (m: string) => void; mostraMes: boolean; titulo: string; semana: boolean; virar?: boolean
   abrirMenu: () => void; menuAberto: boolean
 }) {
   const hoje = hojeLocal()
@@ -86,7 +86,7 @@ export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, abrirMenu, m
                   fica: { opacity: 1, y: 0, rotateX: 0 },
                   sai: (dir: number) => ({ opacity: 0, y: dir > 0 ? -26 : 26, rotateX: dir > 0 ? 55 : -55 }),
                 }}
-                initial="entra" animate="fica" exit="sai" transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}>
+                initial="entra" animate="fica" exit="sai" transition={virar ? { duration: 0.42, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}>
                 <span className="numeral text-[clamp(60px,19vw,76px)] lg:text-[88px]" aria-hidden>{atual ? Number(hoje.slice(8)) : String(m).padStart(2, '0')}</span>
                 <span className="min-w-0 pb-1">
                   <span className="block truncate text-[clamp(20px,6.4vw,28px)] font-extrabold uppercase leading-[0.95] [font-stretch:68%] lg:text-[34px]">{NOMES_MES[m - 1]}</span>
