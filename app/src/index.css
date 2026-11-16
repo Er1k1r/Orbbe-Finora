@@ -26,9 +26,9 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 /* Foco por teclado: verde em superfícies claras, menta sobre o verde (cabeçalho, barra, herói). */
-:focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
+:focus-visible { outline: 3px solid var(--azul-texto); outline-offset: 3px; }
 [data-sobre-marinho] :focus-visible, [data-sobre-marinho]:focus-visible, .heroi :focus-visible { outline-color: var(--destaque); }
-/* FAB amarelo sobre o papel: anel na cor do texto no claro; no escuro, verde-claro (#7fdcc0 sobre #0b1412). */
+/* FAB menta sobre o papel: anel na cor do texto no claro; no escuro, verde-claro (#7fdcc0 sobre #0b1412). */
 .fab:focus-visible { outline-color: var(--texto); }
 :root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
@@ -36,13 +36,26 @@ h1, h2, h3 { font-family: var(--font-display); font-weight: 800; letter-spacing:
 /* Numerais da folhinha: pesados, apertados, tabulares. */
 .valor { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.01em; }
 .numeral { font-variant-numeric: tabular-nums; font-weight: 800; line-height: 0.85; letter-spacing: -0.04em; }
-::selection { background: var(--destaque); color: #14161c; }
+::selection { background: var(--destaque); color: var(--sobre-destaque); }
 html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); caret-color: var(--azul-texto); }
 a { text-underline-offset: 3px; }
+/* Botões (sistema do cfc): preenchimento verde com texto branco, hover um tom abaixo. */
+.bg-marca { transition: background-color 0.2s var(--ease); }
+.bg-marca:hover { background-color: var(--azul-escuro); }
+/* Campos: contorno de controle (3:1) e foco verde; o fundo continua a casca. */
+input:not([type='checkbox']):not([type='radio']), select, textarea {
+  border: 1px solid var(--borda-ui);
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+input:not([type='checkbox']):not([type='radio']):focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none; border-color: var(--azul-texto); box-shadow: 0 0 0 3px color-mix(in srgb, var(--azul-texto) 22%, transparent);
+}
+.heroi input, [data-sobre-marinho] input { border-color: rgba(255, 255, 255, 0.4); }
 /* Pendente: chip neutro (o amarelo é só de hoje e do botão de lançar); vencido: chip vermelho. */
 .chip-pendente { background: var(--casca); color: var(--texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 600; }
 .chip-vencido { background: var(--vermelho-bg); color: var(--vermelho-texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 700; }
-.aviso { background: var(--casca); color: var(--texto); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
+/* Aviso (informação), como no cfc: tinta verde-clara, texto verde, borda forte. */
+.aviso { background: var(--azul-claro); color: var(--azul-texto); border: 1px solid var(--linha-forte); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
 /* Pontos da trilha de parcelas entram em cascata. */
 @keyframes ponto-aparece { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
 .ponto-aparece { animation: ponto-aparece 0.35s var(--ease) both; }
