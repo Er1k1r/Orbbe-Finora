@@ -1,19 +1,19 @@
 @import 'tailwindcss';
 @import './ui/tema.css';
 
-/* Cores utilitárias da Folhinha: preenchimentos usam --azul (cobalto); TEXTO em cobalto usa --azul-texto. */
+/* Cores utilitárias da Folhinha: preenchimentos usam --azul (verde-cédula); TEXTO em verde usa --azul-texto. */
 @theme inline {
-  --font-sans: 'Archivo Variable', system-ui, sans-serif;
-  --font-display: 'Archivo Variable', system-ui, sans-serif;
+  --font-sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-display: 'Hanken Grotesk Variable', system-ui, sans-serif;
   --color-superficie: var(--superficie);
   --color-tinta: var(--texto);
   --color-suave: var(--texto-suave);
   --color-marca: var(--azul); /* fundos: botão secundário, barras */
-  --color-marca-texto: var(--azul-texto); /* links e textos em cobalto */
+  --color-marca-texto: var(--azul-texto); /* links e textos em verde */
   --color-positivo: var(--verde-texto);
   --color-negativo: var(--vermelho-texto);
-  --color-divida: var(--azul-texto); /* dívida = família azul; versão de texto, legível nos dois temas */
-  --color-destaque: var(--destaque); /* marca-texto amarelo: só hoje e o botão de lançar, nunca texto sobre fundo claro */
+  --color-divida: var(--texto); /* dívida em tinta neutra: verde aqui pareceria entrada de dinheiro */
+  --color-destaque: var(--destaque); /* marca-texto menta: só hoje e o botão de lançar, nunca texto sobre fundo claro */
   --color-marinho: var(--marinho);
 }
 
@@ -25,17 +25,17 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
-/* Foco por teclado: cobalto em superfícies claras, amarelo sobre o cobalto (cabeçalho, barra, herói). */
+/* Foco por teclado: verde em superfícies claras, menta sobre o verde (cabeçalho, barra, herói). */
 :focus-visible { outline: 2px solid var(--azul-texto); outline-offset: 2px; }
 [data-sobre-marinho] :focus-visible, [data-sobre-marinho]:focus-visible, .heroi :focus-visible { outline-color: var(--destaque); }
-/* FAB amarelo sobre o papel: anel na cor do texto no claro; no escuro, cobalto claro (#9fb2ff sobre #0c0f1a). */
+/* FAB amarelo sobre o papel: anel na cor do texto no claro; no escuro, verde-claro (#7fdcc0 sobre #0b1412). */
 .fab:focus-visible { outline-color: var(--texto); }
 :root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
-h1, h2, h3 { font-family: var(--font-display); font-stretch: 88%; font-weight: 800; letter-spacing: -0.01em; }
-/* Numerais da folhinha: condensados, pesados, tabulares. */
-.valor { font-variant-numeric: tabular-nums; font-stretch: 82%; font-weight: 700; letter-spacing: -0.005em; }
-.numeral { font-variant-numeric: tabular-nums; font-stretch: 68%; font-weight: 850; line-height: 0.85; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; }
+/* Numerais da folhinha: pesados, apertados, tabulares. */
+.valor { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.01em; }
+.numeral { font-variant-numeric: tabular-nums; font-weight: 800; line-height: 0.85; letter-spacing: -0.04em; }
 ::selection { background: var(--destaque); color: #14161c; }
 html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); caret-color: var(--azul-texto); }
 a { text-underline-offset: 3px; }

@@ -71,7 +71,7 @@ export function BarraLateral() {
   return (
     <nav data-sobre-marinho aria-label="Menu lateral"
       className="heroi vidro fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-3 pb-6 pt-7 text-[var(--sobre-marinho)] lg:flex">
-      <span className="px-4 pb-6 text-[26px] font-extrabold uppercase leading-none [font-stretch:68%]">Finanças<br />Pessoais</span>
+      <span className="px-4 pb-6 text-[26px] font-extrabold uppercase leading-none">Finanças<br />Pessoais</span>
       <ul className="grid gap-0.5">
         {ITENS.map((it, i) =>
           'secao' in it ? (

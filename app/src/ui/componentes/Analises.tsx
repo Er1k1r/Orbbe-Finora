@@ -86,7 +86,7 @@ export function Comparativo({ linhas, categorias }: { linhas: LinhaComparativo[]
 const FATIAS = [
   { chave: 'fixas', nome: 'Fixas', cor: 'var(--azul)' },
   { chave: 'parceladas', nome: 'Parceladas', cor: 'var(--destaque)' },
-  { chave: 'financiamentos', nome: 'Financiamentos', cor: '#7c5cff' },
+  { chave: 'financiamentos', nome: 'Financiamentos', cor: '#e2a84b' },
   { chave: 'variaveis', nome: 'Variáveis', cor: 'var(--vermelho)' },
 ] as const
 
