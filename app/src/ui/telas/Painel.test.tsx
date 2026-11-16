@@ -39,7 +39,7 @@ afterEach(cleanup)
 describe('Painel', () => {
   it('pinta as parcelas do contrato: paga, atrasada e a pagar', async () => {
     render(comDados(mes, <Painel mes={mes} />))
-    await screen.findByText('Carro do teste')
+    await screen.findAllByText('Carro do teste')
     const situacoes = screen.getAllByRole('img', { name: /^\d\/4 · / }).map((e) => e.getAttribute('aria-label')!.split(' · ').pop())
     expect(situacoes).toEqual(['paga', 'atrasada', 'a pagar', 'a pagar'])
   })
@@ -54,8 +54,8 @@ describe('Painel', () => {
 
   it('editar pelo painel grava o novo valor', async () => {
     render(comDados(mes, <Painel mes={mes} />))
-    await screen.findByText('Feira')
-    fireEvent.click(within(screen.getByText('Feira').closest('tr')!).getByRole('button', { name: 'Editar lançamento' }))
+    await screen.findAllByText('Feira')
+    fireEvent.click(within(screen.getAllByText('Feira').map((e) => e.closest('tr')).find(Boolean)!).getByRole('button', { name: 'Editar lançamento' }))
     const campo = await screen.findByLabelText(/^Valor/)
     fireEvent.change(campo, { target: { value: '7550' } })
     fireEvent.click(screen.getByRole('button', { name: 'Salvar' }))

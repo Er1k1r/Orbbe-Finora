@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Carnê de Pagamento</title>
+<link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;800&family=Overpass+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--verde:#0f5c4a;--verde-2:#0a4537;--papel:#eef3ea;--folha:#fbfdf8;--tinta:#1a1d1a;--suave:#56605a;--linha:#cfdac9;--laranja:#c2410c;--ouro:#e8c547;--ok:#177245}
+*{box-sizing:border-box;margin:0}
+body{background:#c9d3c4;font-family:Overpass,sans-serif;color:var(--tinta);padding:32px 16px}
+.mesa{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.leg{font-size:13px;color:var(--suave);text-align:center;margin:0 0 10px;font-weight:600}
+.mono{font-family:"Overpass Mono",monospace;font-variant-numeric:tabular-nums}
+.fone{width:390px;max-width:100%;height:844px;background:var(--papel);border-radius:44px;overflow:hidden;border:10px solid #111;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);position:relative;display:flex;flex-direction:column}
+.topo{background:var(--verde);color:#fff;padding:22px 20px 18px;display:flex;justify-content:space-between;align-items:center}
+.topo b{font-weight:800;font-size:18px}.topo span{font-size:14px;opacity:.85}
+.corpo{padding:16px;display:grid;gap:12px;align-content:start}
+.carne{display:grid;grid-template-columns:96px 1fr;background:var(--folha);border-radius:12px;box-shadow:0 6px 16px -10px rgba(0,0,0,.35);position:relative}
+.carne .canhoto{border-right:2px dashed var(--linha);padding:12px 10px;font-size:11px;color:var(--suave);display:flex;flex-direction:column;gap:4px}
+.carne .canhoto b{font-size:22px;color:var(--tinta)}
+.carne .corpo2{padding:12px 14px}
+.carne .rot{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--suave);text-transform:uppercase}
+.carne .v{font-size:40px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.carne::before,.carne::after{content:"";position:absolute;left:88px;width:16px;height:16px;border-radius:50%;background:var(--papel)}
+.carne::before{top:-8px}.carne::after{bottom:-8px}
+.carimbo{position:absolute;right:14px;top:12px;border:2.5px solid var(--ok);color:var(--ok);font-weight:800;font-size:13px;padding:2px 8px;border-radius:6px;transform:rotate(-8deg);letter-spacing:.08em}
+.carimbo.ab{border-color:var(--laranja);color:var(--laranja)}
+.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;font-size:11px;color:var(--suave)}.mini b{display:block;font-size:14px;color:var(--tinta)}
+.h2{font-weight:800;font-size:15px;margin:6px 4px 0}
+.fab{position:absolute;right:18px;bottom:26px;width:62px;height:62px;border-radius:50%;background:var(--ouro);border:0;box-shadow:0 12px 24px -8px rgba(0,0,0,.5);display:grid;place-items:center}
+.pc{width:1180px;max-width:100%;background:var(--papel);border-radius:14px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.45)}
+.pc header{background:var(--verde);color:#fff;display:flex;align-items:center;gap:26px;padding:14px 28px}
+.pc header b{font-weight:800;font-size:18px;margin-right:20px}.pc header a{color:#fff;opacity:.8;text-decoration:none;font-weight:600;font-size:14px}.pc header a.on{opacity:1;border-bottom:3px solid var(--ouro);padding-bottom:4px}
+.grade{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;padding:24px 28px}
+.bloco{background:var(--folha);border-radius:12px;padding:16px 18px;box-shadow:0 6px 16px -10px rgba(0,0,0,.3)}
+.bloco h3{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--suave);margin-bottom:10px}
+.tiras{display:grid;grid-template-columns:repeat(12,1fr);gap:4px}
+.tira{border:1.5px dashed var(--linha);border-radius:6px;padding:6px 4px;text-align:center;font-size:10px;color:var(--suave)}
+.tira b{display:block;font-size:13px;color:var(--tinta)}
+.tira.pg{background:#e1efe5;border-style:solid;border-color:#b5d6c0}.tira.pg b{color:var(--ok)}
+.tira.at{background:#fbe6dc;border-style:solid;border-color:#f0b49a}.tira.at b{color:var(--laranja)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:9px 6px;border-top:1px solid var(--linha);text-align:left}th{font-size:11px;color:var(--suave);letter-spacing:.06em;text-transform:uppercase;border-top:0}td.r{text-align:right}
+</style></head><body>
+<p class="leg">Carnê de Pagamento · celular e computador · dados de exemplo</p>
+<div class="mesa">
+<div class="fone">
+  <div class="topo"><b>Finanças Pessoais</b><span>‹ nov/2026 ›</span></div>
+  <div class="corpo">
+    <div class="carne"><div class="canhoto">SOBRA<b class="mono">NOV</b><span class="mono">2026</span></div><div class="corpo2"><div class="rot">Sobra do mês</div><div class="v mono">R$ 1.240,00</div><div class="mini"><div>Saldo<b class="mono">7.150</b></div><div>Previsto<b class="mono">5.910</b></div><div>A pagar<b class="mono" style="color:var(--laranja)">1.240</b></div></div></div></div>
+    <div class="h2">Próximos canhotos</div>
+    <div class="carne"><div class="canhoto">PARCELA<b class="mono">04/12</b><span class="mono">venc 15/11</span></div><div class="corpo2"><div class="rot">Óculos</div><div class="v mono" style="font-size:28px">R$ 50,00</div></div><span class="carimbo ab">VENCIDO</span></div>
+    <div class="carne"><div class="canhoto">PARCELA<b class="mono">11/48</b><span class="mono">venc 10/11</span></div><div class="corpo2"><div class="rot">Carro</div><div class="v mono" style="font-size:28px">R$ 950,00</div></div><span class="carimbo">PAGO</span></div>
+    <div class="carne"><div class="canhoto">CONTA<b class="mono">20/11</b><span class="mono">mensal</span></div><div class="corpo2"><div class="rot">Luz</div><div class="v mono" style="font-size:28px">R$ 180,00</div></div></div>
+  </div>
+  <button class="fab" aria-label="Lançar"><svg width="28" height="28" fill="none" stroke="#1a1d1a" stroke-width="2.5"><path d="M14 6v16M6 14h16"/></svg></button>
+</div>
+<div class="pc">
+  <header><b>Finanças Pessoais</b><a href="#">Resumo</a><a class="on" href="#">Painel</a><a href="#">Lançamentos</a><a href="#">Contas</a><a href="#">Dívidas</a><a href="#">Insights</a></header>
+  <div class="grade">
+    <div class="bloco"><h3>Carro · carnê de 48</h3><div class="tiras">
+      <div class="tira pg">jan<b class="mono">01</b></div><div class="tira pg">fev<b class="mono">02</b></div><div class="tira pg">mar<b class="mono">03</b></div><div class="tira pg">abr<b class="mono">04</b></div><div class="tira pg">mai<b class="mono">05</b></div><div class="tira pg">jun<b class="mono">06</b></div><div class="tira pg">jul<b class="mono">07</b></div><div class="tira pg">ago<b class="mono">08</b></div><div class="tira pg">set<b class="mono">09</b></div><div class="tira pg">out<b class="mono">10</b></div><div class="tira pg">nov<b class="mono">11</b></div><div class="tira">dez<b class="mono">12</b></div>
+      <div class="tira">jan<b class="mono">13</b></div><div class="tira">fev<b class="mono">14</b></div><div class="tira">mar<b class="mono">15</b></div><div class="tira">abr<b class="mono">16</b></div><div class="tira">mai<b class="mono">17</b></div><div class="tira">jun<b class="mono">18</b></div><div class="tira">jul<b class="mono">19</b></div><div class="tira">ago<b class="mono">20</b></div><div class="tira">set<b class="mono">21</b></div><div class="tira">out<b class="mono">22</b></div><div class="tira">nov<b class="mono">23</b></div><div class="tira">dez<b class="mono">24</b></div>
+    </div><p style="font-size:13px;color:var(--suave);margin-top:10px">Saldo devedor <b class="mono" style="color:var(--tinta)">R$ 25.735,08</b> · quitar hoje com desconto de R$ 3.180</p></div>
+    <div class="bloco"><h3>Óculos · carnê de 12</h3><div class="tiras" style="grid-template-columns:repeat(6,1fr)">
+      <div class="tira pg">ago<b class="mono">01</b></div><div class="tira pg">set<b class="mono">02</b></div><div class="tira pg">out<b class="mono">03</b></div><div class="tira at">nov<b class="mono">04</b></div><div class="tira">dez<b class="mono">05</b></div><div class="tira">jan<b class="mono">06</b></div>
+      <div class="tira">fev<b class="mono">07</b></div><div class="tira">mar<b class="mono">08</b></div><div class="tira">abr<b class="mono">09</b></div><div class="tira">mai<b class="mono">10</b></div><div class="tira">jun<b class="mono">11</b></div><div class="tira">jul<b class="mono">12</b></div></div></div>
+    <div class="bloco" style="grid-column:1/-1"><h3>Lançamentos de novembro</h3><table><tr><th>Dia</th><th>Descrição</th><th>Categoria</th><th>Situação</th><th style="text-align:right">Valor</th></tr>
+      <tr><td class="mono">05</td><td>Salário</td><td>Salário</td><td style="color:var(--ok);font-weight:700">recebido</td><td class="r mono" style="color:var(--ok)">+ 4.500,00</td></tr>
+      <tr><td class="mono">10</td><td>Aluguel</td><td>Moradia</td><td style="color:var(--ok);font-weight:700">pago</td><td class="r mono">− 1.500,00</td></tr>
+      <tr><td class="mono">15</td><td>Óculos 04/12</td><td>Saúde</td><td style="color:var(--laranja);font-weight:700">vencido</td><td class="r mono">− 50,00</td></tr>
+      <tr><td class="mono">20</td><td>Luz</td><td>Contas</td><td>a pagar</td><td class="r mono">− 180,00</td></tr></table></div>
+  </div>
+</div>
+</div></body></html>

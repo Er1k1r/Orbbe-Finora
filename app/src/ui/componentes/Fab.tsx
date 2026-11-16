@@ -1,11 +1,12 @@
 import { Plus } from '@phosphor-icons/react'
 
+/** Botão de lançar: o marca-texto da folhinha, sempre à mão. */
 export function Fab({ onClick }: { onClick: () => void }) {
   return (
     <button aria-label="Novo lançamento" onClick={onClick}
-      className="fab fixed bottom-6 right-5 size-14 rounded-full bg-[var(--destaque)] text-[var(--marinho)] grid place-items-center active:scale-95 transition-transform duration-300 ease-[var(--ease)]"
-      style={{ boxShadow: '0 16px 32px -12px rgba(13,43,48,0.55)' }}>
-      <Plus size={26} weight="light" />
+      className="fab fixed bottom-6 right-5 z-20 grid size-16 place-items-center rounded-[20px] bg-[var(--destaque)] text-[#14161c] transition-transform duration-300 ease-[var(--ease)] hover:-translate-y-0.5 active:scale-95 lg:bottom-8 lg:right-8"
+      style={{ boxShadow: '0 14px 28px -10px rgba(20,22,28,0.55)' }}>
+      <Plus size={30} weight="bold" />
     </button>
   )
 }

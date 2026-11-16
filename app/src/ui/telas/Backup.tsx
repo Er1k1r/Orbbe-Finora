@@ -49,7 +49,7 @@ export default function Backup() {
     <div className="grid gap-4">
       <Moldura>
         <Privacidade />
-        <h3 className="mt-4 text-[10px] uppercase tracking-[0.2em] text-suave">Armazenamento</h3>
+        <h3 className="mt-4 text-[19px] leading-tight font-extrabold">Armazenamento</h3>
         <p role="status" className="mt-1 text-sm">{armazenamento ? TEXTO_ARMAZENAMENTO[armazenamento] : 'Verificando o armazenamento…'}</p>
         {armazenamento === 'nao_persistente' && (
           <button onClick={async () => setPedido(await pedirPersistencia())} className="mt-1 min-h-11 text-sm font-semibold text-marca-texto">

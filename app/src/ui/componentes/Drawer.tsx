@@ -1,21 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
-import { SquaresFour, House, Bank, Receipt, Scales, Lightbulb, Tag, Briefcase, FloppyDisk } from '@phosphor-icons/react'
+import { ITENS } from '../menu'
 
-const ITENS = [
-  { para: '/', rotulo: 'Resumo', Icone: House },
-  { para: '/painel', rotulo: 'Painel', Icone: SquaresFour },
-  { para: '/contas', rotulo: 'Contas', Icone: Bank },
-  { para: '/lancamentos', rotulo: 'Lançamentos', Icone: Receipt },
-  { para: '/dividas', rotulo: 'Dívidas', Icone: Scales },
-  { secao: 'Analisar' },
-  { para: '/insights', rotulo: 'Insights e reserva', Icone: Lightbulb },
-  { para: '/categorias', rotulo: 'Categorias', Icone: Tag },
-  { secao: 'Configurar' },
-  { para: '/fontes', rotulo: 'Fontes de renda', Icone: Briefcase },
-  { para: '/backup', rotulo: 'Backup', Icone: FloppyDisk },
-] as const
+
 
 export const ID_MENU = 'menu-principal'
 
@@ -63,17 +51,40 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
         <ul className="grid gap-1">
           {ITENS.map((it, i) =>
             'secao' in it ? (
-              <li key={i} className="mt-5 mb-1 px-3 text-[10px] uppercase tracking-[0.2em] opacity-60">{it.secao}</li>
+              <li key={i} className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--sobre-marinho-suave)]">{it.secao}</li>
             ) : (
               <li key={it.para}>
                 <NavLink to={it.para} end={it.para === '/'} onClick={fechar}
-                  className={({ isActive }) => `flex items-center gap-3 rounded-full px-4 min-h-12 ${isActive ? 'bg-white/10 text-[var(--destaque)] font-semibold' : ''}`}>
-                  <it.Icone size={22} weight="light" /> {it.rotulo}
+                  className={({ isActive }) => `flex items-center gap-3 rounded-[10px] px-4 min-h-12 ${isActive ? 'bg-white/15 font-bold text-white' : 'text-[var(--sobre-marinho-suave)]'}`}>
+                  <it.Icone size={22} /> {it.rotulo}
                 </NavLink>
               </li>
             ))}
         </ul>
       </nav>
     </>
+  )
+}
+
+/** Computador: a barra cobalto fica sempre aberta à esquerda (o Drawer é só do celular). */
+export function BarraLateral() {
+  return (
+    <nav data-sobre-marinho aria-label="Menu lateral"
+      className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-[var(--marinho)] px-3 pb-6 pt-7 text-[var(--sobre-marinho)] lg:flex">
+      <span className="px-4 pb-6 text-[26px] font-extrabold uppercase leading-none [font-stretch:68%]">Finanças<br />Pessoais</span>
+      <ul className="grid gap-0.5">
+        {ITENS.map((it, i) =>
+          'secao' in it ? (
+            <li key={i} className="mb-1 mt-5 px-4 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--sobre-marinho-suave)]">{it.secao}</li>
+          ) : (
+            <li key={it.para}>
+              <NavLink to={it.para} end={it.para === '/'}
+                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[10px] px-4 text-[15px] font-semibold transition-colors ${isActive ? 'bg-white/15 font-bold text-white' : 'text-[var(--sobre-marinho-suave)] hover:bg-white/10 hover:text-white'}`}>
+                <it.Icone size={20} /> {it.rotulo}
+              </NavLink>
+            </li>
+          ))}
+      </ul>
+    </nav>
   )
 }

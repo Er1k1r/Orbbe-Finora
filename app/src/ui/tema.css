@@ -1,75 +1,94 @@
-@import '@fontsource/red-hat-display/500.css';
-@import '@fontsource/red-hat-display/700.css';
-@import '@fontsource/figtree/400.css';
-@import '@fontsource/figtree/600.css';
+@import '@fontsource-variable/archivo/wdth.css';
 
+/*
+ * Folhinha de Parede: azul-cobalto no cabeçalho e na barra, papel claro com folhas brancas, tinta quase preta,
+ * vermelho de domingo para vencido/negativo, verde para pago/entrada, amarelo marca-texto só para HOJE e para o
+ * botão de lançar (nunca como texto sobre fundo claro).
+ * Nomes antigos mantidos como apelidos (--marinho = cobalto do cabeçalho, --destaque = marca-texto, --azul = cobalto).
+ */
 :root {
   color-scheme: light dark;
-  --fundo: #f1f5f4;
+  --fundo: #eef0f4;
   --superficie: #ffffff;
-  --superficie-2: #edf3f2;
-  --texto: #10262b;
-  --texto-suave: #4a6168;
-  --linha: #dce8e6;
-  --marinho: #0d2b30;
-  --azul: #0b6b73;
-  --azul-texto: #0b6b73;
-  --destaque: #c6ef4f;
-  --verde: #15803d;
-  --verde-texto: #126b2f;
-  --verde-bg: #e4f5ea;
-  --vermelho: #c62828;
-  --vermelho-texto: #c62828;
-  --vermelho-bg: #fdecec;
-  --amarelo-bg: #fff4dd;
-  --sobre-marinho: #e4f2f0; /* texto sobre --marinho (derivado: = --texto do escuro) */
-  --casca: var(--superficie-2); /* fundo de campos e trilhos */
-  --sombra: 0 24px 48px -24px rgba(13, 43, 48, 0.18);
-  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --superficie-2: #e6e9f0;
+  --texto: #14161c;
+  --texto-suave: #555c6b;
+  --linha: #dde1e9;
+  --marinho: #1f3fbf;
+  --marinho-2: #16309a;
+  --azul: #1f3fbf;
+  --azul-texto: #1f3fbf;
+  --destaque: #ffd23f;
+  --verde: #1d8a4e;
+  --verde-texto: #157a43;
+  --verde-bg: #e3f4ea;
+  --vermelho: #d6332a;
+  --vermelho-texto: #c0271f;
+  --vermelho-bg: #fde8e6;
+  --amarelo-bg: #fff3c4;
+  --sobre-marinho: #ffffff;
+  --sobre-marinho-suave: #c8d2ff;
+  --casca: var(--superficie-2);
+  --casa: #f3f5f9; /* casa (dia) da folhinha sobre a folha branca */
+  --sombra: 0 10px 24px -16px rgba(20, 22, 28, 0.35);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
-/* Escuro: padrão do sistema (a menos que o usuário tenha escolhido claro), ou escolhido no botão. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='claro']) {
-    --fundo: #09171a;
-    --superficie: #102226;
-    --superficie-2: #163035;
-    --texto: #e4f2f0;
-    --texto-suave: #9db8b6;
-    --linha: #1f3c40;
-    --marinho: #0b2a2f;
-    --azul: #0f7f88;
-    --azul-texto: #62d6d8;
-    --destaque: #d4f55a;
-    --verde: #2f9e5c;
-    --verde-texto: #5bd58a;
-    --verde-bg: #12301f;
-    --vermelho: #c7352d;
-    --vermelho-texto: #ff8f85;
-    --vermelho-bg: #3a1a1f;
-    --amarelo-bg: #3a2c12;
-    --sombra: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+    --fundo: #0c0f1a;
+    --superficie: #151a2b;
+    --superficie-2: #1e2438;
+    --texto: #eef0f6;
+    --texto-suave: #a3abc2;
+    --linha: #262d45;
+    --marinho: #1b33a0;
+    --marinho-2: #142780;
+    --azul: #4c6bff;
+    --azul-texto: #9fb2ff;
+    --verde: #2fae68;
+    --verde-texto: #6fdc9f;
+    --verde-bg: #11291d;
+    --vermelho: #e4473d;
+    --vermelho-texto: #ff9d95;
+    --vermelho-bg: #3a1619;
+    --amarelo-bg: #3b3210;
+    --casa: #1b2135;
+    --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
   }
 }
-:root[data-theme='escuro'],
-.heroi { /* o cartão-herói usa sempre a paleta escura sobre --marinho */
-  --fundo: #09171a;
-  --superficie: #102226;
-  --superficie-2: #163035;
-  --texto: #e4f2f0;
-  --texto-suave: #9db8b6;
-  --linha: #1f3c40;
-  --marinho: #0b2a2f;
-  --azul: #0f7f88;
-  --azul-texto: #62d6d8;
-  --destaque: #d4f55a;
-  --verde: #2f9e5c;
-  --verde-texto: #5bd58a;
-  --verde-bg: #12301f;
-  --vermelho: #c7352d;
-  --vermelho-texto: #ff8f85;
-  --vermelho-bg: #3a1a1f;
-  --amarelo-bg: #3a2c12;
-  --sombra: 0 24px 48px -24px rgba(0, 0, 0, 0.6);
+:root[data-theme='escuro'] {
+  --fundo: #0c0f1a;
+  --superficie: #151a2b;
+  --superficie-2: #1e2438;
+  --texto: #eef0f6;
+  --texto-suave: #a3abc2;
+  --linha: #262d45;
+  --marinho: #1b33a0;
+  --marinho-2: #142780;
+  --azul: #4c6bff;
+  --azul-texto: #9fb2ff;
+  --verde: #2fae68;
+  --verde-texto: #6fdc9f;
+  --verde-bg: #11291d;
+  --vermelho: #e4473d;
+  --vermelho-texto: #ff9d95;
+  --vermelho-bg: #3a1619;
+  --amarelo-bg: #3b3210;
+  --casa: #1b2135;
+  --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
+}
+/* Cartão-herói: folha sobre o cobalto, texto claro. */
+.heroi {
+  --superficie: var(--marinho);
+  --superficie-2: var(--marinho-2);
+  --texto: #ffffff;
+  --texto-suave: #c8d2ff;
+  --linha: rgba(255, 255, 255, 0.18);
+  --azul: #ffffff;
+  --azul-texto: #ffffff;
+  --verde-texto: #8ff0bb;
+  --vermelho-texto: #ffb3ac;
+  --amarelo-bg: rgba(255, 210, 63, 0.22);
 }
 :root[data-theme='escuro'] { color-scheme: dark; }
 :root[data-theme='claro'] { color-scheme: light; }

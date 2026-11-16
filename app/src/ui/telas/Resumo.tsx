@@ -1,9 +1,10 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
+import { ListaSemana } from '../componentes/ListaSemana'
 import { Link } from 'react-router-dom'
 import { ChecklistInicial } from '../componentes/ChecklistInicial'
 import { CartaoReserva } from '../componentes/CartaoReserva'
 import { Moldura } from '../componentes/Moldura'
-import { SobraRing } from '../componentes/SobraRing'
+import { FolhaSobra } from '../componentes/FolhaSobra'
 import { useResumo } from '../hooks/useResumo'
 import { usePrefs } from '../hooks/usePreferencias'
 import { ordemCartoes, type Cartao } from './ordemCartoes'
@@ -11,7 +12,7 @@ import { nomeCompromisso, rotuloMes } from '../rotulos'
 import { topCategorias } from '../../domain/categorias'
 import { formatarBRL } from '../../domain/dinheiro'
 import { ehMovimentoInterno, ehPagamentoParcela } from '../../domain/fluxo'
-import { mesDe } from '../../domain/meses'
+import { hojeLocal, mesDe } from '../../domain/meses'
 import { linhasContas } from '../padroes'
 import type { Mes } from '../../domain/tipos'
 
@@ -23,7 +24,7 @@ const Linha = ({ rotulo, valor, cor }: { rotulo: string; valor: string; cor?: st
 )
 
 const Titulo = ({ children }: { children: ReactNode }) => (
-  <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">{children}</h3>
+  <h3 className="text-[19px] leading-tight font-extrabold">{children}</h3>
 )
 
 export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancamento: () => void }) {
@@ -72,11 +73,11 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
   const cartoes: Record<Cartao, ReactNode> = {
     sobra: (
       <Moldura heroi>
-        <SobraRing normal={r.sobraNormal} otimizada={r.sobraOtimizada} aporte={aporte} />
-        <div className="mt-4 grid grid-cols-3 text-center text-sm">
-          <div><div className="text-suave">Inicial</div><div className="valor">{formatarBRL(r.inicial)}</div></div>
-          <div><div className="text-suave">Saldo</div><div className="valor font-semibold">{formatarBRL(r.saldo)}</div></div>
-          <div><div className="text-suave">Previsto</div><div className="valor">{formatarBRL(r.previsto)}</div></div>
+        <FolhaSobra receitas={r.receitas} despesas={r.despesas} parcelas={r.parcelas} aporte={aporte} normal={r.sobraNormal} otimizada={r.sobraOtimizada} />
+        <div className="mt-5 grid grid-cols-3 border-t border-[var(--linha)] pt-4 text-sm">
+          <div><div className="text-[var(--texto-suave)]">Inicial</div><div className="valor text-lg">{formatarBRL(r.inicial)}</div></div>
+          <div><div className="text-[var(--texto-suave)]">Saldo</div><div className="valor text-lg">{formatarBRL(r.saldo)}</div></div>
+          <div><div className="text-[var(--texto-suave)]">Previsto</div><div className={`valor text-lg ${r.previsto < 0 ? 'text-negativo' : ''}`}>{formatarBRL(r.previsto)}</div></div>
         </div>
       </Moldura>
     ),
@@ -211,8 +212,13 @@ export default function Resumo({ mes, abrirLancamento }: { mes: Mes; abrirLancam
   return (
     <div className="grid items-start gap-5 md:grid-cols-2">
       {alertas.length > 0 && <div className="grid gap-5 md:col-span-2">{alertas}</div>}
-      <div className="md:col-span-2 empty:hidden"><ChecklistInicial abrirLancamento={abrirLancamento} /></div>
-      {ordemCartoes(prefs.objetivos).map((c) => <div key={c} className={c === 'sobra' ? 'md:col-span-2' : ''}>{cartoes[c]}</div>)}
+      {ordemCartoes(prefs.objetivos).map((c) => (
+        <Fragment key={c}>
+          <div className={c === 'sobra' ? 'md:col-span-2' : ''}>{cartoes[c]}</div>
+          {c === 'sobra' && mes === mesDe(hojeLocal()) && <div className="md:col-span-2"><ListaSemana hoje={hojeLocal()} /></div>}
+          {c === 'sobra' && <div className="md:col-span-2 empty:hidden"><ChecklistInicial abrirLancamento={abrirLancamento} /></div>}
+        </Fragment>
+      ))}
     </div>
   )
 }

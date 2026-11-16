@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Folhinha de Parede</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{--cobalto:#1f3fbf;--cobalto-2:#16309a;--papel:#f6f7f9;--branco:#fff;--tinta:#14161c;--suave:#5b6170;--linha:#e2e5ec;--vermelho:#d6332a;--verde:#1d8a4e;--marca:#ffd23f}
+*{box-sizing:border-box;margin:0}
+body{background:#d9dde6;font-family:Archivo,sans-serif;color:var(--tinta);padding:32px 16px;font-variation-settings:"wdth" 100}
+::selection{background:var(--marca)}
+.mesa{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;align-items:flex-start}
+.leg{font-size:13px;color:var(--suave);text-align:center;margin:0 0 10px;font-weight:600}
+.num{font-variation-settings:"wdth" 70;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.val{font-variant-numeric:tabular-nums;font-weight:600}
+/* celular */
+.fone{width:390px;max-width:100%;height:844px;background:var(--papel);border-radius:44px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(20,22,28,.45);border:10px solid #111;position:relative;display:flex;flex-direction:column}
+.topo{background:var(--cobalto);color:#fff;padding:18px 18px 0}
+.barra{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600}
+.barra button{background:none;border:0;color:#fff;width:44px;height:44px;display:grid;place-items:center;border-radius:12px}
+.mes{display:flex;align-items:flex-end;gap:14px;padding:6px 0 0}
+.mes .grande{font-size:76px;line-height:.8}
+.mes .nome{font-variation-settings:"wdth" 75;font-weight:800;font-size:30px;line-height:.95;text-transform:uppercase;letter-spacing:.01em}
+.mes .ano{opacity:.75;font-weight:600;font-size:15px}
+.semana{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:16px;padding-bottom:12px}
+.dia{background:rgba(255,255,255,.1);border-radius:10px;padding:6px 0 7px;text-align:center}
+.dia small{display:block;font-size:10px;font-weight:700;opacity:.7;letter-spacing:.06em}
+.dia b{font-size:22px;display:block;line-height:1.05}
+.dia.dom small,.dia.dom b{color:#ffb4ae}
+.dia.hoje{background:var(--marca);color:var(--tinta)}
+.dia.hoje small{opacity:.8}
+.pts{display:flex;gap:3px;justify-content:center;height:6px;margin-top:3px}
+.pts i{width:6px;height:6px;border-radius:50%;background:#fff}.pts i.v{background:#7be0a6}.pts i.r{background:#ff8f87}
+.dia.hoje .pts i.r{background:var(--vermelho)}.dia.hoje .pts i.v{background:var(--verde)}
+.corpo{padding:16px 16px 100px;overflow:hidden;flex:1;display:grid;gap:14px;align-content:start}
+.sobra{background:var(--branco);border-radius:16px;padding:16px;box-shadow:0 8px 20px -14px rgba(20,22,28,.35)}
+.sobra h2{font-size:15px;font-weight:700;color:var(--suave)}
+.sobra .v{font-size:54px;line-height:1;margin:6px 0 4px}
+.sobra .v small{font-size:26px}
+.reg{height:10px;border-radius:5px;background:var(--linha);overflow:hidden;display:flex;margin-top:10px}
+.reg span{display:block}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px;font-size:12px;color:var(--suave)}
+.trio b{display:block;color:var(--tinta);font-size:16px}
+.lista{background:var(--branco);border-radius:16px;padding:6px 16px;box-shadow:0 8px 20px -14px rgba(20,22,28,.35)}
+.lista h2{font-size:15px;font-weight:700;padding:10px 0 4px}
+.item{display:grid;grid-template-columns:44px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--linha)}
+.item .d{text-align:center;line-height:1}
+.item .d b{font-size:26px;display:block}.item .d small{font-size:10px;font-weight:700;color:var(--suave);text-transform:uppercase}
+.item .t{font-weight:600;font-size:15px}.item .s{font-size:12px;color:var(--suave)}
+.item .r{color:var(--vermelho)}.item .g{color:var(--verde)}
+.chip{display:inline-block;font-size:11px;font-weight:700;border-radius:999px;padding:1px 8px;background:#fde8e6;color:#a3221b}
+.fab{position:absolute;right:18px;bottom:26px;width:62px;height:62px;border-radius:20px;background:var(--marca);border:0;box-shadow:0 12px 24px -8px rgba(20,22,28,.5);display:grid;place-items:center}
+/* desktop */
+.pc{width:1180px;max-width:100%;background:var(--papel);border-radius:14px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(20,22,28,.45);display:grid;grid-template-columns:210px 1fr 320px;min-height:640px}
+.lado{background:var(--cobalto);color:#fff;padding:22px 14px;display:flex;flex-direction:column;gap:4px}
+.lado .marca{font-variation-settings:"wdth" 75;font-weight:800;font-size:22px;padding:0 10px 18px;text-transform:uppercase}
+.lado a{color:#fff;text-decoration:none;padding:11px 12px;border-radius:10px;font-weight:600;font-size:14px;opacity:.85}
+.lado a.on{background:rgba(255,255,255,.14);opacity:1;box-shadow:inset 3px 0 0 var(--marca)}
+.centro{padding:24px 26px}
+.cab{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px}
+.cab .t{display:flex;align-items:flex-end;gap:14px}
+.cab .t b{font-size:64px;line-height:.8;color:var(--cobalto)}
+.cab .t span{font-variation-settings:"wdth" 75;font-weight:800;font-size:28px;text-transform:uppercase;line-height:.9}
+.seg{display:flex;background:#e8ebf2;border-radius:10px;padding:3px}.seg button{border:0;background:none;padding:8px 14px;border-radius:8px;font:inherit;font-weight:600;font-size:13px;color:var(--suave)}.seg button.on{background:#fff;color:var(--tinta)}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.cal .h{font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--suave);padding:0 6px}.cal .h.dom{color:var(--vermelho)}
+.c{background:#fff;border-radius:10px;min-height:84px;padding:6px 8px;display:flex;flex-direction:column;border:1px solid transparent}
+.c b{font-size:26px;line-height:1}
+.c.dom b{color:var(--vermelho)}
+.c.fora{background:transparent}.c.fora b{color:#b9bfcc}
+.c.hoje{border-color:var(--tinta);box-shadow:inset 0 0 0 2px var(--marca)}
+.c .e{margin-top:auto;font-size:11px;line-height:1.3}
+.c .e div{display:flex;justify-content:space-between;gap:4px}
+.dir{background:#fff;border-left:1px solid var(--linha);padding:24px 20px;display:grid;gap:18px;align-content:start}
+.dir h3{font-size:13px;font-weight:700;color:var(--suave)}
+.big{font-size:48px;line-height:1}
+.trilha{display:flex;flex-wrap:wrap;gap:3px;margin-top:8px}.trilha i{width:12px;height:12px;border-radius:3px;background:var(--verde)}.trilha i.a{background:transparent;border:2px solid var(--vermelho)}.trilha i.x{background:var(--vermelho)}
+.linha{display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--linha);font-size:14px}
+</style></head><body>
+<p class="leg">Folhinha de Parede · celular e computador · dados de exemplo</p>
+<div class="mesa">
+<div class="fone">
+  <div class="topo">
+    <div class="barra"><button aria-label="Menu"><svg width="24" height="24" fill="none" stroke="#fff" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><span>Finanças Pessoais</span><button aria-label="Tema"><svg width="22" height="22" fill="none" stroke="#fff" stroke-width="2"><circle cx="11" cy="11" r="4"/><path d="M11 2v2M11 18v2M2 11h2M18 11h2"/></svg></button></div>
+    <div class="mes"><span class="grande num">16</span><div><div class="nome">Novembro</div><div class="ano">2026 · segunda-feira</div></div></div>
+    <div class="semana">
+      <div class="dia dom"><small>DOM</small><b class="num">15</b><div class="pts"><i class="r"></i></div></div>
+      <div class="dia hoje"><small>SEG</small><b class="num">16</b><div class="pts"></div></div>
+      <div class="dia"><small>TER</small><b class="num">17</b><div class="pts"></div></div>
+      <div class="dia"><small>QUA</small><b class="num">18</b><div class="pts"></div></div>
+      <div class="dia"><small>QUI</small><b class="num">19</b><div class="pts"></div></div>
+      <div class="dia"><small>SEX</small><b class="num">20</b><div class="pts"><i class="r"></i><i class="v"></i></div></div>
+      <div class="dia"><small>SÁB</small><b class="num">21</b><div class="pts"></div></div>
+    </div>
+  </div>
+  <div class="corpo">
+    <div class="sobra"><h2>Sobra do mês</h2><div class="v num">R$ 1.240<small>,00</small></div>
+      <div class="reg"><span style="width:58%;background:var(--verde)"></span><span style="width:20%;background:var(--vermelho)"></span></div>
+      <div class="trio"><div>Saldo<b class="val">R$ 7.150</b></div><div>Previsto<b class="val">R$ 5.910</b></div><div>A pagar<b class="val" style="color:var(--vermelho)">R$ 1.240</b></div></div></div>
+    <div class="lista"><h2>Esta semana</h2>
+      <div class="item"><div class="d"><b class="num" style="color:var(--vermelho)">15</b><small>dom</small></div><div><div class="t">Óculos <span class="s">4/12</span></div><div class="s"><span class="chip">venceu ontem</span></div></div><div class="val r">− R$ 50,00</div></div>
+      <div class="item"><div class="d"><b class="num">20</b><small>sex</small></div><div><div class="t">Luz</div><div class="s">Contas · pendente</div></div><div class="val r">− R$ 180,00</div></div>
+      <div class="item"><div class="d"><b class="num">20</b><small>sex</small></div><div><div class="t">Venda de brownie</div><div class="s">Vendas · previsto</div></div><div class="val g">+ R$ 320,00</div></div>
+    </div>
+  </div>
+  <button class="fab" aria-label="Lançar"><svg width="28" height="28" fill="none" stroke="#14161c" stroke-width="2.5"><path d="M14 6v16M6 14h16"/></svg></button>
+</div>
+
+<div class="pc">
+  <nav class="lado"><div class="marca">Finanças</div><a class="on" href="#">Painel</a><a href="#">Resumo</a><a href="#">Lançamentos</a><a href="#">Contas</a><a href="#">Dívidas</a><a href="#">Insights</a><a href="#">Backup</a></nav>
+  <main class="centro">
+    <div class="cab"><div class="t"><b class="num">11</b><span>Novembro<br><small style="font-size:15px;font-weight:600">2026</small></span></div><div class="seg"><button>Lista</button><button class="on">Folhinha</button></div></div>
+    <div class="cal">
+      <div class="h dom">DOM</div><div class="h">SEG</div><div class="h">TER</div><div class="h">QUA</div><div class="h">QUI</div><div class="h">SEX</div><div class="h">SÁB</div>
+      <div class="c dom"><b class="num">1</b></div><div class="c"><b class="num">2</b></div><div class="c"><b class="num">3</b></div><div class="c"><b class="num">4</b></div>
+      <div class="c"><b class="num">5</b><div class="e"><div><span>Salário</span><span class="val" style="color:var(--verde)">+4.500</span></div></div></div>
+      <div class="c"><b class="num">6</b></div><div class="c"><b class="num">7</b></div>
+      <div class="c dom"><b class="num">8</b></div><div class="c"><b class="num">9</b></div>
+      <div class="c"><b class="num">10</b><div class="e"><div><span>Aluguel</span><span class="val">−1.500</span></div><div><span>Carro 11/48</span><span class="val">−950</span></div></div></div>
+      <div class="c"><b class="num">11</b></div><div class="c"><b class="num">12</b><div class="e"><div><span>Mercado</span><span class="val">−320</span></div></div></div><div class="c"><b class="num">13</b></div><div class="c"><b class="num">14</b></div>
+      <div class="c dom"><b class="num">15</b><div class="e"><div><span>Óculos 4/12</span><span class="val" style="color:var(--vermelho)">−50</span></div></div></div>
+      <div class="c hoje"><b class="num">16</b></div><div class="c"><b class="num">17</b></div><div class="c"><b class="num">18</b></div><div class="c"><b class="num">19</b></div>
+      <div class="c"><b class="num">20</b><div class="e"><div><span>Luz</span><span class="val" style="color:var(--vermelho)">−180</span></div><div><span>Brownie</span><span class="val" style="color:var(--verde)">+320</span></div></div></div><div class="c"><b class="num">21</b></div>
+      <div class="c dom"><b class="num">22</b></div><div class="c"><b class="num">23</b></div><div class="c"><b class="num">24</b></div><div class="c"><b class="num">25</b><div class="e"><div><span>Internet</span><span class="val" style="color:var(--vermelho)">−99</span></div></div></div><div class="c"><b class="num">26</b></div><div class="c"><b class="num">27</b></div><div class="c"><b class="num">28</b></div>
+      <div class="c dom"><b class="num">29</b></div><div class="c"><b class="num">30</b></div><div class="c fora"><b class="num">1</b></div><div class="c fora"><b class="num">2</b></div><div class="c fora"><b class="num">3</b></div><div class="c fora"><b class="num">4</b></div><div class="c fora"><b class="num">5</b></div>
+    </div>
+  </main>
+  <aside class="dir">
+    <div><h3>Sobra do mês</h3><div class="big num">R$ 1.240</div><div style="font-size:13px;color:var(--suave)">otimizada R$ 940 com aporte de R$ 300</div></div>
+    <div><h3>Carro · 11 de 48 pagas</h3><div class="trilha"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i><i class="a"></i></div></div>
+    <div><h3>Contas</h3><div class="linha"><span>Banco</span><b class="val">R$ 6.200</b></div><div class="linha"><span>Caixa</span><b class="val">R$ 950</b></div><div class="linha"><span>Reserva</span><b class="val">R$ 3.000</b></div></div>
+  </aside>
+</div>
+</div>
+</body></html>

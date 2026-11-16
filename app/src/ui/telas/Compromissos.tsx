@@ -28,7 +28,7 @@ export default function Compromissos({ mes }: { mes: Mes }) {
         </Moldura>
       ))}
       <Moldura>
-        <h3 className="text-[10px] uppercase tracking-[0.2em] text-suave">Quando termina</h3>
+        <h3 className="text-[19px] leading-tight font-extrabold">Quando termina</h3>
         {compromissos.terminos.length === 0 && <p className="mt-2 text-suave">Nenhum compromisso com data de término.</p>}
         <ul className="mt-2 grid gap-2 text-sm">
           {compromissos.terminos.map((t) => (
