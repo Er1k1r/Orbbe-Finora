@@ -3,8 +3,8 @@
 
 /* Cores utilitárias da Folhinha: preenchimentos usam --azul (verde-cédula); TEXTO em verde usa --azul-texto. */
 @theme inline {
-  --font-sans: 'Hanken Grotesk Variable', system-ui, sans-serif;
-  --font-display: 'Hanken Grotesk Variable', system-ui, sans-serif;
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+  --font-display: 'Geist Variable', system-ui, sans-serif;
   --color-superficie: var(--superficie);
   --color-tinta: var(--texto);
   --color-suave: var(--texto-suave);
@@ -32,10 +32,10 @@ body {
 .fab:focus-visible { outline-color: var(--texto); }
 :root[data-theme='escuro'] .fab:focus-visible { outline-color: var(--azul-texto); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='claro']) .fab:focus-visible { outline-color: var(--azul-texto); } }
-h1, h2, h3 { font-family: var(--font-display); font-weight: 800; letter-spacing: -0.02em; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.025em; }
 /* Numerais da folhinha: pesados, apertados, tabulares. */
-.valor { font-variant-numeric: tabular-nums; font-weight: 700; letter-spacing: -0.01em; }
-.numeral { font-variant-numeric: tabular-nums; font-weight: 800; line-height: 0.85; letter-spacing: -0.04em; }
+.valor { font-variant-numeric: tabular-nums; font-weight: 600; letter-spacing: -0.015em; }
+.numeral { font-variant-numeric: tabular-nums; font-weight: 700; line-height: 0.85; letter-spacing: -0.05em; }
 ::selection { background: var(--destaque); color: var(--sobre-destaque); }
 html { scrollbar-color: var(--linha) transparent; accent-color: var(--azul); caret-color: var(--azul-texto); }
 a { text-underline-offset: 3px; }
@@ -66,7 +66,7 @@ input:not([type='checkbox']):not([type='radio']):focus-visible, select:focus-vis
   background: var(--vidro);
   -webkit-backdrop-filter: blur(22px) saturate(1.5);
   backdrop-filter: blur(22px) saturate(1.5);
-  box-shadow: var(--sombra), inset 0 1px 0 var(--vidro-brilho);
+  box-shadow: var(--sombra), inset 0 1px 0 var(--vidro-brilho), inset 0 0 0 1px var(--contorno-folha);
 }
 /* Fundo ambiente: três campos de cor desfocados que o vidro deixa ver, à deriva bem devagar. */
 .ambiente { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; background: var(--fundo); }

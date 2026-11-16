@@ -1,4 +1,4 @@
-@import '@fontsource-variable/hanken-grotesk/wght.css';
+@import '@fontsource-variable/geist/wght.css';
 
 /*
  * Folhinha de Parede, paleta verde-cédula e menta, montada no sistema de cores do cfc_platform:
@@ -62,6 +62,7 @@
   --vidro-brilho: rgba(255, 255, 255, 0.9);
   --vidro-cobalto: rgba(15, 76, 69, 0.93);
   --vidro-barra: var(--vidro-cobalto); /* cabeçalho e barra lateral */
+  --contorno-folha: transparent; /* no escuro, 1 px sutil separa a folha do fundo */
   --ambiente-1: rgba(15, 76, 69, 0.2);
   --ambiente-2: rgba(161, 255, 203, 0.45);
   --ambiente-3: rgba(15, 92, 82, 0.1);
@@ -70,25 +71,25 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='claro']) {
-    --fundo: #0e1110;
-    --superficie: #161a19;
-    --superficie-2: #1d2221;
-    --faixa: #121615;
-    --texto: #e8ecea;
-    --texto-suave: #a3aca8;
-    --linha: #2a302e;
-    --linha-forte: #3a423f;
-    --cinza: #8d9692;
-    --borda-ui: #8f9a95;
-    --marinho: #0f3a34;
-    --marinho-2: #0c2f2a;
-    --azul: #18735f;
-    --azul-escuro: #125e4e;
-    --azul-texto: #8fd1bd;
-    --azul-claro: #1a2b27;
-    --azul-claro-hover: #20352f;
-    --destaque: #b0ffd5;
-    --destaque-escuro: #8cefb8;
+    --fundo: #0b1513;
+    --superficie: #111d1a;
+    --superficie-2: #162521;
+    --faixa: #0e1917;
+    --texto: #eef5f2;
+    --texto-suave: #a6b9b2;
+    --linha: #1f2f2b;
+    --linha-forte: #2c403a;
+    --cinza: #8ea39b;
+    --borda-ui: #7f968e;
+    --marinho: #0f2b26;
+    --marinho-2: #0c231f;
+    --azul: #14745f;
+    --azul-escuro: #0f5f4e;
+    --azul-texto: #9ad8c6;
+    --azul-claro: #12302a;
+    --azul-claro-hover: #163a33;
+    --destaque: #6fe3c2;
+    --destaque-escuro: #4fd3ad;
     --destaque-borda: transparent;
     --verde: #2f9e5c;
     --verde-texto: #5bd58a;
@@ -98,37 +99,38 @@
     --vermelho-texto: #ff8f85;
     --vermelho-bg: #3a1a1f;
     --amarelo-bg: #3a2c12;
-    --casa: rgba(34, 39, 38, 0.72);
-    --vidro: rgba(22, 26, 25, 0.66);
-    --vidro-brilho: rgba(255, 255, 255, 0.06);
-    --vidro-cobalto: rgba(15, 58, 52, 0.9);
-    --ambiente-1: rgba(24, 115, 95, 0.12);
-    --ambiente-2: rgba(255, 255, 255, 0.03);
-    --ambiente-3: rgba(24, 115, 95, 0.05);
-    --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
-    --vidro-barra: rgba(19, 23, 22, 0.94);
+    --casa: rgba(24, 38, 34, 0.75);
+    --vidro: rgba(17, 29, 26, 0.78);
+    --vidro-brilho: rgba(255, 255, 255, 0.07);
+    --vidro-cobalto: rgba(16, 46, 40, 0.92);
+    --ambiente-1: rgba(111, 227, 194, 0.07);
+    --ambiente-2: rgba(20, 116, 95, 0.12);
+    --ambiente-3: rgba(111, 227, 194, 0.04);
+    --sombra: 0 16px 40px -20px rgba(0, 0, 0, 0.8);
+    --vidro-barra: rgba(11, 21, 19, 0.9);
+    --contorno-folha: rgba(255, 255, 255, 0.07);
   }
 }
 :root[data-theme='escuro'] {
-  --fundo: #0e1110;
-  --superficie: #161a19;
-  --superficie-2: #1d2221;
-  --faixa: #121615;
-  --texto: #e8ecea;
-  --texto-suave: #a3aca8;
-  --linha: #2a302e;
-  --linha-forte: #3a423f;
-  --cinza: #8d9692;
-  --borda-ui: #8f9a95;
-  --marinho: #0f3a34;
-  --marinho-2: #0c2f2a;
-  --azul: #18735f;
-  --azul-escuro: #125e4e;
-  --azul-texto: #8fd1bd;
-  --azul-claro: #1a2b27;
-  --azul-claro-hover: #20352f;
-  --destaque: #b0ffd5;
-  --destaque-escuro: #8cefb8;
+  --fundo: #0b1513;
+  --superficie: #111d1a;
+  --superficie-2: #162521;
+  --faixa: #0e1917;
+  --texto: #eef5f2;
+  --texto-suave: #a6b9b2;
+  --linha: #1f2f2b;
+  --linha-forte: #2c403a;
+  --cinza: #8ea39b;
+  --borda-ui: #7f968e;
+  --marinho: #0f2b26;
+  --marinho-2: #0c231f;
+  --azul: #14745f;
+  --azul-escuro: #0f5f4e;
+  --azul-texto: #9ad8c6;
+  --azul-claro: #12302a;
+  --azul-claro-hover: #163a33;
+  --destaque: #6fe3c2;
+  --destaque-escuro: #4fd3ad;
   --destaque-borda: transparent;
   --verde: #2f9e5c;
   --verde-texto: #5bd58a;
@@ -138,15 +140,16 @@
   --vermelho-texto: #ff8f85;
   --vermelho-bg: #3a1a1f;
   --amarelo-bg: #3a2c12;
-  --casa: rgba(34, 39, 38, 0.72);
-  --vidro: rgba(22, 26, 25, 0.66);
-  --vidro-brilho: rgba(255, 255, 255, 0.06);
-  --vidro-cobalto: rgba(15, 58, 52, 0.9);
-  --ambiente-1: rgba(24, 115, 95, 0.12);
-  --ambiente-2: rgba(255, 255, 255, 0.03);
-  --ambiente-3: rgba(24, 115, 95, 0.05);
-  --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
-  --vidro-barra: rgba(19, 23, 22, 0.94);
+  --casa: rgba(24, 38, 34, 0.75);
+  --vidro: rgba(17, 29, 26, 0.78);
+  --vidro-brilho: rgba(255, 255, 255, 0.07);
+  --vidro-cobalto: rgba(16, 46, 40, 0.92);
+  --ambiente-1: rgba(111, 227, 194, 0.07);
+  --ambiente-2: rgba(20, 116, 95, 0.12);
+  --ambiente-3: rgba(111, 227, 194, 0.04);
+  --sombra: 0 16px 40px -20px rgba(0, 0, 0, 0.8);
+  --vidro-barra: rgba(11, 21, 19, 0.9);
+  --contorno-folha: rgba(255, 255, 255, 0.07);
 }
 /* Cartão-herói: vidro verde-cédula, texto claro (branco sobre o verde: 9:1). Cabeçalho e barra usam .barra:
    no claro são o mesmo verde; no escuro viram grafite, para o verde (30%) não tomar a tela. */
