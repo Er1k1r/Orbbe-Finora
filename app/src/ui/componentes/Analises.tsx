@@ -37,7 +37,7 @@ export function SaldoDegraus({ inicial, saldo, previsto }: { inicial: Centavos; 
       <span className="absolute bottom-3 left-[9px] top-3 w-0.5 rounded bg-[var(--linha)]" aria-hidden />
       {passos.map((p, i) => (
         <li key={p.rotulo} className="relative">
-          <span aria-hidden className={`absolute -left-7 top-1 grid size-5 place-items-center rounded-full ${i === 1 ? 'bg-[var(--destaque)]' : 'border-2 border-[var(--linha)] bg-[var(--marinho)]'}`} />
+          <span aria-hidden className={`absolute -left-7 top-1 grid size-5 place-items-center rounded-full ${i === 1 ? 'neon bg-[var(--destaque)]' : 'border-2 border-[var(--linha)] bg-[var(--marinho)]'}`} />
           <span className={`valor block ${p.forte ? 'text-3xl' : 'text-lg'} ${p.v < 0 ? 'text-negativo' : ''}`}>{formatarBRL(p.v)}</span>
           <span className="text-xs text-[var(--texto-suave)]">{p.rotulo}</span>
         </li>

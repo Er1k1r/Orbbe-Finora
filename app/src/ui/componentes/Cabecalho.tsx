@@ -37,7 +37,7 @@ function Semana({ hoje }: { hoje: string }) {
         const resumo = ev.length === 0 ? 'nada marcado' : ev.map((e) => e.nome).join(', ')
         return (
           <li key={dia} aria-current={ehHoje ? 'date' : undefined} aria-label={`${DIAS_LONGOS[i]} ${Number(dia.slice(8))}: ${resumo}`}
-            className={`rounded-[10px] pb-1.5 pt-1 text-center ${ehHoje ? 'bg-[var(--destaque)] text-[var(--sobre-destaque)]' : 'bg-white/10'}`}>
+            className={`rounded-[10px] pb-1.5 pt-1 text-center ${ehHoje ? 'neon neon-pulso bg-[var(--destaque)] text-[var(--sobre-destaque)]' : 'bg-white/10'}`}>
             <span className={`block text-xs font-bold ${ehHoje ? '' : i === 0 ? 'text-[#ffb4ae]' : 'opacity-75'}`}>{DIAS[i]}</span>
             <span className={`numeral block text-[22px] ${!ehHoje && i === 0 ? 'text-[#ffb4ae]' : ''}`}>{Number(dia.slice(8))}</span>
             <span className="mt-1 flex h-1.5 justify-center gap-[3px]" aria-hidden>
@@ -87,7 +87,7 @@ export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, virar = true
                   sai: (dir: number) => ({ opacity: 0, y: dir > 0 ? -26 : 26, rotateX: dir > 0 ? 55 : -55 }),
                 }}
                 initial="entra" animate="fica" exit="sai" transition={virar ? { duration: 0.42, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}>
-                <span className="numeral text-[clamp(60px,19vw,76px)] lg:text-[88px]" aria-hidden>{atual ? Number(hoje.slice(8)) : String(m).padStart(2, '0')}</span>
+                <span className={`numeral text-[clamp(60px,19vw,76px)] lg:text-[88px] ${atual ? 'neon-texto' : ''}`} aria-hidden>{atual ? Number(hoje.slice(8)) : String(m).padStart(2, '0')}</span>
                 <span className="min-w-0 pb-1">
                   <span className="block truncate text-[clamp(20px,6.4vw,28px)] font-extrabold uppercase leading-[0.95] lg:text-[34px]">{NOMES_MES[m - 1]}</span>
                   <span className="block text-[15px] font-semibold text-[var(--sobre-marinho-suave)]">

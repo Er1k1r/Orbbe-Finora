@@ -20,7 +20,7 @@ import { NOMES_MES, rotuloMes } from '../rotulos'
 import { ordenarLancamentos, rotuloParcelamento } from '../lancamento'
 
 const COR_PONTO: Record<SituacaoParcela, string> = {
-  paga: 'bg-[var(--verde)] border-[var(--verde)]',
+  paga: 'bg-[var(--verde)] border-[var(--verde)] shadow-[0_0_8px_var(--neon-verde)]',
   atrasada: 'bg-[var(--vermelho)] border-[var(--vermelho)]',
   a_pagar: 'bg-transparent border-[var(--vermelho)]',
 }
@@ -148,7 +148,7 @@ export default function Painel({ mes }: { mes: Mes }) {
           </Aparecer>
           <div className="grid gap-5">
             <Aparecer atraso={0.06}>
-              <Moldura heroi>
+              <Moldura heroi className="neon-borda">
                 <FolhaSobra receitas={r.receitas} despesas={r.despesas} parcelas={r.parcelas} aporte={aporte} normal={r.sobraNormal} otimizada={r.sobraOtimizada} />
                 <dl className="mt-4 border-t border-[var(--linha)] pt-1 text-sm">
                   <Linha rotulo="Já pago" valor={formatarBRL(noMes?.pago ?? 0)} />

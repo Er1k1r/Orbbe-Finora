@@ -60,6 +60,16 @@ Regras de uso:
 
 O cabeçalho e a barra ficam no próprio petróleo, com o contorno. No claro, nada muda.
 
+**Neon (16/11, pedido do dono).** Os detalhes de neon existem só no tema escuro; no claro os tokens `--neon*` são transparentes. Brilham apenas as coisas "vivas":
+- hoje: a casa da faixa com pulso lento, o numeral do cabeçalho e a casa da folhinha;
+- o botão de lançar;
+- a borda de cima do cartão da sobra (`.neon-borda`);
+- o degrau "saldo atual";
+- o item ativo do menu (`.neon-texto`);
+- as parcelas pagas na trilha (verde).
+
+As classes ficam em `index.css`: `.neon`, `.neon-borda`, `.neon-texto` e `.neon-pulso`. Com "reduzir movimento", o pulso para. **Regra:** neon é o 10%, nunca texto corrido nem cartão inteiro, e no máximo cinco pontos acesos por tela.
+
 Medido em 16/11:
 
 | Tema | Par | Contraste |

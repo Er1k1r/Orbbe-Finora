@@ -58,6 +58,18 @@ input:not([type='checkbox']):not([type='radio']):focus-visible, select:focus-vis
 .chip-vencido { background: var(--vermelho-bg); color: var(--vermelho-texto); border-radius: 9999px; padding: 0.125rem 0.625rem; font-weight: 700; }
 /* Aviso (informação), como no cfc: tinta verde-clara, texto verde, borda forte. */
 .aviso { background: var(--azul-claro); color: var(--azul-texto); border: 1px solid var(--linha-forte); border-radius: 0.75rem; padding: 0.5rem 0.75rem; }
+/*
+ * Neon (só aparece no escuro; no claro os tokens são transparentes):
+ * .neon       halo menta em volta de um elemento preenchido (hoje, botão de lançar, degrau atual)
+ * .neon-borda borda superior acesa + halo baixo, para a folha principal (cartão da sobra)
+ * .neon-texto texto aceso (item ativo do menu, numeral de hoje)
+ * .neon-pulso respiração lenta do halo, parada com "reduzir movimento"
+ */
+.neon { box-shadow: 0 0 0 1px var(--neon), 0 0 18px -2px var(--neon), 0 0 42px -10px var(--neon-forte); }
+.neon-texto { text-shadow: 0 0 12px var(--neon-texto), 0 0 2px var(--neon-texto); }
+.vidro.neon-borda { box-shadow: var(--sombra), inset 0 1px 0 var(--neon-forte), inset 0 0 0 1px var(--neon), 0 18px 50px -28px var(--neon-forte); }
+@keyframes neon-pulso { 50% { box-shadow: 0 0 0 1px var(--neon-forte), 0 0 26px 0 var(--neon-forte), 0 0 60px -8px var(--neon-forte); } }
+.neon-pulso { animation: neon-pulso 3.2s ease-in-out infinite; }
 /* Pontos da trilha de parcelas entram em cascata. */
 @keyframes ponto-aparece { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
 .ponto-aparece { animation: ponto-aparece 0.35s var(--ease) both; }
