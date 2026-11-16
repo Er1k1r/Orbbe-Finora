@@ -43,6 +43,13 @@ Regras de uso:
 - **Hex solto** só em cores de cena 3D (`cena3d.ts`) e nos tons claros sobre o verde do cabeçalho.
 - **Contraste mínimo:** 4,5:1 para texto; 3:1 para título de 24 px ou mais, contorno de foco e borda de controle. Calcule antes de trocar (§8).
 
+**Tema escuro na regra 60 · 30 · 10 (achado E1, 16/11).** No escuro, o verde tomava a tela inteira: barra lateral, cabeçalho, herói e o fundo ambiente. Agora:
+- **60:** base em grafite quase neutro: fundo #0e1110, folha #161a19, casa e linhas cinza.
+- **30:** o verde só aparece no cartão-herói, nos botões (`--azul` #18735f) e nos textos e links (`--azul-texto` #8fd1bd).
+- **10:** a menta só aparece no hoje e no botão de lançar.
+- **Cabeçalho, barra lateral e gaveta:** usam a classe `.barra` (`--vidro-barra`). No claro são verdes; no escuro são grafite.
+- **Fundo ambiente no escuro:** quase apagado, com o verde a 12%.
+
 Medido em 16/11:
 
 | Tema | Par | Contraste |
@@ -54,10 +61,13 @@ Medido em 16/11:
 | Claro | branco / `--azul` | 7,9 |
 | Claro | verde-texto | 6,9 |
 | Claro | texto / menta | 12,7 |
-| Escuro | tinta | 16,3 |
-| Escuro | tinta suave | 8,6 |
+| Escuro | tinta | 15,9 |
+| Escuro | tinta suave | 7,6 |
 | Escuro | branco / `--azul` | 5,7 |
-| Escuro | verde-texto | 10,3 |
+| Escuro | verde-texto | 10,1 |
+| Escuro | cinza | 5,8 |
+| Escuro | borda de controle | 6,0 |
+| Escuro | branco / herói | 11,9 |
 
 ## 4. Tipo, espaço e tamanhos
 

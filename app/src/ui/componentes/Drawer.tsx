@@ -47,7 +47,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
       <div onClick={fechar} aria-hidden
         className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-500 ease-[var(--ease)] ${aberto ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
       <nav data-sobre-marinho ref={painel} id={ID_MENU} aria-label="Menu" inert={!aberto}
-        className={`fixed inset-y-0 left-0 z-50 w-[82%] max-w-80 bg-[var(--marinho)] text-[var(--sobre-marinho)] p-4 pt-[calc(2rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
+        className={`heroi barra vidro fixed inset-y-0 left-0 z-50 w-[82%] max-w-80 text-[var(--sobre-marinho)] p-4 pt-[calc(2rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
         <ul className="grid gap-1">
           {ITENS.map((it, i) =>
             'secao' in it ? (
@@ -70,7 +70,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
 export function BarraLateral() {
   return (
     <nav data-sobre-marinho aria-label="Menu lateral"
-      className="heroi vidro fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-3 pb-6 pt-7 text-[var(--sobre-marinho)] lg:flex">
+      className="heroi barra vidro fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-3 pb-6 pt-7 text-[var(--sobre-marinho)] lg:flex">
       <span className="px-4 pb-6 text-[26px] font-extrabold uppercase leading-none">Finanças<br />Pessoais</span>
       <ul className="grid gap-0.5">
         {ITENS.map((it, i) =>
