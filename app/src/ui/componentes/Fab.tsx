@@ -5,7 +5,7 @@ export function Fab({ onClick }: { onClick: () => void }) {
   return (
     <button aria-label="Novo lançamento" onClick={onClick}
       className="fab fixed bottom-6 right-5 z-20 grid size-16 place-items-center rounded-[20px] bg-[var(--destaque)] text-[#14161c] transition-transform duration-300 ease-[var(--ease)] hover:-translate-y-0.5 active:scale-95 lg:bottom-8 lg:right-8"
-      style={{ boxShadow: '0 14px 28px -10px rgba(20,22,28,0.55)' }}>
+      style={{ boxShadow: '0 14px 28px -10px rgba(16,32,28,0.5)' }}>
       <Plus size={30} weight="bold" />
     </button>
   )

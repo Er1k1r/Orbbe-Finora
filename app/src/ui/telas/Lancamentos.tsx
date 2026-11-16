@@ -119,7 +119,7 @@ export default function Lancamentos({ mes, abrirLancamento }: { mes: string; abr
       <Moldura>
         <div className="grid gap-5 md:grid-cols-[auto_1fr_1fr] md:items-center md:gap-8">
           <div>
-            <h1 className="text-[28px] uppercase leading-none [font-stretch:72%]">Lançamentos</h1>
+            <h1 className="text-[28px] uppercase leading-none">Lançamentos</h1>
             <p className="mt-1 text-sm text-suave">Resultado previsto do mês</p>
             <p className={`valor text-2xl ${aReceber - saidas.pago - saidas.aberto < 0 ? 'text-negativo' : 'text-positivo'}`}>
               {formatarBRL(aReceber - saidas.pago - saidas.aberto)}

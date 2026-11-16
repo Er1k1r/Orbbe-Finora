@@ -89,7 +89,7 @@ export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, virar = true
                 initial="entra" animate="fica" exit="sai" transition={virar ? { duration: 0.42, ease: [0.16, 1, 0.3, 1] } : { duration: 0 }}>
                 <span className="numeral text-[clamp(60px,19vw,76px)] lg:text-[88px]" aria-hidden>{atual ? Number(hoje.slice(8)) : String(m).padStart(2, '0')}</span>
                 <span className="min-w-0 pb-1">
-                  <span className="block truncate text-[clamp(20px,6.4vw,28px)] font-extrabold uppercase leading-[0.95] [font-stretch:68%] lg:text-[34px]">{NOMES_MES[m - 1]}</span>
+                  <span className="block truncate text-[clamp(20px,6.4vw,28px)] font-extrabold uppercase leading-[0.95] lg:text-[34px]">{NOMES_MES[m - 1]}</span>
                   <span className="block text-[15px] font-semibold text-[var(--sobre-marinho-suave)]">
                     {ano}{atual ? ` · ${DIAS_LONGOS[diaDaSemana(hoje)]}` : ''}
                   </span>
@@ -113,7 +113,7 @@ export function Cabecalho({ mes, setMes, mostraMes, titulo, semana, virar = true
         </div>
       ) : (
         <div className="mt-2 flex items-center justify-between lg:mt-1">
-          <h1 className="text-[34px] uppercase leading-none [font-stretch:72%] lg:text-[44px]"><span>{titulo}</span></h1>
+          <h1 className="text-[34px] uppercase leading-none lg:text-[44px]"><span>{titulo}</span></h1>
           <span className="hidden lg:block"><BotaoTema /></span>
         </div>
       )}

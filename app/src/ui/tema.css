@@ -1,115 +1,115 @@
-@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/hanken-grotesk/wght.css';
 
 /*
- * Folhinha de Parede: azul-cobalto no cabeçalho e na barra, papel claro com folhas brancas, tinta quase preta,
- * vermelho de domingo para vencido/negativo, verde para pago/entrada, amarelo marca-texto só para HOJE e para o
- * botão de lançar (nunca como texto sobre fundo claro).
- * Nomes antigos mantidos como apelidos (--marinho = cobalto do cabeçalho, --destaque = marca-texto, --azul = cobalto).
+ * Folhinha de Parede, paleta verde-cédula e menta: verde-escuro do dinheiro no cabeçalho, na barra e no cartão-herói,
+ * papel claro com folhas de vidro, tinta quase preta, vermelho para vencido/negativo/domingo, menta como marca-texto
+ * (só HOJE e o botão de lançar, nunca como texto sobre fundo claro).
+ * Nomes antigos mantidos como apelidos: --marinho = verde do cabeçalho, --destaque = menta, --azul = verde de preenchimento.
  */
 :root {
   color-scheme: light dark;
-  --fundo: #eef0f4;
+  --fundo: #f1f2ef;
   --superficie: #ffffff;
-  --superficie-2: #e6e9f0;
-  --texto: #14161c;
-  --texto-suave: #555c6b;
-  --linha: #dde1e9;
-  --marinho: #1f3fbf;
-  --marinho-2: #16309a;
-  --azul: #1f3fbf;
-  --azul-texto: #1f3fbf;
-  --destaque: #ffd23f;
+  --superficie-2: #e6e9e6;
+  --texto: #1d2321;
+  --texto-suave: #56605c;
+  --linha: #dfe4e1;
+  --marinho: #0f4c45;
+  --marinho-2: #0b3a35;
+  --azul: #0f4c45;
+  --azul-texto: #0f5c52;
+  --destaque: #a1ffcb;
   --verde: #1d8a4e;
-  --verde-texto: #157a43;
-  --verde-bg: #e3f4ea;
-  --vermelho: #d6332a;
-  --vermelho-texto: #c0271f;
-  --vermelho-bg: #fde8e6;
+  --verde-texto: #13704a;
+  --verde-bg: #e1f4e8;
+  --vermelho: #c2362b;
+  --vermelho-texto: #b02a20;
+  --vermelho-bg: #fbe5e2;
   --amarelo-bg: #fff3c4;
-  --sobre-marinho: #ffffff;
-  --sobre-marinho-suave: #c8d2ff;
+  --sobre-marinho: #f4fbf7;
+  --sobre-marinho-suave: #b9d6cc;
   --casca: var(--superficie-2);
-  --casa: rgba(236, 239, 246, 0.72); /* casa (dia) da folhinha sobre a folha de vidro */
-  /* Vidro: folhas translúcidas sobre o fundo ambiente (campos de cobalto, marca-texto e verde desfocados). */
-  --vidro: rgba(255, 255, 255, 0.64);
+  --casa: rgba(232, 237, 233, 0.72); /* casa (dia) da folhinha sobre a folha de vidro */
+  /* Vidro: folhas translúcidas sobre o fundo ambiente (campos de verde, menta e pêssego desfocados). */
+  --vidro: rgba(255, 255, 255, 0.66);
   --vidro-brilho: rgba(255, 255, 255, 0.9);
-  --vidro-cobalto: rgba(31, 63, 191, 0.9);
-  --ambiente-1: rgba(31, 63, 191, 0.22);
-  --ambiente-2: rgba(255, 210, 63, 0.28);
-  --ambiente-3: rgba(29, 138, 78, 0.16);
-  --sombra: 0 10px 24px -16px rgba(20, 22, 28, 0.35);
+  --vidro-cobalto: rgba(15, 76, 69, 0.92);
+  --ambiente-1: rgba(15, 76, 69, 0.22);
+  --ambiente-2: rgba(161, 255, 203, 0.5);
+  --ambiente-3: rgba(255, 205, 160, 0.2);
+  --sombra: 0 10px 24px -16px rgba(16, 32, 28, 0.35);
   --ease: cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='claro']) {
-    --fundo: #0c0f1a;
-    --superficie: #151a2b;
-    --superficie-2: #1e2438;
-    --texto: #eef0f6;
-    --texto-suave: #a3abc2;
-    --linha: #262d45;
-    --marinho: #1b33a0;
-    --marinho-2: #142780;
-    --azul: #4c6bff;
-    --azul-texto: #9fb2ff;
+    --fundo: #0b1412;
+    --superficie: #13201d;
+    --superficie-2: #1a2a26;
+    --texto: #eaf3ef;
+    --texto-suave: #9fb5ad;
+    --linha: #23362f;
+    --marinho: #0e3f39;
+    --marinho-2: #0a302b;
+    --azul: #3fae94;
+    --azul-texto: #7fdcc0;
     --verde: #2fae68;
     --verde-texto: #6fdc9f;
     --verde-bg: #11291d;
-    --vermelho: #e4473d;
-    --vermelho-texto: #ff9d95;
-    --vermelho-bg: #3a1619;
+    --vermelho: #e04a3d;
+    --vermelho-texto: #ff9d92;
+    --vermelho-bg: #3a1716;
     --amarelo-bg: #3b3210;
-    --casa: rgba(30, 36, 56, 0.7);
-    --vidro: rgba(21, 26, 43, 0.6);
-    --vidro-brilho: rgba(255, 255, 255, 0.09);
-    --vidro-cobalto: rgba(27, 51, 160, 0.82);
-    --ambiente-1: rgba(76, 107, 255, 0.28);
-    --ambiente-2: rgba(255, 210, 63, 0.12);
-    --ambiente-3: rgba(47, 174, 104, 0.14);
+    --casa: rgba(30, 46, 42, 0.7);
+    --vidro: rgba(19, 32, 29, 0.6);
+    --vidro-brilho: rgba(255, 255, 255, 0.08);
+    --vidro-cobalto: rgba(14, 63, 57, 0.86);
+    --ambiente-1: rgba(63, 174, 148, 0.24);
+    --ambiente-2: rgba(161, 255, 203, 0.1);
+    --ambiente-3: rgba(255, 205, 160, 0.08);
     --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
   }
 }
 :root[data-theme='escuro'] {
-  --fundo: #0c0f1a;
-  --superficie: #151a2b;
-  --superficie-2: #1e2438;
-  --texto: #eef0f6;
-  --texto-suave: #a3abc2;
-  --linha: #262d45;
-  --marinho: #1b33a0;
-  --marinho-2: #142780;
-  --azul: #4c6bff;
-  --azul-texto: #9fb2ff;
+  --fundo: #0b1412;
+  --superficie: #13201d;
+  --superficie-2: #1a2a26;
+  --texto: #eaf3ef;
+  --texto-suave: #9fb5ad;
+  --linha: #23362f;
+  --marinho: #0e3f39;
+  --marinho-2: #0a302b;
+  --azul: #3fae94;
+  --azul-texto: #7fdcc0;
   --verde: #2fae68;
   --verde-texto: #6fdc9f;
   --verde-bg: #11291d;
-  --vermelho: #e4473d;
-  --vermelho-texto: #ff9d95;
-  --vermelho-bg: #3a1619;
+  --vermelho: #e04a3d;
+  --vermelho-texto: #ff9d92;
+  --vermelho-bg: #3a1716;
   --amarelo-bg: #3b3210;
-  --casa: rgba(30, 36, 56, 0.7);
-  --vidro: rgba(21, 26, 43, 0.6);
-  --vidro-brilho: rgba(255, 255, 255, 0.09);
-  --vidro-cobalto: rgba(27, 51, 160, 0.82);
-  --ambiente-1: rgba(76, 107, 255, 0.28);
-  --ambiente-2: rgba(255, 210, 63, 0.12);
-  --ambiente-3: rgba(47, 174, 104, 0.14);
+  --casa: rgba(30, 46, 42, 0.7);
+  --vidro: rgba(19, 32, 29, 0.6);
+  --vidro-brilho: rgba(255, 255, 255, 0.08);
+  --vidro-cobalto: rgba(14, 63, 57, 0.86);
+  --ambiente-1: rgba(63, 174, 148, 0.24);
+  --ambiente-2: rgba(161, 255, 203, 0.1);
+  --ambiente-3: rgba(255, 205, 160, 0.08);
   --sombra: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
 }
-/* Cartão-herói: folha sobre o cobalto, texto claro. */
+/* Cartão-herói, cabeçalho e barra: vidro verde, texto claro. */
 .heroi {
   --vidro: var(--vidro-cobalto);
-  --vidro-brilho: rgba(255, 255, 255, 0.28);
+  --vidro-brilho: rgba(255, 255, 255, 0.24);
   --superficie: var(--marinho);
   --superficie-2: var(--marinho-2);
-  --texto: #ffffff;
-  --texto-suave: #c8d2ff;
-  --linha: rgba(255, 255, 255, 0.18);
-  --azul: #ffffff;
-  --azul-texto: #ffffff;
-  --verde-texto: #8ff0bb;
-  --vermelho-texto: #ffb3ac;
-  --amarelo-bg: rgba(255, 210, 63, 0.22);
+  --texto: #f4fbf7;
+  --texto-suave: #b9d6cc;
+  --linha: rgba(255, 255, 255, 0.16);
+  --azul: #f4fbf7;
+  --azul-texto: #f4fbf7;
+  --verde-texto: #a1ffcb;
+  --vermelho-texto: #ffb3a8;
+  --amarelo-bg: rgba(161, 255, 203, 0.18);
 }
 :root[data-theme='escuro'] { color-scheme: dark; }
 :root[data-theme='claro'] { color-scheme: light; }

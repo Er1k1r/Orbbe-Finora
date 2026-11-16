@@ -22,13 +22,13 @@ export function FolhaSobra({ receitas, despesas, parcelas, aporte, normal, otimi
     ? [{ nome: 'Falta', v: base, cor: 'var(--vermelho)' }]
     : [
         { nome: 'Despesas', v: despesas, cor: '#ff8f87' },
-        { nome: 'Financiamentos', v: parcelas, cor: '#9fb2ff' },
+        { nome: 'Financiamentos', v: parcelas, cor: '#d7efe5' },
         { nome: 'Aporte', v: Math.min(aporte, Math.max(normal, 0)), cor: 'var(--destaque)' },
         { nome: 'Sobra', v: Math.max(otimizada, 0), cor: '#7be0a6' },
       ]
   return (
     <div>
-      <h2 className="text-[15px] font-bold [font-stretch:100%] text-[var(--texto-suave)]">Sobra do mês</h2>
+      <h2 className="text-[15px] font-bold text-[var(--texto-suave)]">Sobra do mês</h2>
       <p className={`numeral mt-2 text-[64px] ${negativa ? 'text-[var(--vermelho-texto)]' : ''}`} aria-live="polite"><Valor v={normal} /></p>
       <p className="mt-2 text-sm text-[var(--texto-suave)]">
         {aporte > 0 && !negativa ? <>Otimizada <span className="valor text-[var(--texto)]">{formatarBRL(otimizada)}</span> depois do aporte de <span className="valor text-[var(--texto)]">{formatarBRL(aporte)}</span></> : negativa ? 'As saídas passaram da renda do mês.' : 'Renda menos despesas e parcelas do mês.'}

@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cores e fontes</title>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;800&family=Jost:wght@400;500;600;700&family=Libre+Franklin:wght@400;600;800&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#e9e9e6;font-family:system-ui,sans-serif;padding:28px 16px;color:#222}
+h1{font-size:18px;text-align:center;margin-bottom:6px}
+.leg{text-align:center;color:#666;font-size:13px;margin-bottom:22px}
+.mesa{display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start}
+.op{width:360px;max-width:100%}
+.op h2{font-size:17px;margin:0 0 4px}
+.op p.d{font-size:13px;color:#555;margin:0 0 10px;min-height:52px}
+.fone{position:relative;height:720px;border-radius:36px;overflow:hidden;border:9px solid #111;background:var(--fundo);font-family:var(--fonte);color:var(--tinta)}
+.amb{position:absolute;inset:0;overflow:hidden}
+.amb i{position:absolute;border-radius:50%;filter:blur(60px)}
+.amb i:nth-child(1){width:300px;height:300px;left:-100px;top:-60px;background:var(--a1)}
+.amb i:nth-child(2){width:260px;height:260px;right:-90px;top:280px;background:var(--a2)}
+.cont{position:relative}
+.topo{background:var(--casca-topo);color:var(--sobre);padding:16px 16px 14px}
+.bar{display:flex;justify-content:space-between;font-size:13px;font-weight:600;opacity:.9}
+.mes{display:flex;align-items:flex-end;gap:12px;margin-top:8px}
+.mes b{font-family:var(--num);font-weight:var(--numpeso);font-size:64px;line-height:.85;letter-spacing:var(--numtrack)}
+.mes span{font-weight:700;font-size:22px;line-height:1;text-transform:var(--caixa)}
+.mes small{display:block;font-size:13px;font-weight:500;opacity:.75;text-transform:none;margin-top:3px}
+.sem{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:12px}
+.sem div{border-radius:10px;background:rgba(255,255,255,.1);text-align:center;padding:4px 0 6px;font-size:10px;font-weight:700}
+.sem div b{display:block;font-family:var(--num);font-weight:var(--numpeso);font-size:19px}
+.sem .h{background:var(--hoje);color:var(--sobre-hoje)}
+.sem .dom{color:var(--domingo-topo)}
+.vid{margin:14px 14px 0;border-radius:16px;padding:16px;background:var(--vidro);backdrop-filter:blur(18px) saturate(1.4);-webkit-backdrop-filter:blur(18px) saturate(1.4);box-shadow:0 10px 24px -16px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.6)}
+.vid.her{background:var(--heroi);color:var(--sobre);box-shadow:0 12px 26px -16px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.25)}
+.vid h3{font-size:14px;font-weight:700;opacity:.85}
+.sobra{font-family:var(--num);font-weight:var(--numpeso);font-size:46px;letter-spacing:var(--numtrack);line-height:1;margin-top:6px}
+.sobra small{font-size:20px}
+.reg{display:flex;gap:2px;height:9px;border-radius:9px;overflow:hidden;margin-top:12px}
+.trio{display:grid;grid-template-columns:repeat(3,1fr);margin-top:12px;font-size:11px;opacity:.85}
+.trio b{display:block;font-size:15px;opacity:1;font-variant-numeric:tabular-nums}
+.it{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--linha)}
+.it:first-of-type{border-top:0}
+.it .d{text-align:center;line-height:1}.it .d b{font-family:var(--num);font-weight:var(--numpeso);font-size:24px;display:block}.it .d small{font-size:9px;font-weight:700;opacity:.6}
+.it .n{font-weight:600;font-size:14px}.it .s{font-size:11px;opacity:.65}
+.v{font-variant-numeric:tabular-nums;font-weight:600;font-size:14px}
+.neg{color:var(--neg)}.pos{color:var(--pos)}
+.chip{display:inline-block;font-size:10px;font-weight:700;border-radius:99px;padding:1px 7px;background:var(--neg-bg);color:var(--neg)}
+.fab{position:absolute;right:16px;bottom:18px;width:56px;height:56px;border-radius:18px;background:var(--hoje);display:grid;place-items:center;box-shadow:0 12px 24px -10px rgba(0,0,0,.5)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 0}
+.chips i{width:26px;height:26px;border-radius:8px;display:inline-block;border:1px solid rgba(0,0,0,.08)}
+.chips span{font-size:12px;color:#555;align-self:center;margin-left:4px}
+</style></head><body>
+<h1>Três combinações de cor e fonte</h1>
+<p class="leg">A mesma tela (Resumo no celular), com o vidro, a folhinha e os dados de exemplo. Só mudam as cores e as letras.</p>
+<div class="mesa">
+
+<section class="op" style="--fundo:#f1f2ef;--casca-topo:#0f4c45;--heroi:rgba(15,76,69,.92);--sobre:#f4fbf7;--hoje:#a1ffcb;--sobre-hoje:#0b2b27;--domingo-topo:#ffb3a8;--tinta:#1d2321;--vidro:rgba(255,255,255,.66);--linha:#dfe4e1;--neg:#c2362b;--neg-bg:#fbe5e2;--pos:#13704a;--a1:rgba(15,76,69,.25);--a2:rgba(161,255,203,.55);--fonte:'Hanken Grotesk',sans-serif;--num:'Hanken Grotesk',sans-serif;--numpeso:800;--numtrack:-.04em;--caixa:none">
+  <h2>A · Verde-cédula e menta</h2>
+  <p class="d">Verde-escuro do dinheiro no lugar do azul, menta como marca-texto do hoje. Hanken Grotesk: letra simples, larga, muito legível em celular simples.</p>
+  <div class="chips"><i style="background:#0f4c45"></i><i style="background:#a1ffcb"></i><i style="background:#f1f2ef"></i><i style="background:#c2362b"></i><span>Hanken Grotesk</span></div>
+  <div class="fone" style="margin-top:10px"><div class="amb"><i></i><i></i></div><div class="cont">
+    <div class="topo"><div class="bar"><span>☰</span><span>Finanças Pessoais</span><span>☾</span></div>
+      <div class="mes"><b>16</b><span>Novembro<small>2026 · segunda-feira</small></span></div>
+      <div class="sem"><div class="dom">DOM<b>15</b></div><div class="h">SEG<b>16</b></div><div>TER<b>17</b></div><div>QUA<b>18</b></div><div>QUI<b>19</b></div><div>SEX<b>20</b></div><div>SÁB<b>21</b></div></div></div>
+    <div class="vid her"><h3>Sobra do mês</h3><div class="sobra">R$ 1.240<small>,00</small></div>
+      <div class="reg"><span style="flex:30;background:#ffb3a8"></span><span style="flex:20;background:#cfe9dd"></span><span style="flex:25;background:#a1ffcb"></span></div>
+      <div class="trio"><div>Inicial<b>6.900</b></div><div>Saldo<b>8.630</b></div><div>Previsto<b>6.115</b></div></div></div>
+    <div class="vid"><h3>Esta semana</h3>
+      <div class="it"><div class="d"><b class="neg">15</b><small>DOM</small></div><div><div class="n">Óculos 4/12</div><span class="chip">venceu</span></div><div class="v neg">− R$ 50,00</div></div>
+      <div class="it"><div class="d"><b>20</b><small>SEX</small></div><div><div class="n">Luz</div><div class="s">a pagar</div></div><div class="v neg">− R$ 180,00</div></div>
+      <div class="it"><div class="d"><b>20</b><small>SEX</small></div><div><div class="n">Venda de brownie</div><div class="s">a receber</div></div><div class="v pos">+ R$ 320,00</div></div></div>
+  </div><div class="fab">＋</div></div>
+</section>
+
+<section class="op" style="--fundo:#f3e3da;--casca-topo:#351a2b;--heroi:rgba(53,26,43,.92);--sobre:#fbeee7;--hoje:#ffc9a9;--sobre-hoje:#351a2b;--domingo-topo:#ff9f8f;--tinta:#2a1622;--vidro:rgba(255,248,244,.6);--linha:#e8d0c4;--neg:#b8323a;--neg-bg:#f9dcd8;--pos:#2f7a4f;--a1:rgba(53,26,43,.22);--a2:rgba(237,170,140,.55);--fonte:'Jost',sans-serif;--num:'Jost',sans-serif;--numpeso:600;--numtrack:-.02em;--caixa:uppercase">
+  <h2>B · Berinjela e pêssego</h2>
+  <p class="d">Berinjela profunda no cabeçalho, papel rosado e pêssego no hoje. Jost: geométrica, redonda, com números de calendário clássicos.</p>
+  <div class="chips"><i style="background:#351a2b"></i><i style="background:#ffc9a9"></i><i style="background:#f3e3da"></i><i style="background:#b8323a"></i><span>Jost</span></div>
+  <div class="fone" style="margin-top:10px"><div class="amb"><i></i><i></i></div><div class="cont">
+    <div class="topo"><div class="bar"><span>☰</span><span>Finanças Pessoais</span><span>☾</span></div>
+      <div class="mes"><b>16</b><span>Novembro<small>2026 · segunda-feira</small></span></div>
+      <div class="sem"><div class="dom">DOM<b>15</b></div><div class="h">SEG<b>16</b></div><div>TER<b>17</b></div><div>QUA<b>18</b></div><div>QUI<b>19</b></div><div>SEX<b>20</b></div><div>SÁB<b>21</b></div></div></div>
+    <div class="vid her"><h3>Sobra do mês</h3><div class="sobra">R$ 1.240<small>,00</small></div>
+      <div class="reg"><span style="flex:30;background:#ff9f8f"></span><span style="flex:20;background:#d8b6c7"></span><span style="flex:25;background:#ffc9a9"></span></div>
+      <div class="trio"><div>Inicial<b>6.900</b></div><div>Saldo<b>8.630</b></div><div>Previsto<b>6.115</b></div></div></div>
+    <div class="vid"><h3>Esta semana</h3>
+      <div class="it"><div class="d"><b class="neg">15</b><small>DOM</small></div><div><div class="n">Óculos 4/12</div><span class="chip">venceu</span></div><div class="v neg">− R$ 50,00</div></div>
+      <div class="it"><div class="d"><b>20</b><small>SEX</small></div><div><div class="n">Luz</div><div class="s">a pagar</div></div><div class="v neg">− R$ 180,00</div></div>
+      <div class="it"><div class="d"><b>20</b><small>SEX</small></div><div><div class="n">Venda de brownie</div><div class="s">a receber</div></div><div class="v pos">+ R$ 320,00</div></div></div>
+  </div><div class="fab">＋</div></div>
+</section>
+
+<section class="op" style="--fundo:#f4f4f2;--casca-topo:#141414;--heroi:rgba(20,20,20,.9);--sobre:#f5f5f3;--hoje:#ff5a3c;--sobre-hoje:#fff;--domingo-topo:#ff8a73;--tinta:#141414;--vidro:rgba(255,255,255,.66);--linha:#e2e2df;--neg:#c41e2a;--neg-bg:#fbe1df;--pos:#1f7a45;--a1:rgba(255,90,60,.22);--a2:rgba(20,20,20,.12);--fonte:'Switzer',sans-serif;--num:'Switzer',sans-serif;--numpeso:800;--numtrack:-.04em;--caixa:none">
+  <h2>C · Grafite e tomate</h2>
+  <p class="d">Grafite quase preto, papel neutro e um laranja-tomate só no hoje e no botão. Switzer: grotesca suíça, firme, de painel de informação.</p>
+  <div class="chips"><i style="background:#141414"></i><i style="background:#ff5a3c"></i><i style="background:#f4f4f2"></i><i style="background:#c41e2a"></i><span>Switzer</span></div>
+  <div class="fone" style="margin-top:10px"><div class="amb"><i></i><i></i></div><div class="cont">
+    <div class="topo"><div class="bar"><span>☰</span><span>Finanças Pessoais</span><span>☾</span></div>
+      <div class="mes"><b>16</b><span>Novembro<small>2026 · segunda-feira</small></span></div>
+      <div class="sem"><div class="dom">DOM<b>15</b></div><div class="h">SEG<b>16</b></div><div>TER<b>17</b></div><div>QUA<b>18</b></div><div>QUI<b>19</b></div><div>SEX<b>20</b></div><div>SÁB<b>21</b></div></div></div>
+    <div class="vid her"><h3>Sobra do mês</h3><div class="sobra">R$ 1.240<small>,00</small></div>
+      <div class="reg"><span style="flex:30;background:#ff8a73"></span><span style="flex:20;background:#9a9a96"></span><span style="flex:25;background:#ff5a3c"></span></div>
+      <div class="trio"><div>Inicial<b>6.900</b></div><div>Saldo<b>8.630</b></div><div>Previsto<b>6.115</b></div></div></div>
+    <div class="vid"><h3>Esta semana</h3>
+      <div class="it"><div class="d"><b class="neg">15</b><small>DOM</small></div><div><div class="n">Óculos 4/12</div><span class="chip">venceu</span></div><div class="v neg">− R$ 50,00</div></div>
+      <div class="it"><div class="d"><b>20</b><small>SEX</small></div><div><div class="n">Luz</div><div class="s">a pagar</div></div><div class="v neg">− R$ 180,00</div></div>
+      <div class="it"><div class="d"><b>20</b><small>SEX</small></div><div><div class="n">Venda de brownie</div><div class="s">a receber</div></div><div class="v pos">+ R$ 320,00</div></div></div>
+  </div><div class="fab" style="color:#fff">＋</div></div>
+</section>
+
+</div></body></html>
