@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { CaretDoubleLeft, SidebarSimple } from '@phosphor-icons/react'
 import { NavLink } from 'react-router-dom'
 import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
 import { ITENS } from '../menu'
@@ -48,6 +49,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
         className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-500 ease-[var(--ease)] ${aberto ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
       <nav data-sobre-marinho ref={painel} id={ID_MENU} aria-label="Menu" inert={!aberto}
         className={`heroi barra vidro fixed inset-y-0 left-0 z-50 w-[82%] max-w-80 text-[var(--sobre-marinho)] p-4 pt-[calc(2rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
+        <span className="mb-4 block px-4 text-[28px]"><Marca /></span>
         <ul className="grid gap-1">
           {ITENS.map((it, i) =>
             'secao' in it ? (
@@ -66,21 +68,42 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
   )
 }
 
-/** Computador: a barra cobalto fica sempre aberta à esquerda (o Drawer é só do celular). */
-export function BarraLateral() {
+/** Marca: "Finora" (finanças + ora, o agora). O ponto menta é o "agora" da folhinha. */
+export function Marca({ curta = false }: { curta?: boolean }) {
+  return (
+    <span className="inline-flex items-baseline font-extrabold leading-none tracking-[-0.04em]" aria-label="Finora">
+      <span aria-hidden>{curta ? 'F' : 'Finora'}</span>
+      <i aria-hidden className="neon ml-0.5 inline-block size-[0.22em] rounded-full bg-[var(--destaque)]" />
+    </span>
+  )
+}
+
+/**
+ * Computador: barra lateral fixa à esquerda (o Drawer é só do celular). Recolhida, vira uma faixa de ícones
+ * de 80 px com o nome de cada item no `title` e no nome acessível; a escolha fica salva no aparelho.
+ */
+export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alternar: () => void }) {
   return (
     <nav data-sobre-marinho aria-label="Menu lateral"
-      className="heroi barra vidro fixed inset-y-0 left-0 z-30 hidden w-64 flex-col px-3 pb-6 pt-7 text-[var(--sobre-marinho)] lg:flex">
-      <span className="px-4 pb-6 text-[26px] font-extrabold uppercase leading-none">Finanças<br />Pessoais</span>
+      className={`heroi barra vidro fixed inset-y-0 left-0 z-30 hidden flex-col pb-6 pt-6 text-[var(--sobre-marinho)] transition-[width] duration-300 ease-[var(--ease)] lg:flex ${recolhida ? 'w-20 px-2' : 'w-64 px-3'}`}>
+      <div className={`flex items-center pb-5 ${recolhida ? 'flex-col gap-3' : 'justify-between pl-4'}`}>
+        <span className="text-[30px]"><Marca curta={recolhida} /></span>
+        <button onClick={alternar} aria-expanded={!recolhida} aria-label={recolhida ? 'Expandir menu' : 'Recolher menu'} title={recolhida ? 'Expandir menu' : 'Recolher menu'}
+          className="grid size-11 place-items-center rounded-[10px] text-[var(--sobre-marinho-suave)] transition-colors hover:bg-white/10 hover:text-white">
+          {recolhida ? <SidebarSimple size={22} /> : <CaretDoubleLeft size={20} />}
+        </button>
+      </div>
       <ul className="grid gap-0.5">
         {ITENS.map((it, i) =>
           'secao' in it ? (
-            <li key={i} className="mb-1 mt-5 px-4 text-xs font-bold text-[var(--sobre-marinho-suave)]">{it.secao}</li>
+            recolhida
+              ? <li key={i} aria-hidden className="mx-3 my-3 h-px bg-white/10" />
+              : <li key={i} className="mb-1 mt-5 px-4 text-xs font-bold text-[var(--sobre-marinho-suave)]">{it.secao}</li>
           ) : (
             <li key={it.para}>
-              <NavLink to={it.para} end={it.para === '/'}
-                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[10px] px-4 text-[15px] font-semibold transition-colors ${isActive ? 'bg-white/15 font-bold text-white neon-texto' : 'text-[var(--sobre-marinho-suave)] hover:bg-white/10 hover:text-white'}`}>
-                <it.Icone size={20} /> {it.rotulo}
+              <NavLink to={it.para} end={it.para === '/'} title={recolhida ? it.rotulo : undefined} aria-label={recolhida ? it.rotulo : undefined}
+                className={({ isActive }) => `flex min-h-11 items-center gap-3 rounded-[10px] text-[15px] font-semibold transition-colors ${recolhida ? 'justify-center px-0' : 'px-4'} ${isActive ? 'bg-white/15 font-bold text-white neon-texto' : 'text-[var(--sobre-marinho-suave)] hover:bg-white/10 hover:text-white'}`}>
+                <it.Icone size={recolhida ? 22 : 20} /> {!recolhida && it.rotulo}
               </NavLink>
             </li>
           ))}

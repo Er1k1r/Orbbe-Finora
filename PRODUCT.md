@@ -31,7 +31,7 @@ Celular e computador com o mesmo peso: celular para lançar na hora do gasto, co
 
 ## Brand Commitments
 
-Nome: Finanças Pessoais. Texto em português do Brasil, direto, sem jargão de banco. Identidade visual livre (o petróleo e limão do cfc_platform foi ponto de partida, não compromisso).
+Nome: **Finora** (finanças + "ora", o agora/momento: o app mostra o seu dinheiro de agora e do que vem). Antes se chamava Finanças Pessoais. Texto em português do Brasil, direto, sem jargão de banco. Identidade visual livre (o petróleo e limão do cfc_platform foi ponto de partida, não compromisso).
 
 ## Evidence on Hand
 

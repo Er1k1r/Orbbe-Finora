@@ -1,4 +1,4 @@
-# Guia visual · Finanças Pessoais
+# Guia visual · Finora
 
 Como o visual deste app está montado e como mexer nele sem quebrar nada. O método segue o guia do cfc_platform (`cfc_platform/GUIA_VISUAL.md`), adaptado a este app (React + Tailwind v4, PWA).
 
@@ -101,6 +101,10 @@ Medido em 16/11:
   - `lg` (1024 px): barra lateral fixa.
   - `xl` (1280 px): três colunas, largura máxima de 1280 px.
   - Fontes, Categorias e Backup ficam numa coluna de 672 px.
+
+### Marca e barra lateral
+- **Nome:** Finora, a fusão de finanças com "ora" (agora, o momento). A marca `Marca` em `Drawer.tsx` é a palavra "Finora" em Geist 800, com um ponto menta aceso (o "agora"). Recolhida, vira "F" com o ponto.
+- **Barra lateral recolhível** (computador): o botão no topo recolhe a barra em uma faixa de ícones de 80 px. Cada ícone guarda o nome no `title` e no nome acessível. A escolha fica salva em `localStorage['finora.barra']`. No celular continua a gaveta.
 
 ## 5. Foco, hover e estados
 

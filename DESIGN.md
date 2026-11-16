@@ -1,5 +1,5 @@
 ---
-name: Finanças Pessoais
+name: Finora
 description: A folhinha de parede da cozinha virada app, com verde-cédula, papel claro, numerais condensados e o dia de hoje marcado a caneta.
 colors:
   verde-cédula: "#0f4c45"
