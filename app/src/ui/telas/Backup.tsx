@@ -6,6 +6,9 @@ import { exportar, importar } from '../../data/backup'
 import { pedirPersistencia, type EstadoArmazenamento } from '../../data/armazenamento'
 import { hojeLocal } from '../../domain/meses'
 import { salvarPrefs, usePrefs } from '../hooks/usePreferencias'
+import { useConta } from '../hooks/useConta'
+import { sair } from '../../data/conta'
+import TelaAcesso from './Acesso'
 
 const TEXTO_ARMAZENAMENTO: Record<EstadoArmazenamento, string> = {
   persistente: 'Armazenamento protegido: o navegador não apaga os dados do app por conta própria.',
@@ -20,6 +23,8 @@ export default function Backup() {
   const armazenamento = pedido ?? d.armazenamento
   const prefs = usePrefs()
   const arquivo = useRef<HTMLInputElement>(null)
+  const { conta } = useConta()
+  const [criando, setCriando] = useState(false)
 
   async function baixar() {
     try {
@@ -62,6 +67,22 @@ export default function Backup() {
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void ler(f) }} />
         {msg && <p role="status" className="mt-3 text-sm">{msg}</p>}
       </Moldura>
+      <Moldura>
+        <h3 className="text-[19px] leading-tight font-extrabold">Senha do app</h3>
+        {conta ? (
+          <>
+            <p className="mt-1 text-sm">Conta de <strong>{conta.nome}</strong> ({conta.email}). Depois de sair, o app pede a senha para abrir neste aparelho.</p>
+            <p className="mt-2 text-xs text-suave">A senha trava a abertura, mas não embaralha os dados guardados no navegador. O backup não leva a senha.</p>
+            <button onClick={sair} className="-ml-3 mt-3 min-h-11 px-3 text-sm font-semibold text-marca-texto">Sair</button>
+          </>
+        ) : (
+          <>
+            <p className="mt-1 text-sm">Opcional. Com uma conta, o app pede senha para abrir neste aparelho. Tudo continua só aqui.</p>
+            <button onClick={() => setCriando(true)} className="mt-4 min-h-12 w-full rounded-full bg-[var(--casca)] font-semibold">Criar conta para proteger o app</button>
+          </>
+        )}
+      </Moldura>
+      {criando && !conta && <TelaAcesso modo="criar" aoFechar={() => setCriando(false)} />}
     </div>
   )
 }
