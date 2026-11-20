@@ -26,6 +26,9 @@ import DividaDetalhe from './ui/telas/DividaDetalhe'
 import { appVazio } from './ui/padroes'
 import { infoDaRota } from './ui/rotas'
 import { pedirPersistencia, type EstadoArmazenamento } from './data/armazenamento'
+import TelaAcesso from './ui/telas/Acesso'
+import { useConta } from './ui/hooks/useConta'
+import { travado } from './data/conta'
 
 function Shell() {
   const [aberto, setAberto] = useState(false)
@@ -122,6 +125,15 @@ function Shell() {
   )
 }
 
+/**
+ * Trava local: só aparece quando já existe conta e a pessoa saiu. Sem conta, o app abre direto (onboarding ou dados
+ * existentes); a conta é criada depois, pelo Backup. A senha não criptografa os dados, só trava a abertura.
+ */
+function Portao() {
+  const conta = useConta()
+  return travado(conta) ? <TelaAcesso modo="entrar" /> : <Shell />
+}
+
 export default function App() {
-  return <MotionConfig reducedMotion="user"><HashRouter><Shell /></HashRouter></MotionConfig>
+  return <MotionConfig reducedMotion="user"><HashRouter><Portao /></HashRouter></MotionConfig>
 }

@@ -1,8 +1,11 @@
 import { useEffect, useRef } from 'react'
-import { CaretDoubleLeft, SidebarSimple } from '@phosphor-icons/react'
+import { CaretDoubleLeft, SidebarSimple, SignOut } from '@phosphor-icons/react'
 import { NavLink } from 'react-router-dom'
 import { useFolhaNoHistorico } from '../hooks/useFolhaNoHistorico'
 import { ITENS } from '../menu'
+import { useConta } from '../hooks/useConta'
+import { sair } from '../../data/conta'
+import { inicial } from '../../domain/acesso'
 
 
 
@@ -48,7 +51,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
       <div onClick={fechar} aria-hidden
         className={`fixed inset-0 z-40 bg-black/40 transition-opacity duration-500 ease-[var(--ease)] ${aberto ? 'opacity-100' : 'opacity-0 pointer-events-none'}`} />
       <nav data-sobre-marinho ref={painel} id={ID_MENU} aria-label="Menu" inert={!aberto}
-        className={`heroi barra vidro fixed inset-y-0 left-0 z-50 w-[82%] max-w-80 text-[var(--sobre-marinho)] p-4 pt-[calc(2rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
+        className={`heroi barra vidro fixed inset-y-0 left-0 z-50 overflow-y-auto w-[82%] max-w-80 text-[var(--sobre-marinho)] p-4 pt-[calc(2rem+env(safe-area-inset-top))] transition-transform duration-500 ease-[var(--ease)] ${aberto ? 'translate-x-0' : '-translate-x-full'}`}>
         <span className="mb-4 block px-4 text-[28px]"><Marca /></span>
         <ul className="grid gap-1">
           {ITENS.map((it, i) =>
@@ -63,6 +66,7 @@ export function Drawer({ aberto, fechar }: { aberto: boolean; fechar: () => void
               </li>
             ))}
         </ul>
+        <Usuario aoSair={fechar} />
       </nav>
     </>
   )
@@ -85,7 +89,7 @@ export function Marca({ curta = false }: { curta?: boolean }) {
 export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alternar: () => void }) {
   return (
     <nav data-sobre-marinho aria-label="Menu lateral"
-      className={`heroi barra vidro fixed inset-y-0 left-0 z-30 hidden flex-col pb-6 pt-6 text-[var(--sobre-marinho)] transition-[width] duration-300 ease-[var(--ease)] lg:flex ${recolhida ? 'w-20 px-2' : 'w-64 px-3'}`}>
+      className={`heroi barra vidro fixed inset-y-0 left-0 z-30 hidden flex-col overflow-y-auto pb-6 pt-6 text-[var(--sobre-marinho)] transition-[width] duration-300 ease-[var(--ease)] lg:flex ${recolhida ? 'w-20 px-2' : 'w-64 px-3'}`}>
       <div className={`flex items-center pb-5 ${recolhida ? 'flex-col gap-3' : 'justify-between pl-4'}`}>
         <span className="text-[30px]"><Marca curta={recolhida} /></span>
         <button onClick={alternar} aria-expanded={!recolhida} aria-label={recolhida ? 'Expandir menu' : 'Recolher menu'} title={recolhida ? 'Expandir menu' : 'Recolher menu'}
@@ -108,6 +112,37 @@ export function BarraLateral({ recolhida, alternar }: { recolhida: boolean; alte
             </li>
           ))}
       </ul>
+      <div className="mt-auto pt-4"><Usuario recolhida={recolhida} /></div>
     </nav>
+  )
+}
+
+/**
+ * Quem está usando (conta local) e o botão Sair, abaixo de Configurar. Sem conta, nada aparece:
+ * a conta é opcional e se cria pelo Backup. Sair fecha a sessão e mostra a tela de entrada.
+ */
+function Usuario({ recolhida = false, aoSair }: { recolhida?: boolean; aoSair?: () => void }) {
+  const { conta } = useConta()
+  if (!conta) return null
+  const avatar = (
+    <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 text-base font-bold text-white">{inicial(conta.nome)}</span>
+  )
+  const botao = 'flex min-h-11 items-center rounded-[10px] text-sm font-semibold text-[var(--sobre-marinho-suave)] transition-colors hover:bg-white/10 hover:text-white'
+  const sairAgora = () => { aoSair?.(); sair() }
+  if (recolhida)
+    return (
+      <div className="grid justify-items-center gap-2 border-t border-white/10 pt-4">
+        <span title={conta.nome}>{avatar}</span>
+        <button onClick={sairAgora} aria-label={`Sair (${conta.nome})`} title="Sair" className={`${botao} size-11 justify-center`}><SignOut size={22} /></button>
+      </div>
+    )
+  return (
+    <div className="mt-5 grid gap-1 border-t border-white/10 pt-4">
+      <p className="flex min-h-11 items-center gap-3 px-4">
+        {avatar}
+        <span className="min-w-0 truncate font-semibold text-white" title={conta.nome}>{conta.nome}</span>
+      </p>
+      <button onClick={sairAgora} className={`${botao} gap-3 px-4 text-[15px]`}><SignOut size={20} /> Sair</button>
+    </div>
   )
 }
