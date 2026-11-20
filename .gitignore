@@ -5,3 +5,5 @@ dist/
 
 .impeccable/review/
 .impeccable/questions/
+.claude/
+.taste-skill/
